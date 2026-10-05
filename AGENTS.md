@@ -17,6 +17,12 @@ Game engine is independent from transport, UI, persistence, and frameworks.
 
 The server is authoritative. Clients send player intentions; the server validates them, applies them through the game engine, and sends player-specific game views back.
 
+## Domain rules
+
+The canonical game rules are in `docs/regicide-rules.md`.
+
+Use them as the source of truth when implementing or changing game behavior.
+
 ## Package manager
 
 Use `pnpm` from the repository root.
