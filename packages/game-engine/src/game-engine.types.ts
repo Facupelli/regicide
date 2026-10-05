@@ -23,6 +23,7 @@ export type Battle = Readonly<{
   immunityCancelled: boolean;
 }>;
 export type World = Readonly<{
+  /** Players in clockwise seating order. */
   players: readonly Player[];
   currentPlayer: string;
   battle: Battle;

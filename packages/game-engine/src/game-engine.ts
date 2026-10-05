@@ -37,7 +37,8 @@ function handleTurnAction(world: World, player: Player, action: PlayCards): Game
   const card = validatePlay(player, action);
   validateSupportedBattle(world.battle);
   const worldAfterPlay = applyPlay(world, player, card);
-  return resolveAfterPlay(worldAfterPlay, card);
+  const worldAfterSuitPower = resolveImmediateSuitPower(worldAfterPlay, card);
+  return resolveAfterPlay(worldAfterSuitPower, card);
 }
 
 function handleDamageDiscard(
@@ -70,8 +71,12 @@ function handleDamageDiscard(
 function validatePlay(player: Player, action: PlayCards): NumberCard {
   if (action.cardIds.length !== 1) throw new Error('Only single-card plays are supported');
   const [card] = selectedCardsFromHand(player.hand, action.cardIds);
-  if (!card || card.kind !== 'number' || (card.suit !== 'clubs' && card.suit !== 'spades')) {
-    throw new Error('Only numbered Clubs and Spades plays are supported');
+  if (
+    !card ||
+    card.kind !== 'number' ||
+    (card.suit !== 'clubs' && card.suit !== 'spades' && card.suit !== 'diamonds')
+  ) {
+    throw new Error('Only numbered Clubs, Spades, and Diamonds plays are supported');
   }
   return card;
 }
@@ -92,6 +97,42 @@ function applyPlay(world: World, player: Player, card: NumberCard): World {
     ),
     battle: { ...world.battle, playedCards: [...world.battle.playedCards, card] },
   };
+}
+
+function resolveImmediateSuitPower(world: World, card: NumberCard): World {
+  return card.suit === 'diamonds' ? resolveDiamondDraw(world, attackValue(card)) : world;
+}
+
+function resolveDiamondDraw(world: World, drawCount: number): World {
+  const handLimit = maxHandSize(world.players.length);
+  const players: Player[] = world.players.map((player) => ({ ...player, hand: [...player.hand] }));
+  let playerIndex = players.findIndex((player) => player.id === world.currentPlayer);
+  if (playerIndex < 0) throw new Error('The current player is not in the game');
+  let drawn = 0;
+
+  while (
+    drawn < drawCount &&
+    drawn < world.tavern.length &&
+    players.some((player) => player.hand.length < handLimit)
+  ) {
+    const player = players[playerIndex];
+    if (!player) throw new Error('The drawing player is not in the game');
+    if (player.hand.length < handLimit) {
+      const card = world.tavern[drawn];
+      if (!card) throw new Error('The Tavern has no card to draw');
+      players[playerIndex] = { ...player, hand: [...player.hand, card] };
+      drawn++;
+    }
+    playerIndex = (playerIndex + 1) % players.length;
+  }
+
+  return { ...world, players, tavern: world.tavern.slice(drawn) };
+}
+
+function maxHandSize(playerCount: number): number {
+  const limit = HAND_LIMITS[playerCount - 1];
+  if (!limit) throw new Error('Only games with 1 to 4 players are supported');
+  return limit;
 }
 
 function resolveAfterPlay(world: World, card: NumberCard): GameState {
@@ -164,8 +205,13 @@ function selectedCardsFromHand(hand: readonly Card[], cardIds: readonly string[]
   });
 }
 
+function attackValue(card: NumberCard): number {
+  return card.rank;
+}
+
 function attackDamage(card: NumberCard): number {
-  return card.suit === 'clubs' ? card.rank * 2 : card.rank;
+  const value = attackValue(card);
+  return card.suit === 'clubs' ? value * 2 : value;
 }
 
 function activeShield(battle: Battle): number {
@@ -201,6 +247,8 @@ function nextPlayer(world: World): string {
 function assertNever(value: never): never {
   throw new Error(`Unsupported decision: ${JSON.stringify(value)}`);
 }
+
+const HAND_LIMITS = [8, 7, 6, 5] as const;
 
 const ROYAL_RANK_DATA = {
   jack: { value: 10, health: 20 },
