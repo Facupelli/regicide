@@ -101,8 +101,11 @@ function applyPlay(world: World, player: Player, card: NumberCard): World {
 function resolveAfterPlay(world: World, card: NumberCard): GameState {
   const { battle } = world;
   const damageDealt = battle.damageDealt + card.rank * 2;
-  if (damageDealt >= enemyHealth(battle.enemy)) {
-    throw new Error('Unsupported game outcome: enemy defeat');
+  if (damageDealt > enemyHealth(battle.enemy)) {
+    return resolveEnemyDefeat(world);
+  }
+  if (damageDealt === enemyHealth(battle.enemy)) {
+    throw new Error('Unsupported game outcome: exact-damage enemy defeat');
   }
 
   const requiredDamage = enemyAttack(battle.enemy);
@@ -115,6 +118,26 @@ function resolveAfterPlay(world: World, card: NumberCard): GameState {
   return {
     world: { ...world, battle: { ...battle, damageDealt } },
     decision: { kind: 'await-damage-discard', requiredDamage },
+  };
+}
+
+function resolveEnemyDefeat(world: World): GameState {
+  const nextEnemy = world.castle[0];
+  if (!nextEnemy) throw new Error('Unsupported game outcome: final enemy defeat');
+
+  return {
+    world: {
+      ...world,
+      discard: [...world.discard, world.battle.enemy, ...world.battle.playedCards],
+      castle: world.castle.slice(1),
+      battle: {
+        enemy: nextEnemy,
+        damageDealt: 0,
+        playedCards: [],
+        immunityCancelled: false,
+      },
+    },
+    decision: { kind: 'await-turn-action' },
   };
 }
 

@@ -28,7 +28,7 @@ export type World = Readonly<{
   battle: Battle;
   tavern: readonly Card[];
   discard: readonly Card[];
-  castle: readonly Card[];
+  castle: readonly RoyalCard[];
 }>;
 export type Decision =
   | Readonly<{ kind: 'await-turn-action' }>
