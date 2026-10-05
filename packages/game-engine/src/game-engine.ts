@@ -70,19 +70,15 @@ function handleDamageDiscard(
 function validatePlay(player: Player, action: PlayCards): NumberCard {
   if (action.cardIds.length !== 1) throw new Error('Only single-card plays are supported');
   const [card] = selectedCardsFromHand(player.hand, action.cardIds);
-  if (!card || card.kind !== 'number' || card.suit !== 'clubs') {
-    throw new Error('Only numbered Clubs plays are supported');
+  if (!card || card.kind !== 'number' || (card.suit !== 'clubs' && card.suit !== 'spades')) {
+    throw new Error('Only numbered Clubs and Spades plays are supported');
   }
   return card;
 }
 
 function validateSupportedBattle(battle: Battle): void {
-  if (
-    battle.enemy.rank !== 'jack' ||
-    battle.enemy.suit !== 'hearts' ||
-    battle.playedCards.some((played) => played.suit === 'spades')
-  ) {
-    throw new Error('Only unshielded Jack of Hearts battles are supported');
+  if (battle.enemy.rank !== 'jack' || battle.enemy.suit !== 'hearts') {
+    throw new Error('Only Jack of Hearts battles are supported');
   }
 }
 
@@ -100,7 +96,7 @@ function applyPlay(world: World, player: Player, card: NumberCard): World {
 
 function resolveAfterPlay(world: World, card: NumberCard): GameState {
   const { battle } = world;
-  const damageDealt = battle.damageDealt + card.rank * 2;
+  const damageDealt = battle.damageDealt + attackDamage(card);
   if (damageDealt > enemyHealth(battle.enemy)) {
     return resolveEnemyDefeat(world, 'overkill');
   }
@@ -108,7 +104,15 @@ function resolveAfterPlay(world: World, card: NumberCard): GameState {
     return resolveEnemyDefeat(world, 'exact');
   }
 
-  const requiredDamage = enemyAttack(battle.enemy);
+  const requiredDamage = Math.max(0, enemyAttack(battle.enemy) - activeShield(battle));
+  const worldAfterDamage = { ...world, battle: { ...battle, damageDealt } };
+  if (requiredDamage === 0) {
+    return {
+      world: { ...worldAfterDamage, currentPlayer: nextPlayer(worldAfterDamage) },
+      decision: { kind: 'await-turn-action' },
+    };
+  }
+
   const player = world.players.find((candidate) => candidate.id === world.currentPlayer);
   if (!player) throw new Error('The current player is not in the game');
   if (requiredDamage > player.hand.reduce((total, held) => total + cardValue(held), 0)) {
@@ -116,7 +120,7 @@ function resolveAfterPlay(world: World, card: NumberCard): GameState {
   }
 
   return {
-    world: { ...world, battle: { ...battle, damageDealt } },
+    world: worldAfterDamage,
     decision: { kind: 'await-damage-discard', requiredDamage },
   };
 }
@@ -158,6 +162,17 @@ function selectedCardsFromHand(hand: readonly Card[], cardIds: readonly string[]
     if (!card) throw new Error(`Card ${id} is not in the current player's hand`);
     return card;
   });
+}
+
+function attackDamage(card: NumberCard): number {
+  return card.suit === 'clubs' ? card.rank * 2 : card.rank;
+}
+
+function activeShield(battle: Battle): number {
+  return battle.playedCards.reduce(
+    (total, card) => total + (card.suit === 'spades' ? cardValue(card) : 0),
+    0,
+  );
 }
 
 function cardValue(card: Card): number {

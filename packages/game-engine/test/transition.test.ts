@@ -109,6 +109,136 @@ void test('a Clubs attack resolves through retaliation, then discarding passes t
   assertCardsInExactlyOneZone(afterDiscard, originalIds);
 });
 
+void test('Spades shield persists across turns and accumulates against the Jack of Hearts', () => {
+  const twoSpades = {
+    kind: 'number',
+    id: 'two-spades',
+    rank: 2,
+    suit: 'spades',
+  } as const satisfies Card;
+  const fourHearts = {
+    kind: 'number',
+    id: 'four-hearts',
+    rank: 4,
+    suit: 'hearts',
+  } as const satisfies Card;
+  const initial: GameState = {
+    world: {
+      players: [
+        { id: 'alice', hand: [fourSpades, sixDiamonds] },
+        { id: 'bob', hand: [twoSpades, fourHearts] },
+      ],
+      currentPlayer: 'alice',
+      battle: {
+        enemy: jackHearts,
+        damageDealt: 0,
+        playedCards: [],
+        immunityCancelled: false,
+      },
+      tavern: [],
+      discard: [],
+      castle: [],
+    },
+    decision: { kind: 'await-turn-action' },
+  };
+  const originalIds = allCardIds(initial);
+  const initialSnapshot = structuredClone(initial);
+
+  const afterAlicePlay = transition(initial, {
+    kind: 'play-cards',
+    playerId: 'alice',
+    cardIds: [fourSpades.id],
+  });
+  assert.deepEqual(initial, initialSnapshot);
+  assert.deepEqual(handOf(afterAlicePlay, 'alice'), [sixDiamonds]);
+  assert.deepEqual(afterAlicePlay.world.battle.playedCards, [fourSpades]);
+  assert.equal(afterAlicePlay.world.battle.damageDealt, 4);
+  assert.equal(afterAlicePlay.world.currentPlayer, 'alice');
+  assert.deepEqual(afterAlicePlay.decision, { kind: 'await-damage-discard', requiredDamage: 6 });
+  assertCardsInExactlyOneZone(afterAlicePlay, originalIds);
+
+  const afterAlicePlaySnapshot = structuredClone(afterAlicePlay);
+  const afterAliceDiscard = transition(afterAlicePlay, {
+    kind: 'discard-for-damage',
+    playerId: 'alice',
+    cardIds: [sixDiamonds.id],
+  });
+  assert.deepEqual(afterAlicePlay, afterAlicePlaySnapshot);
+  assert.deepEqual(handOf(afterAliceDiscard, 'alice'), []);
+  assert.deepEqual(afterAliceDiscard.world.discard, [sixDiamonds]);
+  assert.deepEqual(afterAliceDiscard.world.battle.playedCards, [fourSpades]);
+  assert.equal(afterAliceDiscard.world.battle.damageDealt, 4);
+  assert.equal(afterAliceDiscard.world.currentPlayer, 'bob');
+  assert.deepEqual(afterAliceDiscard.decision, { kind: 'await-turn-action' });
+  assertCardsInExactlyOneZone(afterAliceDiscard, originalIds);
+
+  const afterAliceDiscardSnapshot = structuredClone(afterAliceDiscard);
+  const afterBobPlay = transition(afterAliceDiscard, {
+    kind: 'play-cards',
+    playerId: 'bob',
+    cardIds: [twoSpades.id],
+  });
+  assert.deepEqual(afterAliceDiscard, afterAliceDiscardSnapshot);
+  assert.deepEqual(handOf(afterBobPlay, 'bob'), [fourHearts]);
+  assert.deepEqual(afterBobPlay.world.battle.playedCards, [fourSpades, twoSpades]);
+  assert.equal(afterBobPlay.world.battle.damageDealt, 6);
+  assert.deepEqual(afterBobPlay.world.discard, [sixDiamonds]);
+  assert.equal(afterBobPlay.world.currentPlayer, 'bob');
+  assert.deepEqual(afterBobPlay.decision, { kind: 'await-damage-discard', requiredDamage: 4 });
+  assertCardsInExactlyOneZone(afterBobPlay, originalIds);
+});
+
+void test('Spades that fully shield retaliation advance the turn without a discard decision', () => {
+  const eightSpades = {
+    kind: 'number',
+    id: 'eight-spades',
+    rank: 8,
+    suit: 'spades',
+  } as const satisfies Card;
+  const twoSpades = {
+    kind: 'number',
+    id: 'two-spades',
+    rank: 2,
+    suit: 'spades',
+  } as const satisfies Card;
+  const initial: GameState = {
+    world: {
+      players: [
+        { id: 'alice', hand: [twoSpades] },
+        { id: 'bob', hand: [threeDiamonds] },
+      ],
+      currentPlayer: 'alice',
+      battle: {
+        enemy: jackHearts,
+        damageDealt: 8,
+        playedCards: [eightSpades],
+        immunityCancelled: false,
+      },
+      tavern: [],
+      discard: [],
+      castle: [],
+    },
+    decision: { kind: 'await-turn-action' },
+  };
+  const originalIds = allCardIds(initial);
+  const initialSnapshot = structuredClone(initial);
+
+  const afterPlay = transition(initial, {
+    kind: 'play-cards',
+    playerId: 'alice',
+    cardIds: [twoSpades.id],
+  });
+
+  assert.deepEqual(initial, initialSnapshot);
+  assert.deepEqual(handOf(afterPlay, 'alice'), []);
+  assert.deepEqual(afterPlay.world.battle.playedCards, [eightSpades, twoSpades]);
+  assert.equal(afterPlay.world.battle.damageDealt, 10);
+  assert.deepEqual(afterPlay.world.discard, []);
+  assert.equal(afterPlay.world.currentPlayer, 'bob');
+  assert.deepEqual(afterPlay.decision, { kind: 'await-turn-action' });
+  assertCardsInExactlyOneZone(afterPlay, originalIds);
+});
+
 void test('overkill defeats the enemy and gives the defeating player another turn', () => {
   const eightClubs = {
     kind: 'number',
@@ -260,6 +390,8 @@ void test('play validation rejects the wrong actor, unavailable cards, and unsup
     { kind: 'play-cards', playerId: 'alice', cardIds: [] },
     { kind: 'play-cards', playerId: 'alice', cardIds: [fiveClubs.id, fiveClubs.id] },
     { kind: 'play-cards', playerId: 'alice', cardIds: [fiveClubs.id, sixDiamonds.id] },
+    { kind: 'play-cards', playerId: 'alice', cardIds: [sixDiamonds.id] },
+    { kind: 'play-cards', playerId: 'alice', cardIds: [twoHearts.id] },
   ];
 
   for (const action of actions) assertRejectedWithoutMutation(state, action);
