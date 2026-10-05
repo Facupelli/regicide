@@ -1,1 +1,1 @@
-export {};
+export type ProtocolPackage = never;

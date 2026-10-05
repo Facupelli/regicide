@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "options": {
+    "typeAware": true
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "warn"
+  },
+  "plugins": ["eslint", "typescript", "oxc", "unicorn", "import", "promise"],
+  "ignorePatterns": ["**/dist/**", "**/coverage/**"],
+  "overrides": [
+    {
+      "files": ["apps/web/src/**/*.{ts,tsx}"],
+      "plugins": [
+        "eslint",
+        "typescript",
+        "oxc",
+        "unicorn",
+        "import",
+        "promise",
+        "react",
+        "jsx-a11y"
+      ],
+      "env": {
+        "browser": true
+      }
+    },
+    {
+      "files": ["apps/server/**/*.ts", "apps/web/vite.config.ts"],
+      "plugins": ["eslint", "typescript", "oxc", "unicorn", "import", "promise", "node"],
+      "env": {
+        "node": true
+      }
+    }
+  ]
+}

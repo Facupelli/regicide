@@ -2,5 +2,19 @@
   "name": "regicide",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.28.4"
+  "packageManager": "pnpm@11.28.4",
+  "scripts": {
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix",
+    "typecheck": "tsc -p apps/server/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.app.json --noEmit && tsc -p apps/web/tsconfig.node.json --noEmit && tsc -p packages/game-engine/tsconfig.json --noEmit && tsc -p packages/protocol/tsconfig.json --noEmit",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "oxlint": "^1.86.0",
+    "oxlint-tsgolint": "^7.0.2003",
+    "typescript": "7.0.2"
+  }
 }
