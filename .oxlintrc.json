@@ -10,6 +10,9 @@
   },
   "plugins": ["eslint", "typescript", "oxc", "unicorn", "import", "promise"],
   "ignorePatterns": ["**/dist/**", "**/coverage/**"],
+  "rules": {
+    "no-nested-ternary": "error"
+  },
   "overrides": [
     {
       "files": ["apps/web/src/**/*.{ts,tsx}"],

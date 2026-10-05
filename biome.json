@@ -11,7 +11,12 @@
     "lineEnding": "lf"
   },
   "linter": {
-    "enabled": false
+    "enabled": false,
+    "rules": {
+      "style": {
+        "useBlockStatements": "error"
+      }
+    }
   },
   "assist": {
     "enabled": false
