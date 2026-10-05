@@ -167,6 +167,78 @@ void test('overkill defeats the enemy and gives the defeating player another tur
   assert.deepEqual(handOf(afterPlay, 'alice'), [sixDiamonds]);
   assert.deepEqual(handOf(afterPlay, 'bob'), [threeDiamonds]);
   assert.deepEqual(afterPlay.world.discard, [jackHearts, eightClubs, threeClubs]);
+  assert.deepEqual(afterPlay.world.tavern, []);
+  assert.deepEqual(afterPlay.world.battle, {
+    enemy: jackDiamonds,
+    damageDealt: 0,
+    playedCards: [],
+    immunityCancelled: false,
+  });
+  assert.deepEqual(afterPlay.world.castle, [queenSpades]);
+  assert.equal(afterPlay.world.currentPlayer, 'alice');
+  assert.deepEqual(afterPlay.decision, { kind: 'await-turn-action' });
+  assertCardsInExactlyOneZone(afterPlay, originalIds);
+});
+
+void test('exact damage puts the enemy on top of Tavern and gives the defeating player another turn', () => {
+  const sevenClubs = {
+    kind: 'number',
+    id: 'seven-clubs',
+    rank: 7,
+    suit: 'clubs',
+  } as const satisfies Card;
+  const threeClubs = {
+    kind: 'number',
+    id: 'three-clubs',
+    rank: 3,
+    suit: 'clubs',
+  } as const satisfies Card;
+  const jackDiamonds = {
+    kind: 'royal',
+    id: 'jack-diamonds',
+    rank: 'jack',
+    suit: 'diamonds',
+  } as const satisfies Card;
+  const queenSpades = {
+    kind: 'royal',
+    id: 'queen-spades',
+    rank: 'queen',
+    suit: 'spades',
+  } as const satisfies Card;
+  const initial: GameState = {
+    world: {
+      players: [
+        { id: 'alice', hand: [threeClubs, fiveClubs] },
+        { id: 'bob', hand: [threeDiamonds] },
+      ],
+      currentPlayer: 'alice',
+      battle: {
+        enemy: jackHearts,
+        damageDealt: 14,
+        playedCards: [sevenClubs],
+        immunityCancelled: false,
+      },
+      tavern: [twoHearts, sixDiamonds],
+      discard: [],
+      castle: [jackDiamonds, queenSpades],
+    },
+    decision: { kind: 'await-turn-action' },
+  };
+  const initialSnapshot = structuredClone(initial);
+  const originalIds = allCardIds(initial);
+  assertCardsInExactlyOneZone(initial, originalIds);
+
+  const afterPlay = transition(initial, {
+    kind: 'play-cards',
+    playerId: 'alice',
+    cardIds: [threeClubs.id],
+  });
+
+  assert.deepEqual(initial, initialSnapshot);
+  assert.deepEqual(handOf(afterPlay, 'alice'), [fiveClubs]);
+  assert.deepEqual(handOf(afterPlay, 'bob'), [threeDiamonds]);
+  assert.deepEqual(afterPlay.world.tavern, [jackHearts, twoHearts, sixDiamonds]);
+  assert.deepEqual(afterPlay.world.discard, [sevenClubs, threeClubs]);
   assert.deepEqual(afterPlay.world.battle, {
     enemy: jackDiamonds,
     damageDealt: 0,

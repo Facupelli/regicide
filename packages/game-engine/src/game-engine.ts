@@ -102,10 +102,10 @@ function resolveAfterPlay(world: World, card: NumberCard): GameState {
   const { battle } = world;
   const damageDealt = battle.damageDealt + card.rank * 2;
   if (damageDealt > enemyHealth(battle.enemy)) {
-    return resolveEnemyDefeat(world);
+    return resolveEnemyDefeat(world, 'overkill');
   }
   if (damageDealt === enemyHealth(battle.enemy)) {
-    throw new Error('Unsupported game outcome: exact-damage enemy defeat');
+    return resolveEnemyDefeat(world, 'exact');
   }
 
   const requiredDamage = enemyAttack(battle.enemy);
@@ -121,14 +121,21 @@ function resolveAfterPlay(world: World, card: NumberCard): GameState {
   };
 }
 
-function resolveEnemyDefeat(world: World): GameState {
+type DefeatKind = 'overkill' | 'exact';
+
+function resolveEnemyDefeat(world: World, defeatKind: DefeatKind): GameState {
   const nextEnemy = world.castle[0];
   if (!nextEnemy) throw new Error('Unsupported game outcome: final enemy defeat');
 
   return {
     world: {
       ...world,
-      discard: [...world.discard, world.battle.enemy, ...world.battle.playedCards],
+      tavern: defeatKind === 'exact' ? [world.battle.enemy, ...world.tavern] : world.tavern,
+      discard: [
+        ...world.discard,
+        ...(defeatKind === 'overkill' ? [world.battle.enemy] : []),
+        ...world.battle.playedCards,
+      ],
       castle: world.castle.slice(1),
       battle: {
         enemy: nextEnemy,
