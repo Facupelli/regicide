@@ -8,8 +8,9 @@
     "format:check": "biome format .",
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
-    "typecheck": "tsc -p apps/server/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.app.json --noEmit && tsc -p apps/web/tsconfig.node.json --noEmit && tsc -p packages/game-engine/tsconfig.json --noEmit && tsc -p packages/protocol/tsconfig.json --noEmit",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck"
+    "typecheck": "tsc -p apps/server/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.app.json --noEmit && tsc -p apps/web/tsconfig.node.json --noEmit && tsc -p packages/game-engine/tsconfig.json --noEmit && tsc -p packages/protocol/tsconfig.json --noEmit && tsc -p tools/game-cli/tsconfig.json --noEmit",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck",
+    "game": "node --experimental-strip-types tools/game-cli/src/cli.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",

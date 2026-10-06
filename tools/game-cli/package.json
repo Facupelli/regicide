@@ -1,0 +1,17 @@
+{
+  "name": "@regicide/game-cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "game": "node --experimental-strip-types src/cli.ts",
+    "test": "node --experimental-strip-types --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@regicide/game-engine": "workspace:*",
+    "@toon-format/toon": "^4.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4"
+  }
+}

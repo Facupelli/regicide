@@ -268,6 +268,19 @@ importers:
 
   packages/protocol: {}
 
+  tools/game-cli:
+    dependencies:
+      '@regicide/game-engine':
+        specifier: workspace:*
+        version: link:../../packages/game-engine
+      '@toon-format/toon':
+        specifier: ^4.1.1
+        version: 4.1.1
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.4
+        version: 26.6.4
+
 packages:
 
   '@biomejs/biome@2.5.15':
@@ -742,6 +755,9 @@ packages:
 
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
+
+  '@toon-format/toon@4.1.1':
+    resolution: {integrity: sha512-SGCkS7IjVpwRmGPgnY8ENKpAf0EdAnZDOQkvFW0d2cgOpdn9FEFl7sTgryESyypXrWr0YajHGpwsAUX4zw9ZvA==}
 
   '@types/node@24.19.1':
     resolution: {integrity: sha512-aS3/DG0oM05K0RIXXP+hKjinGG5IgSSVGzswZxW3O0sS3pH4/fycXundUC9XsszgKCk4gHXylTEK6hyFxVxnoQ==}
@@ -1356,6 +1372,8 @@ snapshots:
     optional: true
 
   '@rolldown/pluginutils@1.0.1': {}
+
+  '@toon-format/toon@4.1.1': {}
 
   '@types/node@24.19.1':
     dependencies:

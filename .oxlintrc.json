@@ -9,7 +9,7 @@
     "perf": "warn"
   },
   "plugins": ["eslint", "typescript", "oxc", "unicorn", "import", "promise"],
-  "ignorePatterns": ["**/dist/**", "**/coverage/**"],
+  "ignorePatterns": ["**/dist/**", "**/coverage/**", "**/node_modules/**", ".regicide/**"],
   "rules": {
     "no-nested-ternary": "error"
   },
@@ -31,10 +31,16 @@
       }
     },
     {
-      "files": ["apps/server/**/*.ts", "apps/web/vite.config.ts"],
+      "files": ["apps/server/**/*.ts", "apps/web/vite.config.ts", "tools/game-cli/**/*.ts"],
       "plugins": ["eslint", "typescript", "oxc", "unicorn", "import", "promise", "node"],
       "env": {
         "node": true
+      }
+    },
+    {
+      "files": ["tools/game-cli/test/**/*.ts"],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
       }
     }
   ]
