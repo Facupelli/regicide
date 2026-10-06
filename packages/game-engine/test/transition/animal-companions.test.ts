@@ -6,7 +6,7 @@ import {
   assertCardsInExactlyOneZone,
   assertRejectedWithoutMutation,
   handOf,
-  transitionWithoutMutation,
+  transitionWithBattle,
 } from '../support/assertions.ts';
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
@@ -26,7 +26,7 @@ void test('an Animal Companion alone attacks for 1 and activates its suit power'
     enemy: makeRoyal('jack', 'spades'),
     discard: [discarded],
   });
-  const after = transitionWithoutMutation(initial, {
+  const after = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [heart.id],
@@ -66,7 +66,7 @@ void test('8 Diamonds paired with Animal Clubs draws 9 and deals 18 damage', () 
     enemy: makeRoyal('queen', 'hearts'),
     tavern,
   });
-  const after = transitionWithoutMutation(initial, {
+  const after = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [eight.id, club.id],
@@ -98,7 +98,7 @@ void test('two Animal Companions can pair and both powers use their combined val
     enemy: makeRoyal('jack', 'clubs'),
     discard,
   });
-  const after = transitionWithoutMutation(initial, {
+  const after = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [heart.id, spade.id],
@@ -124,7 +124,7 @@ void test('a repeated suit activates only once for a pair', () => {
     currentPlayer: 'alice',
     enemy: makeRoyal('jack', 'hearts'),
   });
-  const after = transitionWithoutMutation(initial, {
+  const after = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [club.id, four.id],
@@ -152,7 +152,7 @@ void test('Hearts replenish the Tavern before Diamonds draw, using total attack 
     tavern: [top],
     discard,
   });
-  const after = transitionWithoutMutation(initial, {
+  const after = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [diamond.id, heart.id],
@@ -181,7 +181,7 @@ void test('enemy immunity blocks only matching suit powers in a pair', () => {
     enemy: makeRoyal('jack', 'clubs'),
     tavern: [drawn],
   });
-  const after = transitionWithoutMutation(initial, {
+  const after = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [club.id, diamond.id],
@@ -204,28 +204,28 @@ void test('a paired Spade shields by total attack value on subsequent turns, inc
     currentPlayer: 'alice',
     enemy: makeRoyal('jack', 'spades'),
   });
-  const afterPair = transitionWithoutMutation(initial, {
+  const afterPair = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [spade.id, four.id],
   });
   assert.deepEqual(afterPair.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
-  const afterDiscard = transitionWithoutMutation(afterPair, {
+  const afterDiscard = transitionWithBattle(afterPair, {
     kind: 'discard-for-damage',
     playerId: 'alice',
     cardIds: [ten.id],
   });
-  const afterJester = transitionWithoutMutation(afterDiscard, {
+  const afterJester = transitionWithBattle(afterDiscard, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [jester.id],
   });
-  const afterChoice = transitionWithoutMutation(afterJester, {
+  const afterChoice = transitionWithBattle(afterJester, {
     kind: 'choose-next-player',
     playerId: 'alice',
     targetPlayerId: 'alice',
   });
-  const afterNextPlay = transitionWithoutMutation(afterChoice, {
+  const afterNextPlay = transitionWithBattle(afterChoice, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [two.id],

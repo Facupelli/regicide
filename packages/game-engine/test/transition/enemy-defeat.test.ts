@@ -4,7 +4,7 @@ import {
   allCardIds,
   assertCardsInExactlyOneZone,
   handOf,
-  transitionWithoutMutation,
+  transitionWithBattle,
 } from '../support/assertions.ts';
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
@@ -29,7 +29,7 @@ for (const { rank, attack, health, nextRank } of [
       castle: [nextEnemy, followingEnemy],
     });
     const originalIds = allCardIds(initial);
-    const afterAttack = transitionWithoutMutation(initial, {
+    const afterAttack = transitionWithBattle(initial, {
       kind: 'play-cards',
       playerId: 'alice',
       cardIds: [twoDiamonds.id],
@@ -41,12 +41,12 @@ for (const { rank, attack, health, nextRank } of [
     });
     assertCardsInExactlyOneZone(afterAttack, originalIds);
 
-    const afterDiscard = transitionWithoutMutation(afterAttack, {
+    const afterDiscard = transitionWithBattle(afterAttack, {
       kind: 'discard-for-damage',
       playerId: 'alice',
       cardIds: reserve.map((card) => card.id),
     });
-    const afterDefeat = transitionWithoutMutation(afterDiscard, {
+    const afterDefeat = transitionWithBattle(afterDiscard, {
       kind: 'play-cards',
       playerId: 'alice',
       cardIds: [animalSpades.id],
@@ -77,7 +77,7 @@ for (const [rank, nextRank, attack, health] of [
       castle: [nextEnemy, followingEnemy],
     });
     const originalIds = allCardIds(initial);
-    const afterDefeat = transitionWithoutMutation(initial, {
+    const afterDefeat = transitionWithBattle(initial, {
       kind: 'play-cards',
       playerId: 'alice',
       cardIds: [twoDiamonds.id],
@@ -88,7 +88,7 @@ for (const [rank, nextRank, attack, health] of [
     assert.deepEqual(afterDefeat.decision, { kind: 'await-turn-action' });
     assertCardsInExactlyOneZone(afterDefeat, originalIds);
 
-    const afterNextPlay = transitionWithoutMutation(afterDefeat, {
+    const afterNextPlay = transitionWithBattle(afterDefeat, {
       kind: 'play-cards',
       playerId: 'alice',
       cardIds: [threeDiamonds.id],
@@ -127,7 +127,7 @@ void test('overkill King defeat discards the enemy, cleans up plays, and reveals
   const originalIds = allCardIds(initial);
   assertCardsInExactlyOneZone(initial, originalIds);
 
-  const afterPlay = transitionWithoutMutation(initial, {
+  const afterPlay = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [threeClubs.id],
@@ -180,7 +180,7 @@ void test('defeat moves all cards from separate attacks, an Animal pair, and a J
   const originalIds = allCardIds(initial);
   assertCardsInExactlyOneZone(initial, originalIds);
 
-  const after = transitionWithoutMutation(initial, {
+  const after = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [twoClubs.id],
@@ -233,7 +233,7 @@ void test('exact Queen defeat puts the enemy on Tavern top, cleans up plays, and
   const originalIds = allCardIds(initial);
   assertCardsInExactlyOneZone(initial, originalIds);
 
-  const afterPlay = transitionWithoutMutation(initial, {
+  const afterPlay = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [threeClubs.id],

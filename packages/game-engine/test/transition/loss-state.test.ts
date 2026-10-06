@@ -5,7 +5,7 @@ import {
   assertCardsInExactlyOneZone,
   assertRejectedWithoutMutation,
   handOf,
-  transitionWithoutMutation,
+  transitionWithBattle,
 } from '../support/assertions.ts';
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
@@ -22,7 +22,7 @@ void test('unsurvivable retaliation ends the game without losing cards or mutati
     enemy: makeRoyal('jack', 'spades'),
   });
   const originalIds = allCardIds(state);
-  const lost = transitionWithoutMutation(state, {
+  const lost = transitionWithBattle(state, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [attack.id],
@@ -62,7 +62,7 @@ void test('a sufficient discard can empty the hand and still advance to a playab
     enemy: makeRoyal('jack', 'diamonds'),
   });
   const originalIds = allCardIds(state);
-  const retaliation = transitionWithoutMutation(state, {
+  const retaliation = transitionWithBattle(state, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [attack.id],
@@ -70,7 +70,7 @@ void test('a sufficient discard can empty the hand and still advance to a playab
   assert.equal(retaliation.kind, 'active');
   assert.deepEqual(retaliation.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
 
-  const after = transitionWithoutMutation(retaliation, {
+  const after = transitionWithBattle(retaliation, {
     kind: 'discard-for-damage',
     playerId: 'alice',
     cardIds: [ten.id],
@@ -97,7 +97,7 @@ void test('entering a turn with an empty hand and prohibited yield ends the game
     damageDealt: 10,
   });
   const originalIds = allCardIds(state);
-  const lost = transitionWithoutMutation(state, { kind: 'yield', playerId: 'alice' });
+  const lost = transitionWithBattle(state, { kind: 'yield', playerId: 'alice' });
 
   assert.equal(lost.kind, 'game-over');
   assert.equal(lost.result, 'loss');
@@ -121,7 +121,7 @@ void test('turn entry after a sufficient damage discard also checks for loss', (
     consecutiveYields: 1,
     decision: { kind: 'await-damage-discard', requiredDamage: 10 },
   });
-  const lost = transitionWithoutMutation(state, {
+  const lost = transitionWithBattle(state, {
     kind: 'discard-for-damage',
     playerId: 'alice',
     cardIds: [ten.id],
@@ -148,7 +148,7 @@ void test('an empty-handed player can enter a turn if yielding is legal', () => 
     damageDealt: 9,
     consecutiveYields: 1,
   });
-  const after = transitionWithoutMutation(state, {
+  const after = transitionWithBattle(state, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [attack.id],
@@ -159,7 +159,7 @@ void test('an empty-handed player can enter a turn if yielding is legal', () => 
   assert.deepEqual(handOf(after, 'bob'), []);
   assertCardsInExactlyOneZone(after, allCardIds(state));
 
-  const afterBobYields = transitionWithoutMutation(after, { kind: 'yield', playerId: 'bob' });
+  const afterBobYields = transitionWithBattle(after, { kind: 'yield', playerId: 'bob' });
   assert.equal(afterBobYields.kind, 'game-over');
   assert.equal(afterBobYields.result, 'loss');
   assert.equal(afterBobYields.world.currentPlayer, 'alice');

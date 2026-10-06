@@ -5,7 +5,7 @@ import {
   assertCardsInExactlyOneZone,
   assertRejectedWithoutMutation,
   handOf,
-  transitionWithoutMutation,
+  transitionWithBattle,
 } from '../support/assertions.ts';
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
@@ -27,7 +27,7 @@ void test('a Jester played alone cancels immunity without damage or retaliation,
   });
   const originalIds = allCardIds(initial);
 
-  const afterPlay = transitionWithoutMutation(initial, {
+  const afterPlay = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [jester.id],
@@ -45,7 +45,7 @@ void test('a Jester played alone cancels immunity without damage or retaliation,
   assert.deepEqual(afterPlay.decision, { kind: 'await-next-player-choice' });
   assertCardsInExactlyOneZone(afterPlay, originalIds);
 
-  const afterChoice = transitionWithoutMutation(afterPlay, {
+  const afterChoice = transitionWithBattle(afterPlay, {
     kind: 'choose-next-player',
     playerId: 'alice',
     targetPlayerId: 'carol',
@@ -55,7 +55,7 @@ void test('a Jester played alone cancels immunity without damage or retaliation,
   assert.deepEqual(afterChoice.world.battle, afterPlay.world.battle);
   assertCardsInExactlyOneZone(afterChoice, originalIds);
 
-  const chooseSelf = transitionWithoutMutation(afterPlay, {
+  const chooseSelf = transitionWithBattle(afterPlay, {
     kind: 'choose-next-player',
     playerId: 'alice',
     targetPlayerId: 'alice',
@@ -68,7 +68,7 @@ void test('a Jester played alone cancels immunity without damage or retaliation,
 void test('only the Jester player can choose a valid next player, and other actions are blocked meanwhile', () => {
   const jester = { kind: 'jester', id: 'jester-one' } as const;
   const twoHearts = makeCard(2, 'hearts');
-  const choice = transitionWithoutMutation(
+  const choice = transitionWithBattle(
     makeGameState({
       players: [
         { id: 'alice', hand: [jester, twoHearts] },
@@ -136,17 +136,17 @@ void test('previously immune Spades shield the next turn after a Jester cancels 
   });
   const originalIds = allCardIds(initial);
 
-  const afterJester = transitionWithoutMutation(initial, {
+  const afterJester = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [jester.id],
   });
-  const afterChoice = transitionWithoutMutation(afterJester, {
+  const afterChoice = transitionWithBattle(afterJester, {
     kind: 'choose-next-player',
     playerId: 'alice',
     targetPlayerId: 'bob',
   });
-  const afterBobPlay = transitionWithoutMutation(afterChoice, {
+  const afterBobPlay = transitionWithBattle(afterChoice, {
     kind: 'play-cards',
     playerId: 'bob',
     cardIds: [twoClubs.id],
@@ -179,17 +179,17 @@ void test('previously immune Clubs damage is not recalculated after a Jester', (
   });
   const originalIds = allCardIds(initial);
 
-  const afterJester = transitionWithoutMutation(initial, {
+  const afterJester = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [jester.id],
   });
-  const afterChoice = transitionWithoutMutation(afterJester, {
+  const afterChoice = transitionWithBattle(afterJester, {
     kind: 'choose-next-player',
     playerId: 'alice',
     targetPlayerId: 'bob',
   });
-  const afterBobPlay = transitionWithoutMutation(afterChoice, {
+  const afterBobPlay = transitionWithBattle(afterChoice, {
     kind: 'play-cards',
     playerId: 'bob',
     cardIds: [twoHearts.id],

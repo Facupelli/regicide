@@ -5,7 +5,7 @@ import {
   assertCardsInExactlyOneZone,
   assertRejectedWithoutMutation,
   handOf,
-  transitionWithoutMutation,
+  transitionWithBattle,
 } from '../support/assertions.ts';
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
@@ -30,7 +30,7 @@ void test('yield during await-turn-action skips suit powers and damage but still
   });
   const originalIds = allCardIds(initial);
 
-  const afterYield = transitionWithoutMutation(initial, { kind: 'yield', playerId: 'alice' });
+  const afterYield = transitionWithBattle(initial, { kind: 'yield', playerId: 'alice' });
   assert.deepEqual(afterYield.decision, { kind: 'await-damage-discard', requiredDamage: 6 });
   assert.equal(afterYield.world.currentPlayer, 'alice');
   assert.deepEqual(afterYield.world.battle, initial.world.battle);
@@ -41,7 +41,7 @@ void test('yield during await-turn-action skips suit powers and damage but still
   assertCardsInExactlyOneZone(afterYield, originalIds);
 
   assertRejectedWithoutMutation(afterYield, { kind: 'yield', playerId: 'alice' });
-  const afterDiscard = transitionWithoutMutation(afterYield, {
+  const afterDiscard = transitionWithBattle(afterYield, {
     kind: 'discard-for-damage',
     playerId: 'alice',
     cardIds: [sixHearts.id],
@@ -64,7 +64,7 @@ void test('yield is rejected during next-player choice without changing state', 
   });
   const originalIds = allCardIds(initial);
 
-  const afterJester = transitionWithoutMutation(initial, {
+  const afterJester = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [jester.id],
@@ -90,7 +90,7 @@ void test('yield advances directly to the next player when existing Spades block
   });
   const originalIds = allCardIds(initial);
 
-  const afterYield = transitionWithoutMutation(initial, { kind: 'yield', playerId: 'alice' });
+  const afterYield = transitionWithBattle(initial, { kind: 'yield', playerId: 'alice' });
   assert.deepEqual(afterYield.decision, { kind: 'await-turn-action' });
   assert.equal(afterYield.world.currentPlayer, 'bob');
   assert.deepEqual(afterYield.world.battle, initial.world.battle);
@@ -116,15 +116,15 @@ void test('after two consecutive yields in a three-player game the third cannot 
   });
   const originalIds = allCardIds(initial);
 
-  const afterAlice = transitionWithoutMutation(initial, { kind: 'yield', playerId: 'alice' });
+  const afterAlice = transitionWithBattle(initial, { kind: 'yield', playerId: 'alice' });
   assertCardsInExactlyOneZone(afterAlice, originalIds);
 
-  const afterBob = transitionWithoutMutation(afterAlice, { kind: 'yield', playerId: 'bob' });
+  const afterBob = transitionWithBattle(afterAlice, { kind: 'yield', playerId: 'bob' });
   assert.equal(afterBob.world.currentPlayer, 'carol');
   assertCardsInExactlyOneZone(afterBob, originalIds);
   assertRejectedWithoutMutation(afterBob, { kind: 'yield', playerId: 'carol' });
 
-  const afterCarolPlay = transitionWithoutMutation(afterBob, {
+  const afterCarolPlay = transitionWithBattle(afterBob, {
     kind: 'play-cards',
     playerId: 'carol',
     cardIds: [fourHearts.id],
@@ -132,11 +132,11 @@ void test('after two consecutive yields in a three-player game the third cannot 
   assert.equal(afterCarolPlay.world.currentPlayer, 'alice');
   assertCardsInExactlyOneZone(afterCarolPlay, originalIds);
 
-  const afterAliceAgain = transitionWithoutMutation(afterCarolPlay, {
+  const afterAliceAgain = transitionWithBattle(afterCarolPlay, {
     kind: 'yield',
     playerId: 'alice',
   });
-  const afterBobAgain = transitionWithoutMutation(afterAliceAgain, {
+  const afterBobAgain = transitionWithBattle(afterAliceAgain, {
     kind: 'yield',
     playerId: 'bob',
   });
@@ -160,14 +160,14 @@ void test('in a two-player game one yield prevents the next player from yielding
   });
   const originalIds = allCardIds(initial);
 
-  const afterAlice = transitionWithoutMutation(initial, { kind: 'yield', playerId: 'alice' });
+  const afterAlice = transitionWithBattle(initial, { kind: 'yield', playerId: 'alice' });
   assertRejectedWithoutMutation(afterAlice, { kind: 'yield', playerId: 'bob' });
-  const afterBobPlay = transitionWithoutMutation(afterAlice, {
+  const afterBobPlay = transitionWithBattle(afterAlice, {
     kind: 'play-cards',
     playerId: 'bob',
     cardIds: [threeHearts.id],
   });
-  const afterAliceAgain = transitionWithoutMutation(afterBobPlay, {
+  const afterAliceAgain = transitionWithBattle(afterBobPlay, {
     kind: 'yield',
     playerId: 'alice',
   });

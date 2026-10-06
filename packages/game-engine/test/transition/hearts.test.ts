@@ -4,7 +4,7 @@ import {
   allCardIds,
   assertCardsInExactlyOneZone,
   handOf,
-  transitionWithoutMutation,
+  transitionWithBattle,
 } from '../support/assertions.ts';
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
@@ -31,7 +31,7 @@ void test('Hearts shuffle discard, heal attack value onto the bottom of Tavern, 
   });
   const originalIds = allCardIds(initial);
 
-  const afterPlay = transitionWithoutMutation(initial, {
+  const afterPlay = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [twoHearts.id],
@@ -70,7 +70,7 @@ void test('Hearts heal all available cards if discard is smaller than attack val
   });
   const originalIds = allCardIds(initial);
 
-  const afterPlay = transitionWithoutMutation(initial, {
+  const afterPlay = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [sixHearts.id],
@@ -105,7 +105,7 @@ void test('Hearts with empty discard still deals damage to a Queen without advan
   });
   const originalIds = allCardIds(initial);
 
-  const afterPlay = transitionWithoutMutation(initial, {
+  const afterPlay = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [twoHearts.id],
@@ -140,8 +140,8 @@ void test('same state and Hearts action always produce the same shuffle and resu
   const originalIds = allCardIds(initial);
   const action = { kind: 'play-cards', playerId: 'alice', cardIds: [twoHearts.id] } as const;
 
-  const first = transitionWithoutMutation(initial, action);
-  const second = transitionWithoutMutation(initial, action);
+  const first = transitionWithBattle(initial, action);
+  const second = transitionWithBattle(initial, action);
 
   assert.deepEqual(first, second);
   assert.equal(first.world.tavern.length, 2);
@@ -170,7 +170,7 @@ void test('different seeds can shuffle discard and heal different cards', () => 
       discard,
       rngState,
     });
-    const afterPlay = transitionWithoutMutation(initial, {
+    const afterPlay = transitionWithBattle(initial, {
       kind: 'play-cards',
       playerId: 'alice',
       cardIds: [twoHearts.id],
@@ -211,7 +211,7 @@ for (const immunityCancelled of [false, true]) {
     });
     const originalIds = allCardIds(initial);
 
-    const afterPlay = transitionWithoutMutation(initial, {
+    const afterPlay = transitionWithBattle(initial, {
       kind: 'play-cards',
       playerId: 'alice',
       cardIds: [twoHearts.id],
@@ -253,7 +253,7 @@ for (const defeatKind of ['exact', 'overkill'] as const) {
     });
     const originalIds = allCardIds(initial);
 
-    const afterPlay = transitionWithoutMutation(initial, {
+    const afterPlay = transitionWithBattle(initial, {
       kind: 'play-cards',
       playerId: 'alice',
       cardIds: [threeHearts.id],

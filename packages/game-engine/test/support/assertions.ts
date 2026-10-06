@@ -8,11 +8,19 @@ export function handOf(state: GameState, playerId: string): readonly Card[] {
 }
 
 export function allCardIds(state: GameState): string[] {
-  const { players, battle, tavern, discard, castle } = state.world;
+  const { players, tavern, discard, castle } = state.world;
+  const battleCards: Card[] =
+    state.kind === 'game-over' && state.result === 'win'
+      ? []
+      : [
+          state.world.battle.enemy,
+          ...state.world.battle.plays.flatMap<Card>((play) =>
+            play.kind === 'attack' ? play.cards : [play.card],
+          ),
+        ];
   return [
     ...players.flatMap((player) => player.hand),
-    battle.enemy,
-    ...battle.plays.flatMap<Card>((play) => (play.kind === 'attack' ? play.cards : [play.card])),
+    ...battleCards,
     ...tavern,
     ...discard,
     ...castle,
@@ -29,6 +37,17 @@ export function transitionWithoutMutation(state: GameState, action: Action): Gam
   const before = structuredClone(state);
   const result = transition(state, action);
   assert.deepEqual(state, before);
+  return result;
+}
+
+export function transitionWithBattle(
+  state: GameState,
+  action: Action,
+): Exclude<GameState, { result: 'win' }> {
+  const result = transitionWithoutMutation(state, action);
+  if (result.kind === 'game-over' && result.result === 'win') {
+    throw new Error('Expected the battle to continue or end in loss');
+  }
   return result;
 }
 

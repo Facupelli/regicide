@@ -6,7 +6,7 @@ import {
   assertCardsInExactlyOneZone,
   assertRejectedWithoutMutation,
   handOf,
-  transitionWithoutMutation,
+  transitionWithBattle,
 } from '../support/assertions.ts';
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
@@ -91,7 +91,7 @@ for (const { rank, value } of [
       decision: { kind: 'await-damage-discard', requiredDamage: value },
     });
     const action = { kind: 'discard-for-damage', playerId: 'alice', cardIds: [royal.id] } as const;
-    const after = transitionWithoutMutation(state, action);
+    const after = transitionWithBattle(state, action);
 
     assert.deepEqual(handOf(after, 'alice'), [reserve]);
     assert.deepEqual(after.world.discard, [royal]);
@@ -112,7 +112,7 @@ void test('damage discard validation', async (t) => {
   const fiveClubs = makeCard(5, 'clubs');
   const sixDiamonds = makeCard(6, 'diamonds');
   const fourSpades = makeCard(4, 'spades');
-  const state = transitionWithoutMutation(
+  const state = transitionWithBattle(
     makeGameState({
       players: [
         { id: 'alice', hand: [fiveClubs, sixDiamonds, fourSpades, makeCard(2, 'hearts')] },

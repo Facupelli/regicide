@@ -4,7 +4,7 @@ import {
   allCardIds,
   assertCardsInExactlyOneZone,
   handOf,
-  transitionWithoutMutation,
+  transitionWithBattle,
 } from '../support/assertions.ts';
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
@@ -79,7 +79,7 @@ void test('Diamonds draw attack value clockwise before damage and retaliation, s
     9,
   );
 
-  const afterPlay = transitionWithoutMutation(initial, {
+  const afterPlay = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [cards.fourDiamonds.id],
@@ -127,7 +127,7 @@ void test('Diamonds stop drawing when Tavern is exhausted against a Queen', () =
   });
   const originalIds = allCardIds(initial);
 
-  const afterPlay = transitionWithoutMutation(initial, {
+  const afterPlay = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [threeDiamonds.id],
@@ -166,7 +166,7 @@ void test('Diamonds stop drawing when all players reach their hand limit', () =>
   });
   const originalIds = allCardIds(initial);
 
-  const afterPlay = transitionWithoutMutation(initial, {
+  const afterPlay = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [threeDiamonds.id],

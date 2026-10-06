@@ -310,18 +310,27 @@ function resolveRetaliation(world: World): GameState {
 type DefeatKind = 'overkill' | 'exact';
 
 function resolveEnemyDefeat(world: World, defeatKind: DefeatKind): GameState {
-  const nextEnemy = world.castle[0];
-  if (!nextEnemy) throw new Error('Unsupported game outcome: final enemy defeat');
-
-  return enterTurn({
-    ...world,
-    tavern: defeatKind === 'exact' ? [world.battle.enemy, ...world.tavern] : world.tavern,
+  const { battle, ...rest } = world;
+  const resolvedWorld = {
+    ...rest,
+    tavern: defeatKind === 'exact' ? [battle.enemy, ...world.tavern] : world.tavern,
     discard: [
       ...world.discard,
-      ...(defeatKind === 'overkill' ? [world.battle.enemy] : []),
-      ...world.battle.plays.flatMap(cardsInPlay),
+      ...(defeatKind === 'overkill' ? [battle.enemy] : []),
+      ...battle.plays.flatMap(cardsInPlay),
     ],
     castle: world.castle.slice(1),
+  };
+  const nextEnemy = world.castle[0];
+  if (!nextEnemy) {
+    if (battle.enemy.rank !== 'king') {
+      throw new Error('Unsupported game outcome: final enemy defeat');
+    }
+    return { kind: 'game-over', world: resolvedWorld, result: 'win' };
+  }
+
+  return enterTurn({
+    ...resolvedWorld,
     battle: {
       enemy: nextEnemy,
       damageDealt: 0,

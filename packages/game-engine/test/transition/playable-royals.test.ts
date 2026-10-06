@@ -6,7 +6,7 @@ import {
   assertCardsInExactlyOneZone,
   assertRejectedWithoutMutation,
   handOf,
-  transitionWithoutMutation,
+  transitionWithBattle,
 } from '../support/assertions.ts';
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
@@ -24,7 +24,7 @@ for (const { rank, value } of [
       currentPlayer: 'alice',
       enemy: makeRoyal('king', 'hearts'),
     });
-    const after = transitionWithoutMutation(initial, {
+    const after = transitionWithBattle(initial, {
       kind: 'play-cards',
       playerId: 'alice',
       cardIds: [royal.id],
@@ -51,7 +51,7 @@ void test('a Royal Clubs attack doubles its full value', () => {
     currentPlayer: 'alice',
     enemy: makeRoyal('king', 'hearts'),
   });
-  const after = transitionWithoutMutation(initial, {
+  const after = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [queen.id],
@@ -71,7 +71,7 @@ void test('matching enemy suit immunity blocks a Royal suit power but not its at
     currentPlayer: 'alice',
     enemy: makeRoyal('king', 'clubs'),
   });
-  const after = transitionWithoutMutation(initial, {
+  const after = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [queen.id],
@@ -93,7 +93,7 @@ for (const animalFirst of [false, true]) {
       currentPlayer: 'alice',
       enemy: makeRoyal('king', 'diamonds'),
     });
-    const after = transitionWithoutMutation(initial, {
+    const after = transitionWithBattle(initial, {
       kind: 'play-cards',
       playerId: 'alice',
       cardIds: cards.map((card) => card.id),
@@ -143,19 +143,19 @@ void test('a defeated Royal drawn from the Tavern can be played and activate Hea
     enemy: makeRoyal('jack', 'spades'),
     tavern: [jack],
   });
-  const afterDraw = transitionWithoutMutation(initial, {
+  const afterDraw = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [two.id],
   });
   assert.deepEqual(handOf(afterDraw, 'alice'), [firstDiscard, secondDiscard, jack]);
   assert.deepEqual(afterDraw.world.tavern, []);
-  const afterDiscard = transitionWithoutMutation(afterDraw, {
+  const afterDiscard = transitionWithBattle(afterDraw, {
     kind: 'discard-for-damage',
     playerId: 'alice',
     cardIds: [firstDiscard.id],
   });
-  const afterRoyal = transitionWithoutMutation(afterDiscard, {
+  const afterRoyal = transitionWithBattle(afterDiscard, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [jack.id],

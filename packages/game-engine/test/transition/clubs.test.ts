@@ -4,7 +4,7 @@ import {
   allCardIds,
   assertCardsInExactlyOneZone,
   handOf,
-  transitionWithoutMutation,
+  transitionWithBattle,
 } from '../support/assertions.ts';
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
@@ -26,7 +26,7 @@ void test('a Clubs attack resolves through retaliation, then discarding passes t
   });
   const originalIds = allCardIds(initial);
 
-  const afterPlay = transitionWithoutMutation(initial, {
+  const afterPlay = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [fiveClubs.id],
@@ -44,7 +44,7 @@ void test('a Clubs attack resolves through retaliation, then discarding passes t
   });
   assertCardsInExactlyOneZone(afterPlay, originalIds);
 
-  const afterDiscard = transitionWithoutMutation(afterPlay, {
+  const afterDiscard = transitionWithBattle(afterPlay, {
     kind: 'discard-for-damage',
     playerId: 'alice',
     cardIds: [sixDiamonds.id, nineSpades.id],

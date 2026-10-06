@@ -4,7 +4,7 @@ import {
   allCardIds,
   assertCardsInExactlyOneZone,
   handOf,
-  transitionWithoutMutation,
+  transitionWithBattle,
 } from '../support/assertions.ts';
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
@@ -24,7 +24,7 @@ for (const immunityCancelled of [false, true]) {
     });
     const originalIds = allCardIds(initial);
 
-    const afterPlay = transitionWithoutMutation(initial, {
+    const afterPlay = transitionWithBattle(initial, {
       kind: 'play-cards',
       playerId: 'alice',
       cardIds: [fiveClubs.id],
@@ -55,7 +55,7 @@ for (const immunityCancelled of [false, true]) {
     });
     const originalIds = allCardIds(initial);
 
-    const afterPlay = transitionWithoutMutation(initial, {
+    const afterPlay = transitionWithBattle(initial, {
       kind: 'play-cards',
       playerId: 'alice',
       cardIds: [fourDiamonds.id],
@@ -86,7 +86,7 @@ for (const immunityCancelled of [false, true]) {
     });
     const originalIds = allCardIds(initial);
 
-    const afterPlay = transitionWithoutMutation(initial, {
+    const afterPlay = transitionWithBattle(initial, {
       kind: 'play-cards',
       playerId: 'alice',
       cardIds: [threeSpades.id],
@@ -120,7 +120,7 @@ void test('non-matching Clubs and previously played Spades keep their powers aga
   });
   const originalIds = allCardIds(initial);
 
-  const afterPlay = transitionWithoutMutation(initial, {
+  const afterPlay = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [fiveClubs.id],

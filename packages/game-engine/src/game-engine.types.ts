@@ -65,6 +65,8 @@ export type World = Readonly<{
   /** Unsigned 32-bit state for deterministic discard shuffles. */
   rngState: number;
 }>;
+export type ResolvedWorld = Omit<World, 'battle'>;
+
 export type Decision =
   | Readonly<{ kind: 'await-turn-action' }>
   | Readonly<{ kind: 'await-damage-discard'; requiredDamage: number }>
@@ -72,7 +74,8 @@ export type Decision =
 
 export type GameState =
   | Readonly<{ kind: 'active'; world: World; decision: Decision; result?: never }>
-  | Readonly<{ kind: 'game-over'; world: World; result: 'loss'; decision?: never }>;
+  | Readonly<{ kind: 'game-over'; world: World; result: 'loss'; decision?: never }>
+  | Readonly<{ kind: 'game-over'; world: ResolvedWorld; result: 'win'; decision?: never }>;
 
 export type PlayCards = Readonly<{
   kind: 'play-cards';

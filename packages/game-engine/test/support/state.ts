@@ -1,6 +1,6 @@
 import type { Decision, GameState } from '../../src/game-engine.types.ts';
 
-type World = GameState['world'];
+type World = Extract<GameState, { kind: 'active' }>['world'];
 type Battle = World['battle'];
 
 type StateOptions = Readonly<{
@@ -31,7 +31,7 @@ export function makeGameState({
   castle = [],
   rngState = 1,
   decision = { kind: 'await-turn-action' },
-}: StateOptions): GameState {
+}: StateOptions): Extract<GameState, { kind: 'active' }> {
   return {
     kind: 'active',
     world: {

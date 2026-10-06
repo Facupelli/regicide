@@ -4,7 +4,7 @@ import {
   allCardIds,
   assertCardsInExactlyOneZone,
   handOf,
-  transitionWithoutMutation,
+  transitionWithBattle,
 } from '../support/assertions.ts';
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
@@ -25,7 +25,7 @@ void test('Spades shield persists across turns and accumulates against a Queen',
   });
   const originalIds = allCardIds(initial);
 
-  const afterAlicePlay = transitionWithoutMutation(initial, {
+  const afterAlicePlay = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [fourSpades.id],
@@ -37,7 +37,7 @@ void test('Spades shield persists across turns and accumulates against a Queen',
   assert.deepEqual(afterAlicePlay.decision, { kind: 'await-damage-discard', requiredDamage: 11 });
   assertCardsInExactlyOneZone(afterAlicePlay, originalIds);
 
-  const afterAliceDiscard = transitionWithoutMutation(afterAlicePlay, {
+  const afterAliceDiscard = transitionWithBattle(afterAlicePlay, {
     kind: 'discard-for-damage',
     playerId: 'alice',
     cardIds: [tenDiamonds.id, twoClubs.id],
@@ -50,7 +50,7 @@ void test('Spades shield persists across turns and accumulates against a Queen',
   assert.deepEqual(afterAliceDiscard.decision, { kind: 'await-turn-action' });
   assertCardsInExactlyOneZone(afterAliceDiscard, originalIds);
 
-  const afterBobPlay = transitionWithoutMutation(afterAliceDiscard, {
+  const afterBobPlay = transitionWithBattle(afterAliceDiscard, {
     kind: 'play-cards',
     playerId: 'bob',
     cardIds: [twoSpades.id],
@@ -83,7 +83,7 @@ void test('Spades that fully shield retaliation advance the turn without a disca
   });
   const originalIds = allCardIds(initial);
 
-  const afterPlay = transitionWithoutMutation(initial, {
+  const afterPlay = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: [twoSpades.id],

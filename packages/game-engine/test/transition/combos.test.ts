@@ -6,7 +6,7 @@ import {
   assertCardsInExactlyOneZone,
   assertRejectedWithoutMutation,
   handOf,
-  transitionWithoutMutation,
+  transitionWithBattle,
 } from '../support/assertions.ts';
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
@@ -30,7 +30,7 @@ for (const [rank, count] of [
       currentPlayer: 'alice',
       enemy: makeRoyal('jack', 'clubs'),
     });
-    const after = transitionWithoutMutation(initial, {
+    const after = transitionWithBattle(initial, {
       kind: 'play-cards',
       playerId: 'alice',
       cardIds: cards.map((card) => card.id),
@@ -66,7 +66,7 @@ void test('a three-suit combo applies the full attack value to draw, shield, and
     enemy: makeRoyal('queen', 'hearts'),
     tavern,
   });
-  const after = transitionWithoutMutation(initial, {
+  const after = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: cards.map((card) => card.id),
@@ -99,7 +99,7 @@ void test('combo Hearts heal the Tavern before combo Diamonds draw from it', () 
     enemy: makeRoyal('jack', 'spades'),
     discard,
   });
-  const after = transitionWithoutMutation(initial, {
+  const after = transitionWithBattle(initial, {
     kind: 'play-cards',
     playerId: 'alice',
     cardIds: cards.map((card) => card.id),
@@ -133,7 +133,7 @@ for (const immuneSuit of suits) {
       tavern: [tavernCard],
       discard: [healed],
     });
-    const after = transitionWithoutMutation(initial, {
+    const after = transitionWithBattle(initial, {
       kind: 'play-cards',
       playerId: 'alice',
       cardIds: cards.map((card) => card.id),
