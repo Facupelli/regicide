@@ -7,6 +7,11 @@ export type NumberCard = Readonly<{
   rank: NumberRank;
   suit: Suit;
 }>;
+export type AnimalCard = Readonly<{
+  kind: 'animal';
+  id: string;
+  suit: Suit;
+}>;
 export type RoyalCard = Readonly<{
   kind: 'royal';
   id: string;
@@ -17,13 +22,34 @@ export type JesterCard = Readonly<{
   kind: 'jester';
   id: string;
 }>;
-export type Card = NumberCard | RoyalCard | JesterCard;
+export type Card = NumberCard | AnimalCard | RoyalCard | JesterCard;
+
+export type AttackCard = NumberCard | AnimalCard;
+type NumberCardOfRank<R extends NumberRank> = NumberCard & Readonly<{ rank: R }>;
+export type NumberCombo =
+  | readonly [NumberCardOfRank<2>, NumberCardOfRank<2>]
+  | readonly [NumberCardOfRank<3>, NumberCardOfRank<3>]
+  | readonly [NumberCardOfRank<4>, NumberCardOfRank<4>]
+  | readonly [NumberCardOfRank<5>, NumberCardOfRank<5>]
+  | readonly [NumberCardOfRank<2>, NumberCardOfRank<2>, NumberCardOfRank<2>]
+  | readonly [NumberCardOfRank<3>, NumberCardOfRank<3>, NumberCardOfRank<3>]
+  | readonly [NumberCardOfRank<2>, NumberCardOfRank<2>, NumberCardOfRank<2>, NumberCardOfRank<2>];
+export type AttackPlay = Readonly<{
+  kind: 'attack';
+  cards:
+    | readonly [AttackCard]
+    | readonly [AnimalCard, AttackCard]
+    | readonly [NumberCard, AnimalCard]
+    | NumberCombo;
+}>;
+export type JesterPlay = Readonly<{ kind: 'jester'; card: JesterCard }>;
+export type HistoricalPlay = AttackPlay | JesterPlay;
 
 export type Player = Readonly<{ id: string; hand: readonly Card[] }>;
 export type Battle = Readonly<{
   enemy: RoyalCard;
   damageDealt: number;
-  playedCards: readonly Card[];
+  plays: readonly HistoricalPlay[];
   immunityCancelled: boolean;
 }>;
 export type World = Readonly<{

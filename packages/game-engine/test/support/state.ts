@@ -8,7 +8,7 @@ type StateOptions = Readonly<{
   currentPlayer: World['currentPlayer'];
   enemy: Battle['enemy'];
   damageDealt?: Battle['damageDealt'];
-  playedCards?: Battle['playedCards'];
+  plays?: Battle['plays'];
   immunityCancelled?: Battle['immunityCancelled'];
   tavern?: World['tavern'];
   discard?: World['discard'];
@@ -22,7 +22,7 @@ export function makeGameState({
   currentPlayer,
   enemy,
   damageDealt = 0,
-  playedCards = [],
+  plays = [],
   immunityCancelled = false,
   tavern = [],
   discard = [],
@@ -34,7 +34,7 @@ export function makeGameState({
     world: {
       players,
       currentPlayer,
-      battle: { enemy, damageDealt, playedCards, immunityCancelled },
+      battle: { enemy, damageDealt, plays, immunityCancelled },
       tavern,
       discard,
       castle,

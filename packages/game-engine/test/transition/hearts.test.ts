@@ -48,7 +48,7 @@ void test('Hearts shuffle discard, heal attack value onto the bottom of Tavern, 
   );
   assert.notEqual(afterPlay.world.rngState, initial.world.rngState);
   assert.deepEqual(handOf(afterPlay, 'alice'), [tenClubs]);
-  assert.deepEqual(afterPlay.world.battle.playedCards, [twoHearts]);
+  assert.deepEqual(afterPlay.world.battle.plays, [{ kind: 'attack', cards: [twoHearts] }]);
   assert.equal(afterPlay.world.battle.damageDealt, 2);
   assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
   assertCardsInExactlyOneZone(afterPlay, originalIds);
@@ -85,7 +85,7 @@ void test('Hearts heal all available cards if discard is smaller than attack val
     [first.id, second.id].toSorted(),
   );
   assert.deepEqual(afterPlay.world.discard, []);
-  assert.deepEqual(afterPlay.world.battle.playedCards, [sixHearts]);
+  assert.deepEqual(afterPlay.world.battle.plays, [{ kind: 'attack', cards: [sixHearts] }]);
   assert.equal(afterPlay.world.battle.damageDealt, 6);
   assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
   assertCardsInExactlyOneZone(afterPlay, originalIds);
@@ -113,7 +113,7 @@ void test('Hearts with empty discard still deals damage without advancing RNG', 
   assert.deepEqual(afterPlay.world.tavern, [top]);
   assert.deepEqual(afterPlay.world.discard, []);
   assert.equal(afterPlay.world.rngState, 1);
-  assert.deepEqual(afterPlay.world.battle.playedCards, [twoHearts]);
+  assert.deepEqual(afterPlay.world.battle.plays, [{ kind: 'attack', cards: [twoHearts] }]);
   assert.equal(afterPlay.world.battle.damageDealt, 2);
   assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
   assertCardsInExactlyOneZone(afterPlay, originalIds);
@@ -219,7 +219,7 @@ for (const immunityCancelled of [false, true]) {
     assert.deepEqual(afterPlay.world.tavern, immunityCancelled ? [top, discarded] : [top]);
     assert.deepEqual(afterPlay.world.discard, immunityCancelled ? [] : [discarded]);
     assert.equal(afterPlay.world.rngState, 1);
-    assert.deepEqual(afterPlay.world.battle.playedCards, [twoHearts]);
+    assert.deepEqual(afterPlay.world.battle.plays, [{ kind: 'attack', cards: [twoHearts] }]);
     assert.equal(afterPlay.world.battle.damageDealt, 2);
     assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
     assertCardsInExactlyOneZone(afterPlay, originalIds);
@@ -241,7 +241,7 @@ for (const defeatKind of ['exact', 'overkill'] as const) {
       currentPlayer: 'alice',
       enemy,
       damageDealt: defeatKind === 'exact' ? 17 : 18,
-      playedCards: [earlierPlay],
+      plays: [{ kind: 'attack', cards: [earlierPlay] }],
       tavern: [top],
       discard: [first, second],
       castle: [nextEnemy, followingEnemy],
@@ -274,7 +274,7 @@ for (const defeatKind of ['exact', 'overkill'] as const) {
     assert.deepEqual(afterPlay.world.battle, {
       enemy: nextEnemy,
       damageDealt: 0,
-      playedCards: [],
+      plays: [],
       immunityCancelled: false,
     });
     assert.deepEqual(afterPlay.world.castle, [followingEnemy]);

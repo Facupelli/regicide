@@ -33,7 +33,7 @@ void test('a Clubs attack resolves through retaliation, then discarding passes t
   });
 
   assert.deepEqual(handOf(afterPlay, 'alice'), [sixDiamonds, fourSpades, twoHearts]);
-  assert.deepEqual(afterPlay.world.battle.playedCards, [fiveClubs]);
+  assert.deepEqual(afterPlay.world.battle.plays, [{ kind: 'attack', cards: [fiveClubs] }]);
   assert.deepEqual(afterPlay.world.battle.enemy, jackHearts);
   assert.equal(afterPlay.world.battle.damageDealt, 10);
   assert.deepEqual(afterPlay.world.discard, []);
@@ -53,7 +53,7 @@ void test('a Clubs attack resolves through retaliation, then discarding passes t
   assert.deepEqual(handOf(afterDiscard, 'alice'), [twoHearts]);
   assert.deepEqual(handOf(afterDiscard, 'bob'), [threeDiamonds]);
   assert.deepEqual(afterDiscard.world.discard, [sixDiamonds, fourSpades]);
-  assert.deepEqual(afterDiscard.world.battle.playedCards, [fiveClubs]);
+  assert.deepEqual(afterDiscard.world.battle.plays, [{ kind: 'attack', cards: [fiveClubs] }]);
   assert.deepEqual(afterDiscard.world.battle.enemy, jackHearts);
   assert.equal(afterDiscard.world.battle.damageDealt, 10);
   assert.equal(afterDiscard.world.currentPlayer, 'bob');

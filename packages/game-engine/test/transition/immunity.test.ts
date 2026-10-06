@@ -18,7 +18,7 @@ for (const immunityCancelled of [false, true]) {
       players: [{ id: 'alice', hand: [fiveClubs, tenHearts] }],
       currentPlayer: 'alice',
       enemy: makeRoyal('jack', 'clubs'),
-      playedCards: [earlierClubs],
+      plays: [{ kind: 'attack', cards: [earlierClubs] }],
       damageDealt: 2,
       immunityCancelled,
     });
@@ -30,7 +30,10 @@ for (const immunityCancelled of [false, true]) {
       cardIds: [fiveClubs.id],
     });
 
-    assert.deepEqual(afterPlay.world.battle.playedCards, [earlierClubs, fiveClubs]);
+    assert.deepEqual(afterPlay.world.battle.plays, [
+      { kind: 'attack', cards: [earlierClubs] },
+      { kind: 'attack', cards: [fiveClubs] },
+    ]);
     // Earlier Clubs damage is never recalculated when immunity is cancelled.
     assert.equal(afterPlay.world.battle.damageDealt, immunityCancelled ? 12 : 7);
     assert.deepEqual(handOf(afterPlay, 'alice'), [tenHearts]);
@@ -63,7 +66,7 @@ for (const immunityCancelled of [false, true]) {
       immunityCancelled ? [tenHearts, twoHearts, threeHearts] : [tenHearts],
     );
     assert.deepEqual(afterPlay.world.tavern, immunityCancelled ? [] : [twoHearts, threeHearts]);
-    assert.deepEqual(afterPlay.world.battle.playedCards, [fourDiamonds]);
+    assert.deepEqual(afterPlay.world.battle.plays, [{ kind: 'attack', cards: [fourDiamonds] }]);
     assert.equal(afterPlay.world.battle.damageDealt, 4);
     assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
     assertCardsInExactlyOneZone(afterPlay, originalIds);
@@ -77,7 +80,7 @@ for (const immunityCancelled of [false, true]) {
       players: [{ id: 'alice', hand: [threeSpades, tenHearts] }],
       currentPlayer: 'alice',
       enemy: makeRoyal('jack', 'spades'),
-      playedCards: [earlierSpades],
+      plays: [{ kind: 'attack', cards: [earlierSpades] }],
       damageDealt: 4,
       immunityCancelled,
     });
@@ -89,7 +92,10 @@ for (const immunityCancelled of [false, true]) {
       cardIds: [threeSpades.id],
     });
 
-    assert.deepEqual(afterPlay.world.battle.playedCards, [earlierSpades, threeSpades]);
+    assert.deepEqual(afterPlay.world.battle.plays, [
+      { kind: 'attack', cards: [earlierSpades] },
+      { kind: 'attack', cards: [threeSpades] },
+    ]);
     assert.equal(afterPlay.world.battle.damageDealt, 7);
     assert.deepEqual(handOf(afterPlay, 'alice'), [tenHearts]);
     assert.deepEqual(afterPlay.decision, {
@@ -108,7 +114,7 @@ void test('non-matching Clubs and previously played Spades keep their powers aga
     players: [{ id: 'alice', hand: [fiveClubs, tenHearts] }],
     currentPlayer: 'alice',
     enemy: makeRoyal('jack', 'diamonds'),
-    playedCards: [fourSpades],
+    plays: [{ kind: 'attack', cards: [fourSpades] }],
     damageDealt: 4,
   });
   const originalIds = allCardIds(initial);
@@ -120,7 +126,10 @@ void test('non-matching Clubs and previously played Spades keep their powers aga
   });
 
   assert.deepEqual(handOf(afterPlay, 'alice'), [tenHearts]);
-  assert.deepEqual(afterPlay.world.battle.playedCards, [fourSpades, fiveClubs]);
+  assert.deepEqual(afterPlay.world.battle.plays, [
+    { kind: 'attack', cards: [fourSpades] },
+    { kind: 'attack', cards: [fiveClubs] },
+  ]);
   assert.equal(afterPlay.world.battle.damageDealt, 14);
   assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 6 });
   assertCardsInExactlyOneZone(afterPlay, originalIds);

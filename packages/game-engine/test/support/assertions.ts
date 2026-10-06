@@ -12,7 +12,7 @@ export function allCardIds(state: GameState): string[] {
   return [
     ...players.flatMap((player) => player.hand),
     battle.enemy,
-    ...battle.playedCards,
+    ...battle.plays.flatMap<Card>((play) => (play.kind === 'attack' ? play.cards : [play.card])),
     ...tavern,
     ...discard,
     ...castle,

@@ -1,5 +1,7 @@
 import type {
   Action,
+  AttackCard,
+  AttackPlay,
   Battle,
   Card,
   ChooseNextPlayer,
@@ -7,11 +9,13 @@ import type {
   DiscardForDamage,
   EnemyRank,
   GameState,
+  HistoricalPlay,
   JesterCard,
-  NumberCard,
+  NumberCombo,
   PlayCards,
   Player,
   RoyalCard,
+  Suit,
   World,
 } from './game-engine.types.ts';
 
@@ -40,20 +44,22 @@ export function transition(state: GameState, action: Action): GameState {
 }
 
 function handleTurnAction(world: World, player: Player, action: PlayCards): GameState {
-  const card = validatePlay(player, action);
+  const play = validatePlay(player, action);
   validateSupportedBattle(world.battle);
-  const worldAfterPlay = applyPlay(world, player, card);
-  if (card.kind === 'jester') {
-    return {
-      world: {
-        ...worldAfterPlay,
-        battle: { ...worldAfterPlay.battle, immunityCancelled: true },
-      },
-      decision: { kind: 'await-next-player-choice' },
-    };
+  const worldAfterPlay = applyPlay(world, player, play);
+  switch (play.kind) {
+    case 'jester':
+      return {
+        world: {
+          ...worldAfterPlay,
+          battle: { ...worldAfterPlay.battle, immunityCancelled: true },
+        },
+        decision: { kind: 'await-next-player-choice' },
+      };
+    case 'attack':
+      return resolveAfterPlay(resolveImmediateSuitPower(worldAfterPlay, play), play);
   }
-  const worldAfterSuitPower = resolveImmediateSuitPower(worldAfterPlay, card);
-  return resolveAfterPlay(worldAfterSuitPower, card);
+  return assertNever(play);
 }
 
 function handleNextPlayerChoice(world: World, action: ChooseNextPlayer): GameState {
@@ -93,13 +99,57 @@ function handleDamageDiscard(
   };
 }
 
-function validatePlay(player: Player, action: PlayCards): NumberCard | JesterCard {
-  if (action.cardIds.length !== 1) throw new Error('Only single-card plays are supported');
-  const [card] = selectedCardsFromHand(player.hand, action.cardIds);
-  if (!card || card.kind === 'royal') {
-    throw new Error('Only single numbered card or Jester plays are supported');
+function validatePlay(player: Player, action: PlayCards): HistoricalPlay {
+  if (action.cardIds.length > 4) throw new Error('At most four cards can be played together');
+  const cards = selectedCardsFromHand(player.hand, action.cardIds);
+  if (cards.length === 1) {
+    const [card] = cards;
+    if (!card) throw new Error('Select a card to play');
+    return validateSinglePlay(card);
   }
-  return card;
+  return validateMultiCardPlay(cards);
+}
+
+function validateSinglePlay(card: Card): HistoricalPlay {
+  switch (card.kind) {
+    case 'number':
+    case 'animal':
+      return { kind: 'attack', cards: [card] };
+    case 'jester':
+      return { kind: 'jester', card };
+    case 'royal':
+      throw new Error('Only numbered cards and Animal Companion pairs are supported');
+  }
+  return assertNever(card);
+}
+
+function validateMultiCardPlay(cards: readonly Card[]): AttackPlay {
+  if (cards.length === 2) {
+    const [first, second] = cards;
+    if (first && second && isAttackCard(first) && isAttackCard(second)) {
+      if (first.kind === 'animal') return { kind: 'attack', cards: [first, second] };
+      if (second.kind === 'animal') return { kind: 'attack', cards: [first, second] };
+    }
+  }
+  if (isNumberCombo(cards)) return { kind: 'attack', cards };
+  throw new Error(
+    'Only Animal Companion pairs or same-rank numbered combos of value 10 or less are supported',
+  );
+}
+
+function isNumberCombo(cards: readonly Card[]): cards is NumberCombo {
+  const [first] = cards;
+  return (
+    cards.length >= 2 &&
+    cards.length <= 4 &&
+    first?.kind === 'number' &&
+    cards.every((card) => card.kind === 'number' && card.rank === first.rank) &&
+    first.rank * cards.length <= 10
+  );
+}
+
+function isAttackCard(card: Card): card is AttackCard {
+  return card.kind === 'number' || card.kind === 'animal';
 }
 
 function validateSupportedBattle(battle: Battle): void {
@@ -108,23 +158,48 @@ function validateSupportedBattle(battle: Battle): void {
   }
 }
 
-function applyPlay(world: World, player: Player, card: NumberCard | JesterCard): World {
+function applyPlay(world: World, player: Player, play: HistoricalPlay): World {
+  const ids = new Set(cardsInPlay(play).map((card) => card.id));
   return {
     ...world,
     players: world.players.map((candidate) =>
       candidate.id === player.id
-        ? { ...candidate, hand: candidate.hand.filter((held) => held.id !== card.id) }
+        ? { ...candidate, hand: candidate.hand.filter((held) => !ids.has(held.id)) }
         : candidate,
     ),
-    battle: { ...world.battle, playedCards: [...world.battle.playedCards, card] },
+    battle: { ...world.battle, plays: [...world.battle.plays, play] },
   };
 }
 
-function resolveImmediateSuitPower(world: World, card: NumberCard): World {
-  if (!suitPowerActive(world.battle, card)) return world;
-  if (card.suit === 'hearts') return resolveHeartHeal(world, attackValue(card));
-  if (card.suit === 'diamonds') return resolveDiamondDraw(world, attackValue(card));
-  return world;
+function cardsInPlay(play: HistoricalPlay): readonly (AttackCard | JesterCard)[] {
+  switch (play.kind) {
+    case 'attack':
+      return play.cards;
+    case 'jester':
+      return [play.card];
+  }
+  return assertNever(play);
+}
+
+function playAttackValue(play: AttackPlay): number {
+  return play.cards.reduce((total, card) => total + attackValue(card), 0);
+}
+
+function playSuits(play: AttackPlay): ReadonlySet<Suit> {
+  return new Set(play.cards.map((card) => card.suit));
+}
+
+function resolveImmediateSuitPower(world: World, play: AttackPlay): World {
+  let result = world;
+  const suits = playSuits(play);
+  const value = playAttackValue(play);
+  if (suits.has('hearts') && suitPowerActive(result.battle, 'hearts')) {
+    result = resolveHeartHeal(result, value);
+  }
+  if (suits.has('diamonds') && suitPowerActive(result.battle, 'diamonds')) {
+    result = resolveDiamondDraw(result, value);
+  }
+  return result;
 }
 
 function resolveHeartHeal(world: World, healCount: number): World {
@@ -184,9 +259,9 @@ function maxHandSize(playerCount: number): number {
   return limit;
 }
 
-function resolveAfterPlay(world: World, card: NumberCard): GameState {
+function resolveAfterPlay(world: World, play: AttackPlay): GameState {
   const { battle } = world;
-  const damageDealt = battle.damageDealt + attackDamage(battle, card);
+  const damageDealt = battle.damageDealt + attackDamage(battle, play);
   if (damageDealt > enemyHealth(battle.enemy)) {
     return resolveEnemyDefeat(world, 'overkill');
   }
@@ -228,13 +303,13 @@ function resolveEnemyDefeat(world: World, defeatKind: DefeatKind): GameState {
       discard: [
         ...world.discard,
         ...(defeatKind === 'overkill' ? [world.battle.enemy] : []),
-        ...world.battle.playedCards,
+        ...world.battle.plays.flatMap(cardsInPlay),
       ],
       castle: world.castle.slice(1),
       battle: {
         enemy: nextEnemy,
         damageDealt: 0,
-        playedCards: [],
+        plays: [],
         immunityCancelled: false,
       },
     },
@@ -254,28 +329,32 @@ function selectedCardsFromHand(hand: readonly Card[], cardIds: readonly string[]
   });
 }
 
-function attackValue(card: NumberCard | JesterCard): number {
-  return card.kind === 'jester' ? 0 : card.rank;
+function attackValue(card: AttackCard | JesterCard): number {
+  if (card.kind === 'jester') return 0;
+  if (card.kind === 'animal') return 1;
+  return card.rank;
 }
 
-function attackDamage(battle: Battle, card: NumberCard): number {
-  const value = attackValue(card);
-  return card.suit === 'clubs' && suitPowerActive(battle, card) ? value * 2 : value;
+function attackDamage(battle: Battle, play: AttackPlay): number {
+  const value = playAttackValue(play);
+  return playSuits(play).has('clubs') && suitPowerActive(battle, 'clubs') ? value * 2 : value;
 }
 
-function suitPowerActive(battle: Battle, card: NumberCard | RoyalCard): boolean {
-  return card.suit !== battle.enemy.suit || battle.immunityCancelled;
+function suitPowerActive(battle: Battle, suit: Suit): boolean {
+  return suit !== battle.enemy.suit || battle.immunityCancelled;
 }
 
 function activeShield(battle: Battle): number {
-  return battle.playedCards.reduce(
-    (total, card) =>
-      total +
-      (card.kind !== 'jester' && card.suit === 'spades' && suitPowerActive(battle, card)
-        ? cardValue(card)
-        : 0),
-    0,
-  );
+  if (!suitPowerActive(battle, 'spades')) return 0;
+  return battle.plays.reduce((total, play) => {
+    switch (play.kind) {
+      case 'attack':
+        return total + (playSuits(play).has('spades') ? playAttackValue(play) : 0);
+      case 'jester':
+        return total;
+    }
+    return assertNever(play);
+  }, 0);
 }
 
 function cardValue(card: Card): number {

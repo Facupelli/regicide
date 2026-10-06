@@ -30,7 +30,7 @@ void test('Spades shield persists across turns and accumulates against the Jack 
     cardIds: [fourSpades.id],
   });
   assert.deepEqual(handOf(afterAlicePlay, 'alice'), [sixDiamonds]);
-  assert.deepEqual(afterAlicePlay.world.battle.playedCards, [fourSpades]);
+  assert.deepEqual(afterAlicePlay.world.battle.plays, [{ kind: 'attack', cards: [fourSpades] }]);
   assert.equal(afterAlicePlay.world.battle.damageDealt, 4);
   assert.equal(afterAlicePlay.world.currentPlayer, 'alice');
   assert.deepEqual(afterAlicePlay.decision, { kind: 'await-damage-discard', requiredDamage: 6 });
@@ -43,7 +43,7 @@ void test('Spades shield persists across turns and accumulates against the Jack 
   });
   assert.deepEqual(handOf(afterAliceDiscard, 'alice'), []);
   assert.deepEqual(afterAliceDiscard.world.discard, [sixDiamonds]);
-  assert.deepEqual(afterAliceDiscard.world.battle.playedCards, [fourSpades]);
+  assert.deepEqual(afterAliceDiscard.world.battle.plays, [{ kind: 'attack', cards: [fourSpades] }]);
   assert.equal(afterAliceDiscard.world.battle.damageDealt, 4);
   assert.equal(afterAliceDiscard.world.currentPlayer, 'bob');
   assert.deepEqual(afterAliceDiscard.decision, { kind: 'await-turn-action' });
@@ -55,7 +55,10 @@ void test('Spades shield persists across turns and accumulates against the Jack 
     cardIds: [twoSpades.id],
   });
   assert.deepEqual(handOf(afterBobPlay, 'bob'), [fourHearts]);
-  assert.deepEqual(afterBobPlay.world.battle.playedCards, [fourSpades, twoSpades]);
+  assert.deepEqual(afterBobPlay.world.battle.plays, [
+    { kind: 'attack', cards: [fourSpades] },
+    { kind: 'attack', cards: [twoSpades] },
+  ]);
   assert.equal(afterBobPlay.world.battle.damageDealt, 6);
   assert.deepEqual(afterBobPlay.world.discard, [sixDiamonds]);
   assert.equal(afterBobPlay.world.currentPlayer, 'bob');
@@ -75,7 +78,7 @@ void test('Spades that fully shield retaliation advance the turn without a disca
     currentPlayer: 'alice',
     enemy: makeRoyal('jack', 'hearts'),
     damageDealt: 8,
-    playedCards: [eightSpades],
+    plays: [{ kind: 'attack', cards: [eightSpades] }],
   });
   const originalIds = allCardIds(initial);
 
@@ -86,7 +89,10 @@ void test('Spades that fully shield retaliation advance the turn without a disca
   });
 
   assert.deepEqual(handOf(afterPlay, 'alice'), []);
-  assert.deepEqual(afterPlay.world.battle.playedCards, [eightSpades, twoSpades]);
+  assert.deepEqual(afterPlay.world.battle.plays, [
+    { kind: 'attack', cards: [eightSpades] },
+    { kind: 'attack', cards: [twoSpades] },
+  ]);
   assert.equal(afterPlay.world.battle.damageDealt, 10);
   assert.deepEqual(afterPlay.world.discard, []);
   assert.equal(afterPlay.world.currentPlayer, 'bob');

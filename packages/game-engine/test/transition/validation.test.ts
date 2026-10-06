@@ -32,10 +32,6 @@ void test('play validation', async (t) => {
       action: { kind: 'play-cards', playerId: 'alice', cardIds: ['missing-card'] },
     },
     {
-      name: 'rejects an empty play',
-      action: { kind: 'play-cards', playerId: 'alice', cardIds: [] },
-    },
-    {
       name: 'rejects duplicate cards',
       action: { kind: 'play-cards', playerId: 'alice', cardIds: [fiveClubs.id, fiveClubs.id] },
     },
@@ -58,6 +54,17 @@ void test('play validation', async (t) => {
       t.test(name, () => assertRejectedWithoutMutation(state, action)),
     ),
   );
+});
+
+void test('play-cards rejects empty cardIds without mutating state', () => {
+  const fiveClubs = makeCard(5, 'clubs');
+  const state = makeGameState({
+    players: [{ id: 'alice', hand: [fiveClubs] }],
+    currentPlayer: 'alice',
+    enemy: makeRoyal('jack', 'hearts'),
+  });
+
+  assertRejectedWithoutMutation(state, { kind: 'play-cards', playerId: 'alice', cardIds: [] });
 });
 
 void test('damage discard validation', async (t) => {

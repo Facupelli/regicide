@@ -22,7 +22,7 @@ void test('a Jester played alone cancels immunity without damage or retaliation,
     ],
     currentPlayer: 'alice',
     enemy: makeRoyal('jack', 'clubs'),
-    playedCards: [earlierClubs],
+    plays: [{ kind: 'attack', cards: [earlierClubs] }],
     damageDealt: 3,
   });
   const originalIds = allCardIds(initial);
@@ -34,7 +34,10 @@ void test('a Jester played alone cancels immunity without damage or retaliation,
   });
 
   assert.deepEqual(handOf(afterPlay, 'alice'), []);
-  assert.deepEqual(afterPlay.world.battle.playedCards, [earlierClubs, jester]);
+  assert.deepEqual(afterPlay.world.battle.plays, [
+    { kind: 'attack', cards: [earlierClubs] },
+    { kind: 'jester', card: jester },
+  ]);
   assert.equal(afterPlay.world.battle.immunityCancelled, true);
   assert.equal(afterPlay.world.battle.damageDealt, 3); // The Jester's attack value is 0.
   assert.deepEqual(afterPlay.world.discard, []);
@@ -129,7 +132,7 @@ void test('previously immune Spades shield the next turn after a Jester cancels 
     currentPlayer: 'alice',
     enemy: makeRoyal('jack', 'spades'),
     damageDealt: 4,
-    playedCards: [earlierSpades],
+    plays: [{ kind: 'attack', cards: [earlierSpades] }],
   });
   const originalIds = allCardIds(initial);
 
@@ -149,7 +152,11 @@ void test('previously immune Spades shield the next turn after a Jester cancels 
     cardIds: [twoClubs.id],
   });
 
-  assert.deepEqual(afterBobPlay.world.battle.playedCards, [earlierSpades, jester, twoClubs]);
+  assert.deepEqual(afterBobPlay.world.battle.plays, [
+    { kind: 'attack', cards: [earlierSpades] },
+    { kind: 'jester', card: jester },
+    { kind: 'attack', cards: [twoClubs] },
+  ]);
   assert.equal(afterBobPlay.world.battle.damageDealt, 8);
   assert.deepEqual(afterBobPlay.decision, { kind: 'await-damage-discard', requiredDamage: 6 });
   assertCardsInExactlyOneZone(afterBobPlay, originalIds);
@@ -168,7 +175,7 @@ void test('previously immune Clubs damage is not recalculated after a Jester', (
     currentPlayer: 'alice',
     enemy: makeRoyal('jack', 'clubs'),
     damageDealt: 3,
-    playedCards: [earlierClubs],
+    plays: [{ kind: 'attack', cards: [earlierClubs] }],
   });
   const originalIds = allCardIds(initial);
 
@@ -188,6 +195,11 @@ void test('previously immune Clubs damage is not recalculated after a Jester', (
     cardIds: [twoHearts.id],
   });
 
+  assert.deepEqual(afterBobPlay.world.battle.plays, [
+    { kind: 'attack', cards: [earlierClubs] },
+    { kind: 'jester', card: jester },
+    { kind: 'attack', cards: [twoHearts] },
+  ]);
   assert.equal(afterBobPlay.world.battle.damageDealt, 5);
   assert.deepEqual(afterBobPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
   assertCardsInExactlyOneZone(afterBobPlay, originalIds);
