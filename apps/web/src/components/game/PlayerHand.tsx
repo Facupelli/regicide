@@ -13,7 +13,11 @@ export function PlayerHand({
   hasOpponents: boolean;
 }) {
   const interaction = view.status === 'active' ? view.interaction : null;
-  const canSelect = interaction?.kind === 'turn' || interaction?.kind === 'damage-discard';
+  const canSelect =
+    interaction?.kind === 'turn' ||
+    (interaction?.kind === 'damage-discard' &&
+      interaction.requiredDamage > 0 &&
+      !interaction.canAcceptDefeat);
   const selected = view.viewer.hand.filter((card) => selectedCardIds.includes(card.id));
   const local = view.players.find((player) => player.id === view.viewer.id);
   return (

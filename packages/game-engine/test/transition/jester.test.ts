@@ -157,7 +157,7 @@ void test('previously immune Spades shield the next turn after a Jester cancels 
     { kind: 'attack', cards: [twoClubs] },
   ]);
   assert.equal(afterBobPlay.world.battle.damageDealt, 8);
-  assert.deepEqual(afterBobPlay.decision, { kind: 'await-damage-discard', requiredDamage: 6 });
+  assert.deepEqual(afterBobPlay.decision, { kind: 'await-retaliation-action', requiredDamage: 6 });
   assertCardsInExactlyOneZone(afterBobPlay, originalIds);
 });
 
@@ -200,6 +200,6 @@ void test('previously immune Clubs damage is not recalculated after a Jester', (
     { kind: 'attack', cards: [twoHearts] },
   ]);
   assert.equal(afterBobPlay.world.battle.damageDealt, 5);
-  assert.deepEqual(afterBobPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
+  assert.deepEqual(afterBobPlay.decision, { kind: 'await-retaliation-action', requiredDamage: 10 });
   assertCardsInExactlyOneZone(afterBobPlay, originalIds);
 });

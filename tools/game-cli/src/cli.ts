@@ -39,7 +39,7 @@ const help: Record<string, { usage: string; description: string; examples: strin
     description: 'Attempt a discard-for-damage action. Player defaults to current player.',
     examples: [
       'pnpm game discard --cards number-8-clubs',
-      'pnpm game discard --cards number-2-clubs,animal-hearts',
+      "pnpm game discard --cards '' (zero damage only)",
     ],
   },
   yield: {
@@ -52,10 +52,10 @@ const help: Record<string, { usage: string; description: string; examples: strin
     description: 'Attempt a use-solo-jester action. Player defaults to current player.',
     examples: ['pnpm game solo-jester', 'pnpm game solo-jester --player alice'],
   },
-  'decline-solo-jester': {
-    usage: 'decline-solo-jester [--player <id>]',
-    description: 'Attempt a decline-solo-jester action. Player defaults to current player.',
-    examples: ['pnpm game decline-solo-jester', 'pnpm game decline-solo-jester --player alice'],
+  'accept-defeat': {
+    usage: 'accept-defeat [--player <id>]',
+    description: 'Accept unavoidable damage when a solo Jester is still available.',
+    examples: ['pnpm game accept-defeat', 'pnpm game accept-defeat --player alice'],
   },
   'choose-player': {
     usage: 'choose-player --target <id> [--player <id>]',
@@ -146,7 +146,7 @@ function optionsFor(command: string): ParseArgsOptionsConfig {
   } else if (command === 'choose-player') {
     opts.target = { type: 'string' };
     opts.player = { type: 'string' };
-  } else if (['yield', 'solo-jester', 'decline-solo-jester'].includes(command)) {
+  } else if (['yield', 'solo-jester', 'accept-defeat'].includes(command)) {
     opts.player = { type: 'string' };
   } else if (command === 'snapshot') {
     opts.full = { type: 'boolean' };
@@ -241,14 +241,14 @@ function actionFor(
       return {
         kind: 'discard-for-damage',
         playerId,
-        cardIds: list(values.cards, '--cards', command),
+        cardIds: values.cards === '' ? [] : list(values.cards, '--cards', command),
       };
     case 'yield':
       return { kind: 'yield', playerId };
     case 'solo-jester':
       return { kind: 'use-solo-jester', playerId };
-    case 'decline-solo-jester':
-      return { kind: 'decline-solo-jester', playerId };
+    case 'accept-defeat':
+      return { kind: 'accept-defeat', playerId };
     case 'choose-player':
       return {
         kind: 'choose-next-player',
@@ -312,11 +312,13 @@ function main(args: string[]): void {
     case 'discard':
     case 'yield':
     case 'solo-jester':
-    case 'decline-solo-jester':
+    case 'accept-defeat':
     case 'choose-player': {
       positional(positionals, 0, command);
       // Validate all CLI syntax before invoking transition, including when there is no session.
-      if (command === 'play' || command === 'discard') list(values.cards, '--cards', command);
+      if (command === 'play' || (command === 'discard' && values.cards !== '')) {
+        list(values.cards, '--cards', command);
+      }
       if (command === 'choose-player') required(values.target, '--target', command);
       if (values.player !== undefined) required(values.player, '--player', command);
       withSessionLock(() => {

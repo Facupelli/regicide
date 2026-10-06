@@ -31,7 +31,7 @@ void test('yield during await-turn-action skips suit powers and damage but still
   const originalIds = allCardIds(initial);
 
   const afterYield = transitionWithBattle(initial, { kind: 'yield', playerId: 'alice' });
-  assert.deepEqual(afterYield.decision, { kind: 'await-damage-discard', requiredDamage: 6 });
+  assert.deepEqual(afterYield.decision, { kind: 'await-retaliation-action', requiredDamage: 6 });
   assert.equal(afterYield.world.currentPlayer, 'alice');
   assert.deepEqual(afterYield.world.battle, initial.world.battle);
   assert.deepEqual(afterYield.world.tavern, initial.world.tavern);

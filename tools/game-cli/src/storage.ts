@@ -53,7 +53,7 @@ function actionOf(value: unknown): value is Action {
       return typeof value.targetPlayerId === 'string';
     case 'yield':
     case 'use-solo-jester':
-    case 'decline-solo-jester':
+    case 'accept-defeat':
       return true;
     default:
       return false;
@@ -142,9 +142,8 @@ function decisionOf(value: unknown): value is Decision {
   switch (value.kind) {
     case 'await-turn-action':
     case 'await-next-player-choice':
-    case 'await-solo-retaliation':
       return true;
-    case 'await-damage-discard':
+    case 'await-retaliation-action':
       return typeof value.requiredDamage === 'number' && Number.isFinite(value.requiredDamage);
     default:
       return false;

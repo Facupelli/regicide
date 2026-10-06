@@ -1,5 +1,10 @@
 import { encode } from '@toon-format/toon';
-import { soloVictoryRank, type GameState } from '@regicide/game-engine';
+import {
+  canAcceptDefeat,
+  canUseSoloJester,
+  soloVictoryRank,
+  type GameState,
+} from '@regicide/game-engine';
 import { current, type Entry, type Session } from './driver.ts';
 
 export function show(value: unknown): void {
@@ -39,7 +44,7 @@ export function compact(state: GameState): Record<string, unknown> {
       castle: state.world.castle.length,
     },
   };
-  if (state.kind === 'active' && state.decision.kind === 'await-damage-discard') {
+  if (state.kind === 'active' && state.decision.kind === 'await-retaliation-action') {
     view.requiredDamage = state.decision.requiredDamage;
   }
   if (state.world.soloJestersUsed !== null) view.soloJestersUsed = state.world.soloJestersUsed;
@@ -66,12 +71,16 @@ export function hint(state: GameState): string[] {
   switch (state.decision.kind) {
     case 'await-turn-action':
       return ['pnpm game help play', 'pnpm game help yield', 'pnpm game help solo-jester'];
-    case 'await-damage-discard':
-      return ['pnpm game discard --cards <card-id,...>'];
+    case 'await-retaliation-action':
+      return [
+        state.decision.requiredDamage === 0
+          ? "pnpm game discard --cards ''"
+          : 'pnpm game discard --cards <card-id,...>',
+        ...(canUseSoloJester(state) ? ['pnpm game solo-jester'] : []),
+        ...(canAcceptDefeat(state) ? ['pnpm game accept-defeat'] : []),
+      ];
     case 'await-next-player-choice':
       return ['pnpm game choose-player --target <player-id>'];
-    case 'await-solo-retaliation':
-      return ['pnpm game solo-jester', 'pnpm game decline-solo-jester'];
   }
   return [];
 }

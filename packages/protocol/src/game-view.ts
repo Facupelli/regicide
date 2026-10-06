@@ -43,8 +43,12 @@ export const InteractionSchema = v.variant('kind', [
     canYield: v.boolean(),
     canUseSoloJester: v.boolean(),
   }),
-  v.strictObject({ kind: v.literal('damage-discard'), requiredDamage: NonNegativeIntegerSchema }),
-  v.strictObject({ kind: v.literal('solo-retaliation'), canUseSoloJester: v.boolean() }),
+  v.strictObject({
+    kind: v.literal('damage-discard'),
+    requiredDamage: NonNegativeIntegerSchema,
+    canUseSoloJester: v.boolean(),
+    canAcceptDefeat: v.boolean(),
+  }),
   v.strictObject({
     kind: v.literal('choose-next-player'),
     eligiblePlayerIds: v.pipe(v.array(IdentifierSchema), v.readonly()),

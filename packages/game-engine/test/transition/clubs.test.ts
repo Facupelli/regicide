@@ -39,7 +39,7 @@ void test('a Clubs attack resolves through retaliation, then discarding passes t
   assert.deepEqual(afterPlay.world.discard, []);
   assert.equal(afterPlay.world.currentPlayer, 'alice');
   assert.deepEqual(afterPlay.decision, {
-    kind: 'await-damage-discard',
+    kind: 'await-retaliation-action',
     requiredDamage: 15,
   });
   assertCardsInExactlyOneZone(afterPlay, originalIds);

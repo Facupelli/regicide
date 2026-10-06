@@ -40,7 +40,6 @@ export function DecisionArea({
           selectedCardIds={selectedCardIds}
           playSelection={playSelection}
           selectedDamage={selectedDamage}
-          incomingDamage={Math.max(0, view.battle.enemyAttack - view.battle.shield)}
           actionPending={actionPending}
           onAction={onAction}
         />
@@ -64,7 +63,6 @@ function InteractionControls({
   selectedCardIds,
   playSelection,
   selectedDamage,
-  incomingDamage,
   actionPending,
   onAction,
 }: {
@@ -72,7 +70,6 @@ function InteractionControls({
   selectedCardIds: string[];
   playSelection: PlaySelectionState;
   selectedDamage: number;
-  incomingDamage: number;
   actionPending: boolean;
   onAction: TableProps['onAction'];
 }) {
@@ -99,57 +96,58 @@ function InteractionControls({
                 Yield
               </Button>
             )}
-            {interaction.canUseSoloJester && (
-              <Button
-                disabled={actionPending}
-                onClick={() => onAction({ kind: 'use-solo-jester' })}
-              >
-                Use Solo Jester
-              </Button>
-            )}
-          </div>
-        </div>
-      );
-    case 'solo-retaliation':
-      return (
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <p>
-            Incoming damage: {incomingDamage}. Use a Solo Jester to refill before taking damage?
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {interaction.canUseSoloJester && (
-              <Button
-                disabled={actionPending}
-                onClick={() => onAction({ kind: 'use-solo-jester' })}
-              >
-                Use Solo Jester
-              </Button>
-            )}
-            <Button
-              disabled={actionPending}
-              onClick={() => onAction({ kind: 'decline-solo-jester' })}
-            >
-              Continue without Jester
-            </Button>
           </div>
         </div>
       );
     case 'damage-discard':
       return (
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <p>
-            Selected damage: {selectedDamage} / {interaction.requiredDamage}
-          </p>
-          <Button
-            disabled={
-              actionPending ||
-              !selectedCardIds.length ||
-              selectedDamage < interaction.requiredDamage
-            }
-            onClick={() => onAction({ kind: 'discard-for-damage', cardIds: selectedCardIds })}
-          >
-            Discard selected cards
-          </Button>
+          <div>
+            <p>Incoming damage: {interaction.requiredDamage}</p>
+            {interaction.requiredDamage === 0 ? (
+              <p>No cards need to be discarded.</p>
+            ) : interaction.canAcceptDefeat ? (
+              <p>
+                Your hand cannot absorb {interaction.requiredDamage} damage. Use a Solo Jester or
+                accept defeat.
+              </p>
+            ) : (
+              <p>Select cards to discard.</p>
+            )}
+            {interaction.requiredDamage > 0 && (
+              <p>
+                Selected damage: {selectedDamage} / {interaction.requiredDamage}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {interaction.canAcceptDefeat && (
+              <Button
+                className="bg-transparent text-danger"
+                disabled={actionPending}
+                onClick={() => onAction({ kind: 'accept-defeat' })}
+              >
+                Accept defeat
+              </Button>
+            )}
+            {!interaction.canAcceptDefeat && (
+              <Button
+                disabled={
+                  actionPending ||
+                  (interaction.requiredDamage > 0 &&
+                    (!selectedCardIds.length || selectedDamage < interaction.requiredDamage))
+                }
+                onClick={() =>
+                  onAction({
+                    kind: 'discard-for-damage',
+                    cardIds: interaction.requiredDamage === 0 ? [] : selectedCardIds,
+                  })
+                }
+              >
+                {interaction.requiredDamage === 0 ? 'Continue turn' : 'Discard selected cards'}
+              </Button>
+            )}
+          </div>
         </div>
       );
     case 'waiting':

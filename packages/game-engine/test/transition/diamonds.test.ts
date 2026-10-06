@@ -106,7 +106,7 @@ void test('Diamonds draw attack value clockwise before damage and retaliation, s
   assert.deepEqual(afterPlay.world.battle.plays, [{ kind: 'attack', cards: [cards.fourDiamonds] }]);
   assert.equal(afterPlay.world.battle.damageDealt, 4);
   assert.equal(afterPlay.world.currentPlayer, 'alice');
-  assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
+  assert.deepEqual(afterPlay.decision, { kind: 'await-retaliation-action', requiredDamage: 10 });
   assertCardsInExactlyOneZone(afterPlay, originalIds);
 });
 
@@ -139,7 +139,7 @@ void test('Diamonds stop drawing when Tavern is exhausted against a Queen', () =
   assert.deepEqual(afterPlay.world.battle.plays, [{ kind: 'attack', cards: [threeDiamonds] }]);
   assert.equal(afterPlay.world.battle.damageDealt, 3);
   assert.equal(afterPlay.world.currentPlayer, 'alice');
-  assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 15 });
+  assert.deepEqual(afterPlay.decision, { kind: 'await-retaliation-action', requiredDamage: 15 });
   assertCardsInExactlyOneZone(afterPlay, originalIds);
 });
 
@@ -175,6 +175,6 @@ void test('Diamonds stop drawing when all players reach their hand limit', () =>
   assert.deepEqual(handOf(afterPlay, 'alice'), [...soloHand.slice(1), drawCard]);
   assert.deepEqual(afterPlay.world.tavern, [leftover]);
   assert.equal(afterPlay.world.battle.damageDealt, 3);
-  assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
+  assert.deepEqual(afterPlay.decision, { kind: 'await-retaliation-action', requiredDamage: 10 });
   assertCardsInExactlyOneZone(afterPlay, originalIds);
 });

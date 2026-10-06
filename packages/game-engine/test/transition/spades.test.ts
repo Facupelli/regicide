@@ -34,7 +34,10 @@ void test('Spades shield persists across turns and accumulates against a Queen',
   assert.deepEqual(afterAlicePlay.world.battle.plays, [{ kind: 'attack', cards: [fourSpades] }]);
   assert.equal(afterAlicePlay.world.battle.damageDealt, 4);
   assert.equal(afterAlicePlay.world.currentPlayer, 'alice');
-  assert.deepEqual(afterAlicePlay.decision, { kind: 'await-damage-discard', requiredDamage: 11 });
+  assert.deepEqual(afterAlicePlay.decision, {
+    kind: 'await-retaliation-action',
+    requiredDamage: 11,
+  });
   assertCardsInExactlyOneZone(afterAlicePlay, originalIds);
 
   const afterAliceDiscard = transitionWithBattle(afterAlicePlay, {
@@ -63,7 +66,7 @@ void test('Spades shield persists across turns and accumulates against a Queen',
   assert.equal(afterBobPlay.world.battle.damageDealt, 6);
   assert.deepEqual(afterBobPlay.world.discard, [tenDiamonds, twoClubs]);
   assert.equal(afterBobPlay.world.currentPlayer, 'bob');
-  assert.deepEqual(afterBobPlay.decision, { kind: 'await-damage-discard', requiredDamage: 9 });
+  assert.deepEqual(afterBobPlay.decision, { kind: 'await-retaliation-action', requiredDamage: 9 });
   assertCardsInExactlyOneZone(afterBobPlay, originalIds);
 });
 

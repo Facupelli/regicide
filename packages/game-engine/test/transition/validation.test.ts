@@ -88,7 +88,7 @@ for (const { rank, value } of [
       players,
       currentPlayer: 'alice',
       enemy,
-      decision: { kind: 'await-damage-discard', requiredDamage: value },
+      decision: { kind: 'await-retaliation-action', requiredDamage: value },
     });
     const action = { kind: 'discard-for-damage', playerId: 'alice', cardIds: [royal.id] } as const;
     const after = transitionWithBattle(state, action);
@@ -102,7 +102,7 @@ for (const { rank, value } of [
       players,
       currentPlayer: 'alice',
       enemy,
-      decision: { kind: 'await-damage-discard', requiredDamage: value + 1 },
+      decision: { kind: 'await-retaliation-action', requiredDamage: value + 1 },
     });
     assertRejectedWithoutMutation(higherDamage, action);
   });

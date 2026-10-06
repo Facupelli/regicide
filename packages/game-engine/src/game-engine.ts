@@ -1,11 +1,11 @@
 import type {
+  AcceptDefeat,
   Action,
   AttackCard,
   AttackPlay,
   Battle,
   Card,
   ChooseNextPlayer,
-  DeclineSoloJester,
   Decision,
   DiscardForDamage,
   EnemyRank,
@@ -47,16 +47,14 @@ export function transition(state: GameState, action: Action): GameState {
       )
         throw new Error(`Action ${action.kind} is not valid while awaiting a turn action`);
       return handleTurnAction(world, player, action);
-    case 'await-solo-retaliation':
-      if (action.kind !== 'use-solo-jester' && action.kind !== 'decline-solo-jester')
-        throw new Error(
-          `Action ${action.kind} is not valid while awaiting a solo retaliation choice`,
-        );
-      return handleSoloRetaliation(world, player, action);
-    case 'await-damage-discard':
-      if (action.kind !== 'discard-for-damage')
-        throw new Error(`Action ${action.kind} is not valid while awaiting a damage discard`);
-      return handleDamageDiscard(world, player, decision, action);
+    case 'await-retaliation-action':
+      if (
+        action.kind !== 'discard-for-damage' &&
+        action.kind !== 'use-solo-jester' &&
+        action.kind !== 'accept-defeat'
+      )
+        throw new Error(`Action ${action.kind} is not valid during retaliation`);
+      return handleRetaliationAction(world, player, decision, action);
     case 'await-next-player-choice':
       if (action.kind !== 'choose-next-player')
         throw new Error(`Action ${action.kind} is not valid while awaiting a next-player choice`);
@@ -79,7 +77,7 @@ function handleTurnAction(
     if (!isYieldAllowedByStreak(world)) {
       throw new Error('Every other player yielded on their previous turn');
     }
-    return startRetaliation({ ...world, consecutiveYields: world.consecutiveYields + 1 });
+    return resolveRetaliation({ ...world, consecutiveYields: world.consecutiveYields + 1 });
   }
 
   const play = validatePlay(player, action);
@@ -95,15 +93,6 @@ function handleTurnAction(
       return resolveAfterPlay(resolveImmediateSuitPower(worldAfterPlay, play), play);
   }
   return assertNever(play);
-}
-
-function handleSoloRetaliation(
-  world: World,
-  player: Player,
-  action: UseSoloJester | DeclineSoloJester,
-): GameState {
-  if (action.kind === 'decline-solo-jester') return resolveRetaliation(world);
-  return startRetaliation(replaceSoloHand(world, player));
 }
 
 function replaceSoloHand(world: World, player: Player): World {
@@ -133,12 +122,24 @@ function handleNextPlayerChoice(world: World, action: ChooseNextPlayer): GameSta
   return enterTurn({ ...world, currentPlayer: action.targetPlayerId });
 }
 
-function handleDamageDiscard(
+function handleRetaliationAction(
   world: World,
   player: Player,
-  decision: Extract<Decision, { kind: 'await-damage-discard' }>,
-  action: DiscardForDamage,
+  decision: Extract<Decision, { kind: 'await-retaliation-action' }>,
+  action: DiscardForDamage | UseSoloJester | AcceptDefeat,
 ): GameState {
+  if (action.kind === 'use-solo-jester') return resolveRetaliation(replaceSoloHand(world, player));
+  if (action.kind === 'accept-defeat') {
+    if (!hasSoloJester(world) || canAbsorbDamage(player, decision.requiredDamage)) {
+      throw new Error('Defeat can only be accepted when a Jester is the only survival action');
+    }
+    return { kind: 'game-over', world, result: 'loss' };
+  }
+
+  if (decision.requiredDamage === 0) {
+    if (action.cardIds.length > 0) throw new Error('No cards need to be discarded for zero damage');
+    return enterTurn({ ...world, currentPlayer: nextPlayer(world) });
+  }
   const selected = selectedCardsFromHand(player.hand, action.cardIds);
   if (
     selected.reduce((total, card) => total + damageDiscardValue(card), 0) < decision.requiredDamage
@@ -170,7 +171,7 @@ export function canYield(state: Extract<GameState, { kind: 'active' }>): boolean
 export function canUseSoloJester(state: Extract<GameState, { kind: 'active' }>): boolean {
   return (
     (state.decision.kind === 'await-turn-action' ||
-      state.decision.kind === 'await-solo-retaliation') &&
+      state.decision.kind === 'await-retaliation-action') &&
     hasSoloJester(state.world)
   );
 }
@@ -382,32 +383,38 @@ function resolveAfterPlay(world: World, play: AttackPlay): GameState {
     return resolveEnemyDefeat(world, 'exact');
   }
 
-  return startRetaliation({ ...world, battle: { ...battle, damageDealt } });
+  return resolveRetaliation({ ...world, battle: { ...battle, damageDealt } });
 }
 
-function startRetaliation(world: World): GameState {
-  if (hasSoloJester(world)) {
-    return { kind: 'active', world, decision: { kind: 'await-solo-retaliation' } };
-  }
-  return resolveRetaliation(world);
+function canAbsorbDamage(player: Player, requiredDamage: number): boolean {
+  return player.hand.reduce((total, held) => total + damageDiscardValue(held), 0) >= requiredDamage;
+}
+
+export function canAcceptDefeat(state: Extract<GameState, { kind: 'active' }>): boolean {
+  if (state.decision.kind !== 'await-retaliation-action') return false;
+  const player = state.world.players.find(
+    (candidate) => candidate.id === state.world.currentPlayer,
+  );
+  if (!player) throw new Error('The current player is not in the game');
+  return hasSoloJester(state.world) && !canAbsorbDamage(player, state.decision.requiredDamage);
 }
 
 function resolveRetaliation(world: World): GameState {
   const requiredDamage = Math.max(0, enemyAttack(world.battle.enemy) - activeShield(world.battle));
-  if (requiredDamage === 0) {
+  if (requiredDamage === 0 && !hasSoloJester(world)) {
     return enterTurn({ ...world, currentPlayer: nextPlayer(world) });
   }
 
   const player = world.players.find((candidate) => candidate.id === world.currentPlayer);
   if (!player) throw new Error('The current player is not in the game');
-  if (requiredDamage > player.hand.reduce((total, held) => total + damageDiscardValue(held), 0)) {
+  if (!canAbsorbDamage(player, requiredDamage) && !hasSoloJester(world)) {
     return { kind: 'game-over', world, result: 'loss' };
   }
 
   return {
     kind: 'active',
     world,
-    decision: { kind: 'await-damage-discard', requiredDamage },
+    decision: { kind: 'await-retaliation-action', requiredDamage },
   };
 }
 

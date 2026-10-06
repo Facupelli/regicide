@@ -50,10 +50,10 @@ HTTP 400
 [Asserts]
 jsonpath "$.error.code" == "invalid-request"
 
-# This is valid protocol data, but the initial solo state cannot decline a Jester.
+# This is valid protocol data, but the initial solo state cannot accept defeat.
 POST {{base_url}}/games/{{gameId}}/actions
 Content-Type: application/json
-{"kind":"decline-solo-jester"}
+{"kind":"accept-defeat"}
 HTTP 409
 [Asserts]
 jsonpath "$.error.code" == "invalid-action"

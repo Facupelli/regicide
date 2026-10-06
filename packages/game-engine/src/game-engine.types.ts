@@ -71,9 +71,8 @@ export type SoloVictoryRank = 'gold' | 'silver' | 'bronze';
 
 export type Decision =
   | Readonly<{ kind: 'await-turn-action' }>
-  | Readonly<{ kind: 'await-damage-discard'; requiredDamage: number }>
-  | Readonly<{ kind: 'await-next-player-choice' }>
-  | Readonly<{ kind: 'await-solo-retaliation' }>;
+  | Readonly<{ kind: 'await-retaliation-action'; requiredDamage: number }>
+  | Readonly<{ kind: 'await-next-player-choice' }>;
 
 export type GameState =
   | Readonly<{ kind: 'active'; world: World; decision: Decision; result?: never }>
@@ -97,11 +96,11 @@ export type ChooseNextPlayer = Readonly<{
   targetPlayerId: string;
 }>;
 export type UseSoloJester = Readonly<{ kind: 'use-solo-jester'; playerId: string }>;
-export type DeclineSoloJester = Readonly<{ kind: 'decline-solo-jester'; playerId: string }>;
+export type AcceptDefeat = Readonly<{ kind: 'accept-defeat'; playerId: string }>;
 export type Action =
   | PlayCards
   | YieldTurn
   | DiscardForDamage
   | ChooseNextPlayer
   | UseSoloJester
-  | DeclineSoloJester;
+  | AcceptDefeat;

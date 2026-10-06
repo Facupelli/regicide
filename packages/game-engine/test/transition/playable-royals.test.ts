@@ -36,7 +36,7 @@ for (const { rank, value } of [
       after.decision,
       value === 20
         ? { kind: 'await-turn-action' }
-        : { kind: 'await-damage-discard', requiredDamage: 20 - value },
+        : { kind: 'await-retaliation-action', requiredDamage: 20 - value },
     );
     assert.deepEqual(handOf(after, 'alice'), reserve);
     assertCardsInExactlyOneZone(after, allCardIds(initial));
@@ -59,7 +59,7 @@ void test('a Royal Clubs attack doubles its full value', () => {
 
   assert.equal(after.world.battle.damageDealt, 30);
   assert.deepEqual(after.world.battle.plays, [{ kind: 'attack', cards: [queen] }]);
-  assert.deepEqual(after.decision, { kind: 'await-damage-discard', requiredDamage: 20 });
+  assert.deepEqual(after.decision, { kind: 'await-retaliation-action', requiredDamage: 20 });
   assertCardsInExactlyOneZone(after, allCardIds(initial));
 });
 
@@ -78,7 +78,7 @@ void test('matching enemy suit immunity blocks a Royal suit power but not its at
   });
 
   assert.equal(after.world.battle.damageDealt, 15);
-  assert.deepEqual(after.decision, { kind: 'await-damage-discard', requiredDamage: 20 });
+  assert.deepEqual(after.decision, { kind: 'await-retaliation-action', requiredDamage: 20 });
   assertCardsInExactlyOneZone(after, allCardIds(initial));
 });
 
@@ -102,7 +102,7 @@ for (const animalFirst of [false, true]) {
     assert.equal(after.world.battle.damageDealt, 22);
     assert.deepEqual(after.world.battle.plays, [{ kind: 'attack', cards }]);
     assert.deepEqual(handOf(after, 'alice'), reserve);
-    assert.deepEqual(after.decision, { kind: 'await-damage-discard', requiredDamage: 20 });
+    assert.deepEqual(after.decision, { kind: 'await-retaliation-action', requiredDamage: 20 });
     assertCardsInExactlyOneZone(after, allCardIds(initial));
   });
 }
@@ -169,6 +169,6 @@ void test('a defeated Royal drawn from the Tavern can be played and activate Hea
   assert.deepEqual(afterRoyal.world.tavern, [firstDiscard]);
   assert.deepEqual(afterRoyal.world.discard, []);
   assert.deepEqual(handOf(afterRoyal, 'alice'), [secondDiscard]);
-  assert.deepEqual(afterRoyal.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
+  assert.deepEqual(afterRoyal.decision, { kind: 'await-retaliation-action', requiredDamage: 10 });
   assertCardsInExactlyOneZone(afterRoyal, allCardIds(initial));
 });

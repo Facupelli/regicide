@@ -36,7 +36,7 @@ for (const { rank, attack, health, nextRank } of [
     });
     assert.equal(afterAttack.world.battle.damageDealt, health - 1);
     assert.deepEqual(afterAttack.decision, {
-      kind: 'await-damage-discard',
+      kind: 'await-retaliation-action',
       requiredDamage: attack,
     });
     assertCardsInExactlyOneZone(afterAttack, originalIds);
@@ -96,7 +96,7 @@ for (const [rank, nextRank, attack, health] of [
     assert.deepEqual(afterNextPlay.world.battle.enemy, nextEnemy);
     assert.equal(afterNextPlay.world.battle.damageDealt, 3);
     assert.deepEqual(afterNextPlay.decision, {
-      kind: 'await-damage-discard',
+      kind: 'await-retaliation-action',
       requiredDamage: attack,
     });
     assert.deepEqual(afterNextPlay.world.castle, [followingEnemy]);

@@ -13,6 +13,6 @@ export const PlayerCommandSchema = v.variant('kind', [
   }),
   v.strictObject({ kind: v.literal('choose-next-player'), targetPlayerId: IdentifierSchema }),
   v.strictObject({ kind: v.literal('use-solo-jester') }),
-  v.strictObject({ kind: v.literal('decline-solo-jester') }),
+  v.strictObject({ kind: v.literal('accept-defeat') }),
 ]);
 export type PlayerCommand = v.InferOutput<typeof PlayerCommandSchema>;

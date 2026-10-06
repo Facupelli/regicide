@@ -1,4 +1,4 @@
-import type { GameView } from '@regicide/protocol';
+import type { TableProps } from './table.types.ts';
 import { PlayingCard } from '../ui/PlayingCard.tsx';
 
 function ResourcePile({
@@ -6,17 +6,20 @@ function ResourcePile({
   count,
   jester = false,
   className,
+  usable = false,
+  actionPending = false,
+  onUse,
 }: {
   label: string;
   count: number;
   jester?: boolean;
   className: string;
+  usable?: boolean;
+  actionPending?: boolean;
+  onUse?: () => void;
 }) {
-  return (
-    <div
-      className={`flex min-w-0 flex-col items-center justify-center gap-0.5 text-center ${className}`}
-      aria-label={`${label}: ${count} ${jester ? 'remaining' : 'cards'}`}
-    >
+  const contents = (
+    <>
       <div className="relative">
         <PlayingCard
           variant="pile"
@@ -31,11 +34,44 @@ function ResourcePile({
         </strong>
       </div>
       <span className="mt-1 text-xs text-muted-foreground">{label}</span>
+    </>
+  );
+  const classes = `flex min-w-0 flex-col items-center justify-center gap-0.5 text-center ${className}`;
+  if (jester) {
+    return (
+      <button
+        type="button"
+        className={`${classes} rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-card-selected enabled:cursor-pointer enabled:hover:brightness-125 disabled:cursor-not-allowed`}
+        aria-label={
+          usable
+            ? `Use Solo Jester (${count} remaining)`
+            : `Solo Jesters: ${count} remaining, unavailable`
+        }
+        disabled={!usable || actionPending}
+        onClick={onUse}
+      >
+        {contents}
+        {!usable && <span className="text-xs text-muted-foreground">Unavailable</span>}
+      </button>
+    );
+  }
+  return (
+    <div className={classes} aria-label={`${label}: ${count} cards`}>
+      {contents}
     </div>
   );
 }
 
-export function ResourceArea({ view, hasOpponents }: { view: GameView; hasOpponents: boolean }) {
+export function ResourceArea({
+  view,
+  hasOpponents,
+  actionPending,
+  onAction,
+}: Pick<TableProps, 'view' | 'actionPending' | 'onAction'> & { hasOpponents: boolean }) {
+  const usable =
+    view.status === 'active' &&
+    (view.interaction.kind === 'turn' || view.interaction.kind === 'damage-discard') &&
+    view.interaction.canUseSoloJester;
   return (
     <section className="contents" aria-label="Game resources">
       <ResourcePile
@@ -58,6 +94,9 @@ export function ResourceArea({ view, hasOpponents }: { view: GameView; hasOppone
           label="Solo Jesters"
           count={view.soloJestersRemaining}
           jester
+          usable={usable}
+          actionPending={actionPending}
+          onUse={() => onAction({ kind: 'use-solo-jester' })}
           className={`col-start-3 lg:row-start-3 ${hasOpponents ? 'row-start-5' : 'row-start-4'}`}
         />
       )}

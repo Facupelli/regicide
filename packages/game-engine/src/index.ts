@@ -1,5 +1,6 @@
 export {
   battleStats,
+  canAcceptDefeat,
   canUseSoloJester,
   canYield,
   damageDiscardValue,

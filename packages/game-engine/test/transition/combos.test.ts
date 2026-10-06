@@ -80,7 +80,7 @@ void test('a three-suit combo applies the full attack value to draw, shield, and
   assert.deepEqual(after.world.tavern, []);
   assert.deepEqual(after.world.battle.plays, [{ kind: 'attack', cards }]);
   assert.equal(after.world.battle.damageDealt, 18);
-  assert.deepEqual(after.decision, { kind: 'await-damage-discard', requiredDamage: 6 });
+  assert.deepEqual(after.decision, { kind: 'await-retaliation-action', requiredDamage: 6 });
   assertCardsInExactlyOneZone(after, allCardIds(initial));
 });
 
@@ -150,7 +150,7 @@ for (const immuneSuit of suits) {
     );
     assert.equal(after.world.battle.damageDealt, immuneSuit === 'clubs' ? 8 : 16);
     assert.deepEqual(after.decision, {
-      kind: 'await-damage-discard',
+      kind: 'await-retaliation-action',
       requiredDamage: immuneSuit === 'spades' ? 10 : 2,
     });
     assert.deepEqual(after.world.battle.plays, [{ kind: 'attack', cards }]);

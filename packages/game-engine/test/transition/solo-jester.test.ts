@@ -9,6 +9,7 @@ import {
 } from '../support/assertions.ts';
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
+import { canAcceptDefeat, canUseSoloJester } from '../../src/game-engine.ts';
 
 void test('Step 1 solo Jester discards the entire hand and refills to 8 without changing the battle', () => {
   const oldHand = [makeCard(2, 'clubs'), makeCard(3, 'hearts')];
@@ -34,7 +35,7 @@ void test('Step 1 solo Jester discards the entire hand and refills to 8 without 
   assert.deepEqual(after.world.battle, initial.world.battle);
   assert.equal(after.world.rngState, initial.world.rngState);
   assertCardsInExactlyOneZone(after, allCardIds(initial));
-  assertRejectedWithoutMutation(after, { kind: 'decline-solo-jester', playerId: 'alice' });
+  assertRejectedWithoutMutation(after, { kind: 'accept-defeat', playerId: 'alice' });
 });
 
 void test('Step 1 permits consecutive uses, including a partial refill, but rejects a third use', () => {
@@ -78,6 +79,37 @@ void test('an empty Tavern still consumes a use; turn-entry loss follows when no
   assertCardsInExactlyOneZone(second, allCardIds(initial));
 });
 
+void test('survivable solo retaliation offers discard and Jester as alternatives without a decline action', () => {
+  const attack = makeCard(2, 'clubs');
+  const reserve = makeCard(10, 'spades');
+  const initial = makeGameState({
+    players: [{ id: 'alice', hand: [attack, reserve] }],
+    currentPlayer: 'alice',
+    soloJestersUsed: 0,
+    enemy: makeRoyal('jack', 'diamonds'),
+  });
+  const retaliation = transitionWithoutMutation(initial, {
+    kind: 'play-cards',
+    playerId: 'alice',
+    cardIds: [attack.id],
+  });
+  assert.equal(retaliation.kind, 'active');
+  assert.deepEqual(retaliation.decision, { kind: 'await-retaliation-action', requiredDamage: 10 });
+  if (retaliation.kind !== 'active') return;
+  assert.equal(canUseSoloJester(retaliation), true);
+  assert.equal(canAcceptDefeat(retaliation), false);
+  const nextTurn = transitionWithoutMutation(retaliation, {
+    kind: 'discard-for-damage',
+    playerId: 'alice',
+    cardIds: [reserve.id],
+  });
+  assert.equal(nextTurn.kind, 'active');
+  assert.deepEqual(nextTurn.decision, { kind: 'await-turn-action' });
+  assert.equal(nextTurn.world.soloJestersUsed, 0);
+  assert.deepEqual(nextTurn.world.discard, [reserve]);
+  assertCardsInExactlyOneZone(nextTurn, allCardIds(initial));
+});
+
 void test('a solo Jester can avert an otherwise fatal retaliation before damage is checked', () => {
   const attack = makeCard(2, 'spades');
   const weak = makeCard(2, 'clubs');
@@ -95,36 +127,45 @@ void test('a solo Jester can avert an otherwise fatal retaliation before damage 
     cardIds: [attack.id],
   });
   assert.equal(beforeRetaliation.kind, 'active');
-  assert.deepEqual(beforeRetaliation.decision, { kind: 'await-solo-retaliation' });
+  assert.deepEqual(beforeRetaliation.decision, {
+    kind: 'await-retaliation-action',
+    requiredDamage: 8,
+  });
+  if (beforeRetaliation.kind !== 'active') return;
+  assert.equal(canAcceptDefeat(beforeRetaliation), true);
+  assert.equal(canUseSoloJester(beforeRetaliation), true);
   assertRejectedWithoutMutation(beforeRetaliation, {
     kind: 'discard-for-damage',
     playerId: 'alice',
     cardIds: [weak.id],
   });
-  const declined = transitionWithoutMutation(beforeRetaliation, {
-    kind: 'decline-solo-jester',
+  const accepted = transitionWithoutMutation(beforeRetaliation, {
+    kind: 'accept-defeat',
     playerId: 'alice',
   });
-  assert.equal(declined.kind, 'game-over');
-  assert.equal(declined.result, 'loss');
+  assert.equal(accepted.kind, 'game-over');
+  assert.equal(accepted.result, 'loss');
 
   const afterUse = transitionWithoutMutation(beforeRetaliation, {
     kind: 'use-solo-jester',
     playerId: 'alice',
   });
   assert.equal(afterUse.kind, 'active');
-  assert.deepEqual(afterUse.decision, { kind: 'await-solo-retaliation' });
+  assert.deepEqual(afterUse.decision, { kind: 'await-retaliation-action', requiredDamage: 8 });
   assert.equal(afterUse.world.soloJestersUsed, 1);
   assert.deepEqual(handOf(afterUse, 'alice'), [rescue]);
   assert.deepEqual(afterUse.world.discard, [weak]);
-
-  const afterDecline = transitionWithoutMutation(afterUse, {
-    kind: 'decline-solo-jester',
+  if (afterUse.kind !== 'active') return;
+  assert.equal(canAcceptDefeat(afterUse), false);
+  assert.equal(canUseSoloJester(afterUse), true);
+  const afterDiscard = transitionWithoutMutation(afterUse, {
+    kind: 'discard-for-damage',
     playerId: 'alice',
+    cardIds: [rescue.id],
   });
-  assert.equal(afterDecline.kind, 'active');
-  assert.deepEqual(afterDecline.decision, { kind: 'await-damage-discard', requiredDamage: 8 });
-  assert.equal(afterDecline.world.soloJestersUsed, 1);
+  assert.equal(afterDiscard.kind, 'active');
+  assert.deepEqual(afterDiscard.decision, { kind: 'await-turn-action' });
+  assert.equal(afterDiscard.world.soloJestersUsed, 1);
 });
 
 void test('the solo Step 4 window also exists when shields reduce damage to zero', () => {
@@ -144,22 +185,31 @@ void test('the solo Step 4 window also exists when shields reduce damage to zero
     cardIds: [attack.id],
   });
   assert.equal(beforeRetaliation.kind, 'active');
-  assert.deepEqual(beforeRetaliation.decision, { kind: 'await-solo-retaliation' });
+  assert.deepEqual(beforeRetaliation.decision, {
+    kind: 'await-retaliation-action',
+    requiredDamage: 0,
+  });
+  assertRejectedWithoutMutation(beforeRetaliation, {
+    kind: 'discard-for-damage',
+    playerId: 'alice',
+    cardIds: [oldHand.id],
+  });
 
   const afterUse = transitionWithoutMutation(beforeRetaliation, {
     kind: 'use-solo-jester',
     playerId: 'alice',
   });
-  assert.deepEqual(afterUse.decision, { kind: 'await-solo-retaliation' });
+  assert.deepEqual(afterUse.decision, { kind: 'await-retaliation-action', requiredDamage: 0 });
   assert.deepEqual(handOf(afterUse, 'alice'), [refill]);
-  const afterDecline = transitionWithoutMutation(afterUse, {
-    kind: 'decline-solo-jester',
+  const continued = transitionWithoutMutation(afterUse, {
+    kind: 'discard-for-damage',
     playerId: 'alice',
+    cardIds: [],
   });
-  assert.equal(afterDecline.kind, 'active');
-  assert.deepEqual(afterDecline.decision, { kind: 'await-turn-action' });
-  assert.equal(afterDecline.world.soloJestersUsed, 1);
-  assertCardsInExactlyOneZone(afterDecline, allCardIds(initial));
+  assert.equal(continued.kind, 'active');
+  assert.deepEqual(continued.decision, { kind: 'await-turn-action' });
+  assert.equal(continued.world.soloJestersUsed, 1);
+  assertCardsInExactlyOneZone(continued, allCardIds(initial));
 });
 
 void test('Step 4 permits consecutive uses and resolves retaliation automatically after the last use', () => {
@@ -182,16 +232,42 @@ void test('Step 4 permits consecutive uses and resolves retaliation automaticall
     kind: 'use-solo-jester',
     playerId: 'alice',
   });
-  assert.deepEqual(first.decision, { kind: 'await-solo-retaliation' });
+  assert.deepEqual(first.decision, { kind: 'await-retaliation-action', requiredDamage: 8 });
   const second = transitionWithoutMutation(first, { kind: 'use-solo-jester', playerId: 'alice' });
 
   assert.equal(second.kind, 'active');
-  assert.deepEqual(second.decision, { kind: 'await-damage-discard', requiredDamage: 8 });
+  assert.deepEqual(second.decision, { kind: 'await-retaliation-action', requiredDamage: 8 });
   assert.equal(second.world.soloJestersUsed, 2);
   assert.deepEqual(handOf(second, 'alice'), [tavern[8]]);
   assert.deepEqual(second.world.discard, [oldHand, ...tavern.slice(0, 8)]);
   assertCardsInExactlyOneZone(second, allCardIds(initial));
   assertRejectedWithoutMutation(second, { kind: 'use-solo-jester', playerId: 'alice' });
+});
+
+void test('a last Jester refill that still cannot absorb damage ends in defeat', () => {
+  const attack = makeCard(2, 'clubs');
+  const weak = makeCard(2, 'hearts');
+  const initial = makeGameState({
+    players: [{ id: 'alice', hand: [attack, weak] }],
+    currentPlayer: 'alice',
+    soloJestersUsed: 1,
+    enemy: makeRoyal('jack', 'spades'),
+    tavern: [makeCard(3, 'hearts')],
+  });
+  const retaliation = transitionWithoutMutation(initial, {
+    kind: 'play-cards',
+    playerId: 'alice',
+    cardIds: [attack.id],
+  });
+  assert.equal(retaliation.kind, 'active');
+  const lost = transitionWithoutMutation(retaliation, {
+    kind: 'use-solo-jester',
+    playerId: 'alice',
+  });
+  assert.equal(lost.kind, 'game-over');
+  assert.equal(lost.result, 'loss');
+  assert.equal(lost.world.soloJestersUsed, 2);
+  assertCardsInExactlyOneZone(lost, allCardIds(initial));
 });
 
 void test('an empty-handed solo player can reach Step 1 while a Jester use remains', () => {
@@ -210,8 +286,9 @@ void test('an empty-handed solo player can reach Step 1 while a Jester use remai
     cardIds: [attack.id],
   });
   const nextTurn = transitionWithoutMutation(beforeRetaliation, {
-    kind: 'decline-solo-jester',
+    kind: 'discard-for-damage',
     playerId: 'alice',
+    cardIds: [],
   });
   assert.equal(nextTurn.kind, 'active');
   assert.deepEqual(nextTurn.decision, { kind: 'await-turn-action' });
@@ -273,15 +350,14 @@ void test('solo Jesters cannot be used in multiplayer or outside the two windows
     enemy: makeRoyal('jack', 'hearts'),
   });
   assertRejectedWithoutMutation(multiplayer, { kind: 'use-solo-jester', playerId: 'alice' });
-  assertRejectedWithoutMutation(multiplayer, { kind: 'decline-solo-jester', playerId: 'alice' });
+  assertRejectedWithoutMutation(multiplayer, { kind: 'accept-defeat', playerId: 'alice' });
   const solo = makeGameState({
     players: [{ id: 'alice', hand: [makeCard(2, 'clubs')] }],
     currentPlayer: 'alice',
     soloJestersUsed: 0,
     enemy: makeRoyal('jack', 'hearts'),
-    decision: { kind: 'await-damage-discard', requiredDamage: 2 },
+    decision: { kind: 'await-retaliation-action', requiredDamage: 2 },
   });
-  assertRejectedWithoutMutation(solo, { kind: 'use-solo-jester', playerId: 'alice' });
-  assertRejectedWithoutMutation(solo, { kind: 'decline-solo-jester', playerId: 'alice' });
+  assertRejectedWithoutMutation(solo, { kind: 'accept-defeat', playerId: 'alice' });
   assertRejectedWithoutMutation(solo, { kind: 'use-solo-jester', playerId: 'bob' });
 });

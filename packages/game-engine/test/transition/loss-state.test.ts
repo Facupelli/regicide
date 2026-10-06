@@ -49,7 +49,7 @@ void test('unsurvivable retaliation ends the game without losing cards or mutati
   });
 });
 
-void test('solo retaliation with insufficient total hand value ends in loss without a discard decision', () => {
+void test('solo retaliation with an insufficient hand permits explicitly accepting defeat', () => {
   const attack = makeCard(2, 'clubs');
   const weak = makeCard(3, 'hearts');
   const state = makeGameState({
@@ -64,10 +64,10 @@ void test('solo retaliation with insufficient total hand value ends in loss with
     cardIds: [attack.id],
   });
   assert.equal(retaliation.kind, 'active');
-  assert.deepEqual(retaliation.decision, { kind: 'await-solo-retaliation' });
+  assert.deepEqual(retaliation.decision, { kind: 'await-retaliation-action', requiredDamage: 10 });
 
   const lost = transitionWithBattle(retaliation, {
-    kind: 'decline-solo-jester',
+    kind: 'accept-defeat',
     playerId: 'alice',
   });
   assert.equal(lost.kind, 'game-over');
@@ -96,7 +96,7 @@ void test('a sufficient discard can empty the hand and still advance to a playab
     cardIds: [attack.id],
   });
   assert.equal(retaliation.kind, 'active');
-  assert.deepEqual(retaliation.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
+  assert.deepEqual(retaliation.decision, { kind: 'await-retaliation-action', requiredDamage: 10 });
 
   const after = transitionWithBattle(retaliation, {
     kind: 'discard-for-damage',
@@ -147,7 +147,7 @@ void test('turn entry after a sufficient damage discard also checks for loss', (
     currentPlayer: 'alice',
     enemy: makeRoyal('jack', 'diamonds'),
     consecutiveYields: 1,
-    decision: { kind: 'await-damage-discard', requiredDamage: 10 },
+    decision: { kind: 'await-retaliation-action', requiredDamage: 10 },
   });
   const lost = transitionWithBattle(state, {
     kind: 'discard-for-damage',

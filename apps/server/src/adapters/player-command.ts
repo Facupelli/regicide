@@ -13,8 +13,8 @@ export function toEngineAction(command: PlayerCommand, playerId: string): Action
       return { kind: 'choose-next-player', playerId, targetPlayerId: command.targetPlayerId };
     case 'use-solo-jester':
       return { kind: 'use-solo-jester', playerId };
-    case 'decline-solo-jester':
-      return { kind: 'decline-solo-jester', playerId };
+    case 'accept-defeat':
+      return { kind: 'accept-defeat', playerId };
   }
   return assertNever(command);
 }

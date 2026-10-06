@@ -24,7 +24,7 @@ export function GameTable(props: TableProps) {
         playSelection={evaluatePlaySelection(view.viewer.hand, selectedCardIds)}
         selectedDamage={selectedDamageValue(view.viewer.hand, selectedCardIds)}
       />
-      <ResourceArea view={view} hasOpponents={hasOpponents} />
+      <ResourceArea {...props} hasOpponents={hasOpponents} />
       <PlayerHand {...props} hasOpponents={hasOpponents} />
     </div>
   );

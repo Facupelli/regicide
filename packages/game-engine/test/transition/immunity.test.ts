@@ -41,7 +41,7 @@ for (const jesterPlayed of [false, true]) {
     // Earlier Clubs damage is never recalculated when immunity is cancelled.
     assert.equal(afterPlay.world.battle.damageDealt, jesterPlayed ? 12 : 7);
     assert.deepEqual(handOf(afterPlay, 'alice'), [tenHearts]);
-    assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
+    assert.deepEqual(afterPlay.decision, { kind: 'await-retaliation-action', requiredDamage: 10 });
     assertCardsInExactlyOneZone(afterPlay, originalIds);
   });
 
@@ -76,7 +76,7 @@ for (const jesterPlayed of [false, true]) {
       { kind: 'attack', cards: [fourDiamonds] },
     ]);
     assert.equal(afterPlay.world.battle.damageDealt, 4);
-    assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
+    assert.deepEqual(afterPlay.decision, { kind: 'await-retaliation-action', requiredDamage: 10 });
     assertCardsInExactlyOneZone(afterPlay, originalIds);
   });
 
@@ -111,7 +111,7 @@ for (const jesterPlayed of [false, true]) {
     assert.equal(afterPlay.world.battle.damageDealt, 7);
     assert.deepEqual(handOf(afterPlay, 'alice'), [tenHearts]);
     assert.deepEqual(afterPlay.decision, {
-      kind: 'await-damage-discard',
+      kind: 'await-retaliation-action',
       requiredDamage: jesterPlayed ? 3 : 10,
     });
     assertCardsInExactlyOneZone(afterPlay, originalIds);
@@ -144,6 +144,6 @@ void test('non-matching Clubs and previously played Spades keep their powers aga
     { kind: 'attack', cards: [fiveClubs] },
   ]);
   assert.equal(afterPlay.world.battle.damageDealt, 14);
-  assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 11 });
+  assert.deepEqual(afterPlay.decision, { kind: 'await-retaliation-action', requiredDamage: 11 });
   assertCardsInExactlyOneZone(afterPlay, originalIds);
 });

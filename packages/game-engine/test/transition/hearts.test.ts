@@ -50,7 +50,7 @@ void test('Hearts shuffle discard, heal attack value onto the bottom of Tavern, 
   assert.deepEqual(handOf(afterPlay, 'alice'), [tenClubs]);
   assert.deepEqual(afterPlay.world.battle.plays, [{ kind: 'attack', cards: [twoHearts] }]);
   assert.equal(afterPlay.world.battle.damageDealt, 2);
-  assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
+  assert.deepEqual(afterPlay.decision, { kind: 'await-retaliation-action', requiredDamage: 10 });
   assertCardsInExactlyOneZone(afterPlay, originalIds);
 });
 
@@ -87,7 +87,7 @@ void test('Hearts heal all available cards if discard is smaller than attack val
   assert.deepEqual(afterPlay.world.discard, []);
   assert.deepEqual(afterPlay.world.battle.plays, [{ kind: 'attack', cards: [sixHearts] }]);
   assert.equal(afterPlay.world.battle.damageDealt, 6);
-  assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
+  assert.deepEqual(afterPlay.decision, { kind: 'await-retaliation-action', requiredDamage: 10 });
   assertCardsInExactlyOneZone(afterPlay, originalIds);
 });
 
@@ -116,7 +116,7 @@ void test('Hearts with empty discard still deals damage to a Queen without advan
   assert.equal(afterPlay.world.rngState, 1);
   assert.deepEqual(afterPlay.world.battle.plays, [{ kind: 'attack', cards: [twoHearts] }]);
   assert.equal(afterPlay.world.battle.damageDealt, 2);
-  assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 15 });
+  assert.deepEqual(afterPlay.decision, { kind: 'await-retaliation-action', requiredDamage: 15 });
   assertCardsInExactlyOneZone(afterPlay, originalIds);
 });
 
@@ -226,7 +226,7 @@ for (const jesterPlayed of [false, true]) {
       { kind: 'attack', cards: [twoHearts] },
     ]);
     assert.equal(afterPlay.world.battle.damageDealt, 2);
-    assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
+    assert.deepEqual(afterPlay.decision, { kind: 'await-retaliation-action', requiredDamage: 10 });
     assertCardsInExactlyOneZone(afterPlay, originalIds);
   });
 }

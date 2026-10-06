@@ -123,7 +123,7 @@ void test('every action maps to the public engine intention, including rejected 
       [['discard', '--cards', 'bogus'], 'discard-for-damage'],
       [['yield'], 'yield'],
       [['solo-jester'], 'use-solo-jester'],
-      [['decline-solo-jester'], 'decline-solo-jester'],
+      [['accept-defeat'], 'accept-defeat'],
       [['choose-player', '--target', 'alice'], 'choose-next-player'],
     ] as const) {
       const result = command(dir, ...args);
@@ -137,7 +137,7 @@ void test('every action maps to the public engine intention, including rejected 
         'discard-for-damage',
         'yield',
         'use-solo-jester',
-        'decline-solo-jester',
+        'accept-defeat',
         'choose-next-player',
       ],
     );
@@ -164,7 +164,7 @@ void test('usage failures and per-command help are structured on stdout with exi
       'discard',
       'yield',
       'solo-jester',
-      'decline-solo-jester',
+      'accept-defeat',
       'choose-player',
       'snapshot',
       'trace',

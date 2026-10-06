@@ -1,5 +1,6 @@
 import {
   battleStats,
+  canAcceptDefeat,
   canUseSoloJester,
   canYield,
   soloVictoryRank,
@@ -103,15 +104,18 @@ function toInteraction(state: ActiveState, viewerId: string): Interaction {
   switch (state.decision.kind) {
     case 'await-turn-action':
       return { kind: 'turn', canYield: canYield(state), canUseSoloJester: canUseSoloJester(state) };
-    case 'await-damage-discard':
-      return { kind: 'damage-discard', requiredDamage: state.decision.requiredDamage };
+    case 'await-retaliation-action':
+      return {
+        kind: 'damage-discard',
+        requiredDamage: state.decision.requiredDamage,
+        canUseSoloJester: canUseSoloJester(state),
+        canAcceptDefeat: canAcceptDefeat(state),
+      };
     case 'await-next-player-choice':
       return {
         kind: 'choose-next-player',
         eligiblePlayerIds: state.world.players.map((player) => player.id),
       };
-    case 'await-solo-retaliation':
-      return { kind: 'solo-retaliation', canUseSoloJester: canUseSoloJester(state) };
   }
   return assertNever(state.decision);
 }

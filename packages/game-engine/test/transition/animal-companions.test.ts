@@ -36,7 +36,7 @@ void test('an Animal Companion alone attacks for 1 and activates its suit power'
   assert.deepEqual(handOf(after, 'alice'), [ten]);
   assert.deepEqual(after.world.battle.plays, [{ kind: 'attack', cards: [heart] }]);
   assert.equal(after.world.battle.damageDealt, 1);
-  assert.deepEqual(after.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
+  assert.deepEqual(after.decision, { kind: 'await-retaliation-action', requiredDamage: 10 });
   assertCardsInExactlyOneZone(after, allCardIds(initial));
 });
 
@@ -83,7 +83,7 @@ void test('8 Diamonds paired with Animal Clubs draws 9 and deals 18 damage', () 
   assert.deepEqual(after.world.tavern, [tavern[9]]);
   assert.deepEqual(after.world.battle.plays, [{ kind: 'attack', cards: [eight, club] }]);
   assert.equal(after.world.battle.damageDealt, 18);
-  assert.deepEqual(after.decision, { kind: 'await-damage-discard', requiredDamage: 15 });
+  assert.deepEqual(after.decision, { kind: 'await-retaliation-action', requiredDamage: 15 });
   assertCardsInExactlyOneZone(after, allCardIds(initial));
 });
 
@@ -111,7 +111,7 @@ void test('two Animal Companions can pair and both powers use their combined val
   );
   assert.equal(after.world.battle.damageDealt, 2);
   assert.deepEqual(after.world.battle.plays, [{ kind: 'attack', cards: [heart, spade] }]);
-  assert.deepEqual(after.decision, { kind: 'await-damage-discard', requiredDamage: 8 });
+  assert.deepEqual(after.decision, { kind: 'await-retaliation-action', requiredDamage: 8 });
   assertCardsInExactlyOneZone(after, allCardIds(initial));
 });
 
@@ -209,7 +209,7 @@ void test('a paired Spade shields by total attack value on subsequent turns, inc
     playerId: 'alice',
     cardIds: [spade.id, four.id],
   });
-  assert.deepEqual(afterPair.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
+  assert.deepEqual(afterPair.decision, { kind: 'await-retaliation-action', requiredDamage: 10 });
   const afterDiscard = transitionWithBattle(afterPair, {
     kind: 'discard-for-damage',
     playerId: 'alice',
@@ -236,7 +236,7 @@ void test('a paired Spade shields by total attack value on subsequent turns, inc
     { kind: 'attack', cards: [two] },
   ]);
   assert.equal(afterNextPlay.world.battle.damageDealt, 7);
-  assert.deepEqual(afterNextPlay.decision, { kind: 'await-damage-discard', requiredDamage: 5 });
+  assert.deepEqual(afterNextPlay.decision, { kind: 'await-retaliation-action', requiredDamage: 5 });
   assertCardsInExactlyOneZone(afterNextPlay, allCardIds(initial));
 });
 
