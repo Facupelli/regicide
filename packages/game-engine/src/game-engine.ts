@@ -82,8 +82,8 @@ function validatePlay(player: Player, action: PlayCards): NumberCard {
 }
 
 function validateSupportedBattle(battle: Battle): void {
-  if (battle.enemy.rank !== 'jack' || battle.enemy.suit !== 'hearts') {
-    throw new Error('Only Jack of Hearts battles are supported');
+  if (battle.enemy.rank !== 'jack') {
+    throw new Error('Only Jack battles are supported');
   }
 }
 
@@ -100,7 +100,9 @@ function applyPlay(world: World, player: Player, card: NumberCard): World {
 }
 
 function resolveImmediateSuitPower(world: World, card: NumberCard): World {
-  return card.suit === 'diamonds' ? resolveDiamondDraw(world, attackValue(card)) : world;
+  return card.suit === 'diamonds' && suitPowerActive(world.battle, card)
+    ? resolveDiamondDraw(world, attackValue(card))
+    : world;
 }
 
 function resolveDiamondDraw(world: World, drawCount: number): World {
@@ -137,7 +139,7 @@ function maxHandSize(playerCount: number): number {
 
 function resolveAfterPlay(world: World, card: NumberCard): GameState {
   const { battle } = world;
-  const damageDealt = battle.damageDealt + attackDamage(card);
+  const damageDealt = battle.damageDealt + attackDamage(battle, card);
   if (damageDealt > enemyHealth(battle.enemy)) {
     return resolveEnemyDefeat(world, 'overkill');
   }
@@ -209,14 +211,19 @@ function attackValue(card: NumberCard): number {
   return card.rank;
 }
 
-function attackDamage(card: NumberCard): number {
+function attackDamage(battle: Battle, card: NumberCard): number {
   const value = attackValue(card);
-  return card.suit === 'clubs' ? value * 2 : value;
+  return card.suit === 'clubs' && suitPowerActive(battle, card) ? value * 2 : value;
+}
+
+function suitPowerActive(battle: Battle, card: Card): boolean {
+  return card.suit !== battle.enemy.suit || battle.immunityCancelled;
 }
 
 function activeShield(battle: Battle): number {
   return battle.playedCards.reduce(
-    (total, card) => total + (card.suit === 'spades' ? cardValue(card) : 0),
+    (total, card) =>
+      total + (card.suit === 'spades' && suitPowerActive(battle, card) ? cardValue(card) : 0),
     0,
   );
 }
