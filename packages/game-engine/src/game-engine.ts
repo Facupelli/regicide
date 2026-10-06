@@ -25,13 +25,18 @@ import { maxHandSize } from './player-count-rules.ts';
 import { shuffle } from './shuffle.ts';
 
 export function transition(state: GameState, action: Action): GameState {
-  if (state.kind === 'game-over') throw new Error('The game is over');
+  if (state.kind === 'game-over') {
+    throw new Error('The game is over');
+  }
+
   const { world, decision } = state;
   if (action.playerId !== world.currentPlayer) {
     throw new Error('Only the current player can act');
   }
   const player = world.players.find((candidate) => candidate.id === world.currentPlayer);
-  if (!player) throw new Error('The current player is not in the game');
+  if (!player) {
+    throw new Error('The current player is not in the game');
+  }
 
   switch (decision.kind) {
     case 'await-turn-action':
@@ -40,18 +45,21 @@ export function transition(state: GameState, action: Action): GameState {
         action.kind !== 'yield' &&
         action.kind !== 'use-solo-jester'
       )
-        throw new Error('Not awaiting a turn action');
+        throw new Error(`Action ${action.kind} is not valid while awaiting a turn action`);
       return handleTurnAction(world, player, action);
     case 'await-solo-retaliation':
       if (action.kind !== 'use-solo-jester' && action.kind !== 'decline-solo-jester')
-        throw new Error('Not awaiting a solo retaliation choice');
+        throw new Error(
+          `Action ${action.kind} is not valid while awaiting a solo retaliation choice`,
+        );
       return handleSoloRetaliation(world, player, action);
     case 'await-damage-discard':
-      if (action.kind !== 'discard-for-damage') throw new Error('Not awaiting a damage discard');
+      if (action.kind !== 'discard-for-damage')
+        throw new Error(`Action ${action.kind} is not valid while awaiting a damage discard`);
       return handleDamageDiscard(world, player, decision, action);
     case 'await-next-player-choice':
       if (action.kind !== 'choose-next-player')
-        throw new Error('Not awaiting a next player choice');
+        throw new Error(`Action ${action.kind} is not valid while awaiting a next-player choice`);
       return handleNextPlayerChoice(world, action);
   }
 
@@ -66,6 +74,7 @@ function handleTurnAction(
   if (action.kind === 'use-solo-jester') {
     return enterTurn(replaceSoloHand(world, player));
   }
+
   if (action.kind === 'yield') {
     if (!canYield(world)) {
       throw new Error('Every other player yielded on their previous turn');

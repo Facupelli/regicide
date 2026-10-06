@@ -28,7 +28,3 @@ Use them as the source of truth when implementing or changing game behavior.
 Use `pnpm` from the repository root.
 
 Do not create npm or yarn lockfiles inside workspace packages.
-
-## Game engine
-
-When modifying `packages/game-engine`, read and follow it's AGENTS.md before making changes.
