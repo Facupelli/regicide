@@ -1,101 +1,109 @@
 import { useState } from 'react';
-import heroImg from './assets/hero.png';
-import reactLogo from './assets/react.svg';
-import viteLogo from './assets/vite.svg';
-import './App.css';
+import type { Card, GameView } from '@regicide/protocol';
+import { ApiClientError, createGame } from './api/games.ts';
+
+type ScreenState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'loaded'; gameId: string; view: GameView }
+  | { status: 'error'; message: string };
 
 function App() {
-  const [count, setCount] = useState(0);
+  const [screen, setScreen] = useState<ScreenState>({ status: 'idle' });
+
+  async function startGame() {
+    if (screen.status === 'loading') return;
+    setScreen({ status: 'loading' });
+    try {
+      const { gameId, view } = await createGame();
+      setScreen({ status: 'loaded', gameId, view });
+    } catch (error) {
+      const message =
+        error instanceof ApiClientError
+          ? `${error.message} (${error.code}, HTTP ${error.status})`
+          : 'Could not start a game';
+      setScreen({ status: 'error', message });
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button type="button" className="counter" onClick={() => setCount((count) => count + 1)}>
-          Count is {count}
-        </button>
-      </section>
+    <main>
+      <h1>Regicide</h1>
+      {screen.status === 'loaded' ? (
+        <GameDetails gameId={screen.gameId} view={screen.view} />
+      ) : (
+        <>
+          <button type="button" onClick={startGame} disabled={screen.status === 'loading'}>
+            {screen.status === 'loading' ? 'Starting game...' : 'Start Solo Game'}
+          </button>
+          {screen.status === 'error' && <p role="alert">{screen.message}</p>}
+        </>
+      )}
+    </main>
+  );
+}
 
-      <div className="ticks"></div>
+function cardLabel(card: Card): string {
+  switch (card.kind) {
+    case 'number':
+    case 'royal':
+      return `${card.rank} of ${card.suit}`;
+    case 'animal':
+      return `Animal Companion of ${card.suit}`;
+    case 'jester':
+      return 'Jester';
+  }
+}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg className="button-icon" role="presentation" aria-hidden="true">
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg className="button-icon" role="presentation" aria-hidden="true">
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg className="button-icon" role="presentation" aria-hidden="true">
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg className="button-icon" role="presentation" aria-hidden="true">
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+function GameDetails({ gameId, view }: { gameId: string; view: GameView }) {
+  return (
+    <section aria-label="Game details">
+      <p>
+        <strong>Game ID:</strong> <code>{gameId}</code>
+      </p>
+      {view.status === 'active' ? (
+        <>
+          <h2>Current enemy: {cardLabel(view.battle.enemy)}</h2>
+          <dl>
+            <dt>Enemy rank</dt>
+            <dd>{view.battle.enemy.rank}</dd>
+            <dt>Enemy suit</dt>
+            <dd>{view.battle.enemy.suit}</dd>
+            <dt>Damage dealt / enemy health</dt>
+            <dd>
+              {view.battle.damageDealt} / {view.battle.enemyHealth}
+            </dd>
+            <dt>Enemy attack</dt>
+            <dd>{view.battle.enemyAttack}</dd>
+            <dt>Shield</dt>
+            <dd>{view.battle.shield}</dd>
+            <dt>Current interaction</dt>
+            <dd>{view.interaction.kind}</dd>
+          </dl>
+        </>
+      ) : (
+        <h2>Game over: {view.result}</h2>
+      )}
+      <h2>Your hand</h2>
+      {view.viewer.hand.length > 0 ? (
+        <ul>
+          {view.viewer.hand.map((card) => (
+            <li key={card.id}>{cardLabel(card)}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>No cards in hand.</p>
+      )}
+      <h2>Card piles</h2>
+      <dl>
+        <dt>Tavern remaining</dt>
+        <dd>{view.tavern.remainingCards}</dd>
+        <dt>Castle remaining</dt>
+        <dd>{view.castle.remainingCards}</dd>
+        <dt>Discard cards</dt>
+        <dd>{view.discard.cards.length}</dd>
+      </dl>
+    </section>
   );
 }
 
