@@ -76,7 +76,7 @@ function handleTurnAction(
   }
 
   if (action.kind === 'yield') {
-    if (!canYield(world)) {
+    if (!isYieldAllowedByStreak(world)) {
       throw new Error('Every other player yielded on their previous turn');
     }
     return startRetaliation({ ...world, consecutiveYields: world.consecutiveYields + 1 });
@@ -157,8 +157,20 @@ function handleDamageDiscard(
   });
 }
 
-function canYield(world: World): boolean {
+function isYieldAllowedByStreak(world: World): boolean {
   return world.consecutiveYields < world.players.length - 1;
+}
+
+export function canYield(state: Extract<GameState, { kind: 'active' }>): boolean {
+  return state.decision.kind === 'await-turn-action' && isYieldAllowedByStreak(state.world);
+}
+
+export function canUseSoloJester(state: Extract<GameState, { kind: 'active' }>): boolean {
+  return (
+    (state.decision.kind === 'await-turn-action' ||
+      state.decision.kind === 'await-solo-retaliation') &&
+    hasSoloJester(state.world)
+  );
 }
 
 function hasLegalCardPlay(player: Player): boolean {
@@ -169,7 +181,7 @@ function hasLegalCardPlay(player: Player): boolean {
 function enterTurn(world: World): GameState {
   const player = world.players.find((candidate) => candidate.id === world.currentPlayer);
   if (!player) throw new Error('The current player is not in the game');
-  if (!canYield(world) && !hasLegalCardPlay(player) && !hasSoloJester(world)) {
+  if (!isYieldAllowedByStreak(world) && !hasLegalCardPlay(player) && !hasSoloJester(world)) {
     return { kind: 'game-over', world, result: 'loss' };
   }
   return { kind: 'active', world, decision: { kind: 'await-turn-action' } };
@@ -405,7 +417,11 @@ function attackDamage(battle: Battle, play: AttackPlay): number {
 }
 
 function suitPowerActive(battle: Battle, suit: Suit): boolean {
-  return suit !== battle.enemy.suit || battle.plays.some((play) => play.kind === 'jester');
+  return suit !== battle.enemy.suit || immunityCancelled(battle);
+}
+
+function immunityCancelled(battle: Battle): boolean {
+  return battle.plays.some((play) => play.kind === 'jester');
 }
 
 function activeShield(battle: Battle): number {
@@ -435,6 +451,23 @@ function enemyAttack(enemy: RoyalCard): number {
 
 function enemyHealth(enemy: RoyalCard): number {
   return ROYAL_RANK_DATA[enemy.rank].health;
+}
+
+type BattleState = Exclude<GameState, { kind: 'game-over'; result: 'win' }>;
+
+export function battleStats(state: BattleState): Readonly<{
+  enemyHealth: number;
+  enemyAttack: number;
+  shield: number;
+  immunityCancelled: boolean;
+}> {
+  const { battle } = state.world;
+  return {
+    enemyHealth: enemyHealth(battle.enemy),
+    enemyAttack: enemyAttack(battle.enemy),
+    shield: activeShield(battle),
+    immunityCancelled: immunityCancelled(battle),
+  };
 }
 
 function nextPlayer(world: World): string {
