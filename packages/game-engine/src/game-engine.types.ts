@@ -70,7 +70,9 @@ export type Decision =
   | Readonly<{ kind: 'await-damage-discard'; requiredDamage: number }>
   | Readonly<{ kind: 'await-next-player-choice' }>;
 
-export type GameState = Readonly<{ world: World; decision: Decision }>;
+export type GameState =
+  | Readonly<{ kind: 'active'; world: World; decision: Decision; result?: never }>
+  | Readonly<{ kind: 'game-over'; world: World; result: 'loss'; decision?: never }>;
 
 export type PlayCards = Readonly<{
   kind: 'play-cards';

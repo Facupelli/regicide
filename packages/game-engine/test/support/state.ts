@@ -1,4 +1,4 @@
-import type { GameState } from '../../src/index.ts';
+import type { Decision, GameState } from '../../src/game-engine.types.ts';
 
 type World = GameState['world'];
 type Battle = World['battle'];
@@ -15,7 +15,7 @@ type StateOptions = Readonly<{
   discard?: World['discard'];
   castle?: World['castle'];
   rngState?: World['rngState'];
-  decision?: GameState['decision'];
+  decision?: Decision;
 }>;
 
 export function makeGameState({
@@ -33,6 +33,7 @@ export function makeGameState({
   decision = { kind: 'await-turn-action' },
 }: StateOptions): GameState {
   return {
+    kind: 'active',
     world: {
       players,
       currentPlayer,

@@ -21,6 +21,7 @@ import type {
 } from './game-engine.types.ts';
 
 export function transition(state: GameState, action: Action): GameState {
+  if (state.kind === 'game-over') throw new Error('The game is over');
   const { world, decision } = state;
   if (action.playerId !== world.currentPlayer) {
     throw new Error('Only the current player can act');
@@ -47,7 +48,7 @@ export function transition(state: GameState, action: Action): GameState {
 
 function handleTurnAction(world: World, player: Player, action: PlayCards | YieldTurn): GameState {
   if (action.kind === 'yield') {
-    if (world.consecutiveYields >= world.players.length - 1) {
+    if (!canYield(world)) {
       throw new Error('Every other player yielded on their previous turn');
     }
     return resolveRetaliation({ ...world, consecutiveYields: world.consecutiveYields + 1 });
@@ -58,6 +59,7 @@ function handleTurnAction(world: World, player: Player, action: PlayCards | Yiel
   switch (play.kind) {
     case 'jester':
       return {
+        kind: 'active',
         world: {
           ...worldAfterPlay,
           battle: { ...worldAfterPlay.battle, immunityCancelled: true },
@@ -74,10 +76,7 @@ function handleNextPlayerChoice(world: World, action: ChooseNextPlayer): GameSta
   if (!world.players.some((player) => player.id === action.targetPlayerId)) {
     throw new Error('The chosen player is not in the game');
   }
-  return {
-    world: { ...world, currentPlayer: action.targetPlayerId },
-    decision: { kind: 'await-turn-action' },
-  };
+  return enterTurn({ ...world, currentPlayer: action.targetPlayerId });
 }
 
 function handleDamageDiscard(
@@ -92,19 +91,34 @@ function handleDamageDiscard(
   }
 
   const discardedIds = new Set(action.cardIds);
-  return {
-    world: {
-      ...world,
-      players: world.players.map((candidate) =>
-        candidate.id === player.id
-          ? { ...candidate, hand: candidate.hand.filter((card) => !discardedIds.has(card.id)) }
-          : candidate,
-      ),
-      currentPlayer: nextPlayer(world),
-      discard: [...world.discard, ...selected],
-    },
-    decision: { kind: 'await-turn-action' },
-  };
+  return enterTurn({
+    ...world,
+    players: world.players.map((candidate) =>
+      candidate.id === player.id
+        ? { ...candidate, hand: candidate.hand.filter((card) => !discardedIds.has(card.id)) }
+        : candidate,
+    ),
+    currentPlayer: nextPlayer(world),
+    discard: [...world.discard, ...selected],
+  });
+}
+
+function canYield(world: World): boolean {
+  return world.consecutiveYields < world.players.length - 1;
+}
+
+function hasLegalCardPlay(player: Player): boolean {
+  // Every card currently supported in a player's hand can be played alone.
+  return player.hand.length > 0;
+}
+
+function enterTurn(world: World): GameState {
+  const player = world.players.find((candidate) => candidate.id === world.currentPlayer);
+  if (!player) throw new Error('The current player is not in the game');
+  if (!canYield(world) && !hasLegalCardPlay(player)) {
+    return { kind: 'game-over', world, result: 'loss' };
+  }
+  return { kind: 'active', world, decision: { kind: 'await-turn-action' } };
 }
 
 function validatePlay(player: Player, action: PlayCards): HistoricalPlay {
@@ -277,19 +291,17 @@ function resolveAfterPlay(world: World, play: AttackPlay): GameState {
 function resolveRetaliation(world: World): GameState {
   const requiredDamage = Math.max(0, enemyAttack(world.battle.enemy) - activeShield(world.battle));
   if (requiredDamage === 0) {
-    return {
-      world: { ...world, currentPlayer: nextPlayer(world) },
-      decision: { kind: 'await-turn-action' },
-    };
+    return enterTurn({ ...world, currentPlayer: nextPlayer(world) });
   }
 
   const player = world.players.find((candidate) => candidate.id === world.currentPlayer);
   if (!player) throw new Error('The current player is not in the game');
   if (requiredDamage > player.hand.reduce((total, held) => total + cardValue(held), 0)) {
-    throw new Error('Unsupported game outcome: unsurvivable attack');
+    return { kind: 'game-over', world, result: 'loss' };
   }
 
   return {
+    kind: 'active',
     world,
     decision: { kind: 'await-damage-discard', requiredDamage },
   };
@@ -301,25 +313,22 @@ function resolveEnemyDefeat(world: World, defeatKind: DefeatKind): GameState {
   const nextEnemy = world.castle[0];
   if (!nextEnemy) throw new Error('Unsupported game outcome: final enemy defeat');
 
-  return {
-    world: {
-      ...world,
-      tavern: defeatKind === 'exact' ? [world.battle.enemy, ...world.tavern] : world.tavern,
-      discard: [
-        ...world.discard,
-        ...(defeatKind === 'overkill' ? [world.battle.enemy] : []),
-        ...world.battle.plays.flatMap(cardsInPlay),
-      ],
-      castle: world.castle.slice(1),
-      battle: {
-        enemy: nextEnemy,
-        damageDealt: 0,
-        plays: [],
-        immunityCancelled: false,
-      },
+  return enterTurn({
+    ...world,
+    tavern: defeatKind === 'exact' ? [world.battle.enemy, ...world.tavern] : world.tavern,
+    discard: [
+      ...world.discard,
+      ...(defeatKind === 'overkill' ? [world.battle.enemy] : []),
+      ...world.battle.plays.flatMap(cardsInPlay),
+    ],
+    castle: world.castle.slice(1),
+    battle: {
+      enemy: nextEnemy,
+      damageDealt: 0,
+      plays: [],
+      immunityCancelled: false,
     },
-    decision: { kind: 'await-turn-action' },
-  };
+  });
 }
 
 function selectedCardsFromHand(hand: readonly Card[], cardIds: readonly string[]): Card[] {

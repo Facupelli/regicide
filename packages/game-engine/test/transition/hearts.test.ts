@@ -238,7 +238,10 @@ for (const defeatKind of ['exact', 'overkill'] as const) {
     const nextEnemy = makeRoyal('jack', 'clubs');
     const followingEnemy = makeRoyal('queen', 'spades');
     const initial = makeGameState({
-      players: [{ id: 'alice', hand: [threeHearts] }],
+      players: [
+        { id: 'alice', hand: [threeHearts] },
+        { id: 'bob', hand: [makeCard(6, 'spades')] },
+      ],
       currentPlayer: 'alice',
       enemy,
       damageDealt: defeatKind === 'exact' ? 17 : 18,

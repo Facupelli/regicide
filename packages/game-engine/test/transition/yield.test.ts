@@ -19,7 +19,7 @@ void test('yield during await-turn-action skips suit powers and damage but still
   const initial = makeGameState({
     players: [
       { id: 'alice', hand: [sixHearts, threeDiamonds] },
-      { id: 'bob', hand: [] },
+      { id: 'bob', hand: [makeCard(3, 'hearts')] },
     ],
     currentPlayer: 'alice',
     enemy: makeRoyal('jack', 'clubs'),

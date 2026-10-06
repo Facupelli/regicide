@@ -155,12 +155,16 @@ void test('defeat moves all cards from separate attacks, an Animal pair, and a J
   const twoSpades = makeCard(2, 'spades');
   const jester = { kind: 'jester', id: 'jester-one' } as const;
   const twoClubs = makeCard(2, 'clubs');
+  const bobCard = makeCard(4, 'hearts');
   const existingDiscard = makeCard(3, 'diamonds');
   const enemy = makeRoyal('jack', 'hearts');
   const nextEnemy = makeRoyal('jack', 'diamonds');
   const followingEnemy = makeRoyal('queen', 'spades');
   const initial = makeGameState({
-    players: [{ id: 'alice', hand: [twoClubs] }],
+    players: [
+      { id: 'alice', hand: [twoClubs] },
+      { id: 'bob', hand: [bobCard] },
+    ],
     currentPlayer: 'alice',
     enemy,
     damageDealt: 19,
