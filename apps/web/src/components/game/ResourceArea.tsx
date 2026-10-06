@@ -26,12 +26,12 @@ function ResourcePile({
           label={`${label} pile`}
           {...(jester ? { card: { kind: 'jester' as const, id: 'solo-resource' } } : {})}
         />
-        <strong
+        <span
           className="absolute right-0 bottom-0 flex min-h-6 min-w-6 translate-x-1/3 translate-y-1/3 items-center justify-center rounded-full border border-card-border bg-panel px-1 text-xs leading-none text-foreground shadow-md"
           aria-hidden="true"
         >
           {count}
-        </strong>
+        </span>
       </div>
       <span className="mt-1 text-xs text-muted-foreground">{label}</span>
     </>
@@ -72,34 +72,41 @@ export function ResourceArea({
     view.status === 'active' &&
     (view.interaction.kind === 'turn' || view.interaction.kind === 'damage-discard') &&
     view.interaction.canUseSoloJester;
+
   return (
     <section className="contents" aria-label="Game resources">
       <ResourcePile
         label="Castle"
         count={view.castle.remainingCards}
-        className={`col-start-1 lg:row-start-2 ${hasOpponents ? 'row-start-2' : 'row-start-1'}`}
+        className={`col-start-1 lg:row-start-2 lg:mt-0 lg:self-stretch ${view.status === 'active' || view.result === 'loss' ? 'mt-10 self-start sm:mt-[4.25rem]' : 'self-center'} ${hasOpponents ? 'row-start-2' : 'row-start-1'}`}
       />
-      <ResourcePile
-        label="Tavern"
-        count={view.tavern.remainingCards}
-        className={`col-start-3 lg:row-start-2 ${hasOpponents ? 'row-start-2' : 'row-start-1'}`}
-      />
-      <ResourcePile
-        label="Discard"
-        count={view.discard.cards.length}
-        className={`col-start-1 lg:row-start-3 ${hasOpponents ? 'row-start-5' : 'row-start-4'}`}
-      />
-      {view.soloJestersRemaining !== null && (
-        <ResourcePile
-          label="Solo Jesters"
-          count={view.soloJestersRemaining}
-          jester
-          usable={usable}
-          actionPending={actionPending}
-          onUse={() => onAction({ kind: 'use-solo-jester' })}
-          className={`col-start-3 lg:row-start-3 ${hasOpponents ? 'row-start-5' : 'row-start-4'}`}
-        />
-      )}
+      <div
+        className={`col-span-3 flex items-start lg:contents ${hasOpponents ? 'row-start-5' : 'row-start-4'} ${view.soloJestersRemaining !== null ? 'justify-between' : 'justify-center'}`}
+      >
+        <div className="flex items-start gap-4 lg:contents">
+          <ResourcePile
+            label="Tavern"
+            count={view.tavern.remainingCards}
+            className="lg:col-start-3 lg:row-start-2"
+          />
+          <ResourcePile
+            label="Discard"
+            count={view.discard.cards.length}
+            className="lg:col-start-1 lg:row-start-3"
+          />
+        </div>
+        {view.soloJestersRemaining !== null && (
+          <ResourcePile
+            label="Solo Jesters"
+            count={view.soloJestersRemaining}
+            jester
+            usable={usable}
+            actionPending={actionPending}
+            onUse={() => onAction({ kind: 'use-solo-jester' })}
+            className="lg:col-start-3 lg:row-start-3"
+          />
+        )}
+      </div>
     </section>
   );
 }

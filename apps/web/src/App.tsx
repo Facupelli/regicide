@@ -64,7 +64,7 @@ function App() {
   }
 
   return screen.status === 'loaded' ? (
-    <main className="min-h-dvh bg-table font-sans">
+    <main className="min-h-svh bg-table font-sans lg:min-h-dvh">
       <GameTable
         view={screen.view}
         selectedCardIds={selectedCardIds}

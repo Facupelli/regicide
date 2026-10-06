@@ -11,16 +11,16 @@ const suitMarks: Record<Suit, string> = {
 };
 
 const sizes: Record<CardVariant, string> = {
-  hand: 'w-[clamp(4.5rem,19vw,6.5rem)] shrink-0 lg:w-[clamp(4rem,6.4vw,5.5rem)]',
-  enemy: 'w-24 sm:w-36',
-  played: 'w-14 shrink-0 sm:w-16',
+  hand: 'w-[var(--hand-card-width,clamp(4.5rem,19vw,6.5rem))] shrink-0 lg:w-[clamp(4rem,6.4vw,5.5rem)]',
+  enemy: 'w-[clamp(5rem,12svh,6rem)] sm:w-[clamp(5rem,12svh,9rem)] lg:w-36',
+  played: 'w-16 shrink-0 sm:w-18 lg:w-16',
   pile: 'w-10 sm:w-12',
 };
 
 const cardStates = {
   normal: 'border-card-border',
   selected:
-    '-translate-y-2 border-card-selected ring-2 ring-card-selected ring-offset-2 ring-offset-table',
+    '-translate-y-8 border-card-selected ring-2 ring-card-selected ring-offset-2 ring-offset-table lg:-translate-y-2',
   unavailable: 'cursor-not-allowed border-dashed border-card-unavailable opacity-50 grayscale',
   pending: 'cursor-wait opacity-60',
 } as const;
@@ -69,7 +69,7 @@ export function PlayingCard({
     onToggle &&
       !disabled &&
       !unavailableReason &&
-      'cursor-pointer hover:-translate-y-1 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-card-selected',
+      `cursor-pointer hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-card-selected ${selected ? 'lg:hover:-translate-y-1' : 'hover:-translate-y-1'}`,
     disabled && cardStates.pending,
   ]
     .filter(Boolean)

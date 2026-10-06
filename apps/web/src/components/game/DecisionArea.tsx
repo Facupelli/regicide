@@ -21,7 +21,7 @@ export function DecisionArea({
 }: DecisionProps) {
   return (
     <section
-      className={`col-span-3 rounded-lg border border-border bg-panel/80 px-3 py-2 text-sm lg:text-base [&_button]:px-2 [&_button]:py-1.5 [&_button]:text-sm sm:[&_button]:px-3 sm:[&_button]:py-2 sm:[&_button]:text-base lg:col-span-1 lg:col-start-2 lg:row-start-4 lg:px-4 ${hasOpponents ? 'row-start-4' : 'row-start-3'}`}
+      className={`col-span-3 self-end rounded-lg border border-border bg-panel/80 px-3 py-2 text-sm lg:self-auto lg:text-base [&_button]:px-2 [&_button]:py-1.5 [&_button]:text-sm sm:[&_button]:px-3 sm:[&_button]:py-2 sm:[&_button]:text-base lg:col-span-1 lg:col-start-2 lg:row-start-4 lg:px-4 ${hasOpponents ? 'row-start-4' : 'row-start-3'}`}
       aria-label="Current decision"
       aria-busy={actionPending}
     >
@@ -78,18 +78,28 @@ function InteractionControls({
       return (
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <p>
-            {playSelection.kind === 'empty'
-              ? 'Select cards from your hand.'
-              : playSelection.kind === 'valid'
-                ? 'Legal play selected.'
-                : `Invalid play: ${playSelection.reason}`}
+            <span className="lg:hidden">
+              {playSelection.kind === 'empty'
+                ? 'Select cards'
+                : playSelection.kind === 'valid'
+                  ? 'Ready to play'
+                  : `Invalid play: ${playSelection.reason}`}
+            </span>
+            <span className="hidden lg:inline">
+              {playSelection.kind === 'empty'
+                ? 'Select cards from your hand.'
+                : playSelection.kind === 'valid'
+                  ? 'Legal play selected.'
+                  : `Invalid play: ${playSelection.reason}`}
+            </span>
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
               disabled={actionPending || playSelection.kind !== 'valid'}
               onClick={() => onAction({ kind: 'play-cards', cardIds: selectedCardIds })}
             >
-              Play selected cards
+              <span className="lg:hidden">Play cards</span>
+              <span className="hidden lg:inline">Play selected cards</span>
             </Button>
             {interaction.canYield && (
               <Button disabled={actionPending} onClick={() => onAction({ kind: 'yield' })}>
@@ -103,7 +113,6 @@ function InteractionControls({
       return (
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div>
-            <p>Incoming damage: {interaction.requiredDamage}</p>
             {interaction.requiredDamage === 0 ? (
               <p>No cards need to be discarded.</p>
             ) : interaction.canAcceptDefeat ? (
@@ -144,7 +153,14 @@ function InteractionControls({
                   })
                 }
               >
-                {interaction.requiredDamage === 0 ? 'Continue turn' : 'Discard selected cards'}
+                {interaction.requiredDamage === 0 ? (
+                  'Continue turn'
+                ) : (
+                  <>
+                    <span className="lg:hidden">Discard</span>
+                    <span className="hidden lg:inline">Discard selected cards</span>
+                  </>
+                )}
               </Button>
             )}
           </div>
