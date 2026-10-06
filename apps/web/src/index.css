@@ -21,16 +21,6 @@ h1 {
   margin-top: 0;
 }
 
-button {
-  font: inherit;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-}
-
-button:disabled {
-  cursor: wait;
-}
-
 code {
   overflow-wrap: anywhere;
 }
@@ -43,8 +33,4 @@ dl {
 
 dd {
   margin: 0;
-}
-
-li {
-  margin-block: 0.25rem;
 }

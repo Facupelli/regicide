@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SESSION_ID="${PI_SESSION_ID:-default}"
+
+export CHROME_DEVTOOLS_AXI_SESSION="regicide-${SESSION_ID}"
+
+exec pnpm exec chrome-devtools-axi "$@"
