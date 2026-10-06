@@ -110,7 +110,7 @@ void test('Diamonds draw attack value clockwise before damage and retaliation, s
   assertCardsInExactlyOneZone(afterPlay, originalIds);
 });
 
-void test('Diamonds stop drawing when Tavern is exhausted and still deal damage and face retaliation', () => {
+void test('Diamonds stop drawing when Tavern is exhausted against a Queen', () => {
   const threeDiamonds = makeCard(3, 'diamonds');
   const fiveClubs = makeCard(5, 'clubs');
   const sixHearts = makeCard(6, 'hearts');
@@ -122,7 +122,7 @@ void test('Diamonds stop drawing when Tavern is exhausted and still deal damage 
       { id: 'bob', hand: [twoHearts] },
     ],
     currentPlayer: 'alice',
-    enemy: makeRoyal('jack', 'hearts'),
+    enemy: makeRoyal('queen', 'hearts'),
     tavern: [drawCard],
   });
   const originalIds = allCardIds(initial);
@@ -139,7 +139,7 @@ void test('Diamonds stop drawing when Tavern is exhausted and still deal damage 
   assert.deepEqual(afterPlay.world.battle.plays, [{ kind: 'attack', cards: [threeDiamonds] }]);
   assert.equal(afterPlay.world.battle.damageDealt, 3);
   assert.equal(afterPlay.world.currentPlayer, 'alice');
-  assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
+  assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 15 });
   assertCardsInExactlyOneZone(afterPlay, originalIds);
 });
 

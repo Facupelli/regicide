@@ -63,7 +63,7 @@ void test('a three-suit combo applies the full attack value to draw, shield, and
       { id: 'bob', hand: [] },
     ],
     currentPlayer: 'alice',
-    enemy: makeRoyal('jack', 'hearts'),
+    enemy: makeRoyal('queen', 'hearts'),
     tavern,
   });
   const after = transitionWithoutMutation(initial, {
@@ -80,7 +80,7 @@ void test('a three-suit combo applies the full attack value to draw, shield, and
   assert.deepEqual(after.world.tavern, []);
   assert.deepEqual(after.world.battle.plays, [{ kind: 'attack', cards }]);
   assert.equal(after.world.battle.damageDealt, 18);
-  assert.deepEqual(after.decision, { kind: 'await-damage-discard', requiredDamage: 1 });
+  assert.deepEqual(after.decision, { kind: 'await-damage-discard', requiredDamage: 6 });
   assertCardsInExactlyOneZone(after, allCardIds(initial));
 });
 

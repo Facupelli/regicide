@@ -91,14 +91,15 @@ void test('Hearts heal all available cards if discard is smaller than attack val
   assertCardsInExactlyOneZone(afterPlay, originalIds);
 });
 
-void test('Hearts with empty discard still deals damage without advancing RNG', () => {
+void test('Hearts with empty discard still deals damage to a Queen without advancing RNG', () => {
   const twoHearts = makeCard(2, 'hearts');
   const tenClubs = makeCard(10, 'clubs');
+  const sixSpades = makeCard(6, 'spades');
   const top = makeCard(3, 'diamonds');
   const initial = makeGameState({
-    players: [{ id: 'alice', hand: [twoHearts, tenClubs] }],
+    players: [{ id: 'alice', hand: [twoHearts, tenClubs, sixSpades] }],
     currentPlayer: 'alice',
-    enemy: makeRoyal('jack', 'spades'),
+    enemy: makeRoyal('queen', 'spades'),
     tavern: [top],
     rngState: 1,
   });
@@ -115,7 +116,7 @@ void test('Hearts with empty discard still deals damage without advancing RNG', 
   assert.equal(afterPlay.world.rngState, 1);
   assert.deepEqual(afterPlay.world.battle.plays, [{ kind: 'attack', cards: [twoHearts] }]);
   assert.equal(afterPlay.world.battle.damageDealt, 2);
-  assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
+  assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 15 });
   assertCardsInExactlyOneZone(afterPlay, originalIds);
 });
 

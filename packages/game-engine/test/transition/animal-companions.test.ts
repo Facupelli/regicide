@@ -63,7 +63,7 @@ void test('8 Diamonds paired with Animal Clubs draws 9 and deals 18 damage', () 
       { id: 'bob', hand: [bobCard] },
     ],
     currentPlayer: 'alice',
-    enemy: makeRoyal('jack', 'hearts'),
+    enemy: makeRoyal('queen', 'hearts'),
     tavern,
   });
   const after = transitionWithoutMutation(initial, {
@@ -83,7 +83,7 @@ void test('8 Diamonds paired with Animal Clubs draws 9 and deals 18 damage', () 
   assert.deepEqual(after.world.tavern, [tavern[9]]);
   assert.deepEqual(after.world.battle.plays, [{ kind: 'attack', cards: [eight, club] }]);
   assert.equal(after.world.battle.damageDealt, 18);
-  assert.deepEqual(after.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
+  assert.deepEqual(after.decision, { kind: 'await-damage-discard', requiredDamage: 15 });
   assertCardsInExactlyOneZone(after, allCardIds(initial));
 });
 

@@ -45,7 +45,6 @@ export function transition(state: GameState, action: Action): GameState {
 
 function handleTurnAction(world: World, player: Player, action: PlayCards): GameState {
   const play = validatePlay(player, action);
-  validateSupportedBattle(world.battle);
   const worldAfterPlay = applyPlay(world, player, play);
   switch (play.kind) {
     case 'jester':
@@ -150,12 +149,6 @@ function isNumberCombo(cards: readonly Card[]): cards is NumberCombo {
 
 function isAttackCard(card: Card): card is AttackCard {
   return card.kind === 'number' || card.kind === 'animal';
-}
-
-function validateSupportedBattle(battle: Battle): void {
-  if (battle.enemy.rank !== 'jack') {
-    throw new Error('Only Jack battles are supported');
-  }
 }
 
 function applyPlay(world: World, player: Player, play: HistoricalPlay): World {

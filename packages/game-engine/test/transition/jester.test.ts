@@ -21,7 +21,7 @@ void test('a Jester played alone cancels immunity without damage or retaliation,
       { id: 'carol', hand: [] },
     ],
     currentPlayer: 'alice',
-    enemy: makeRoyal('jack', 'clubs'),
+    enemy: makeRoyal('king', 'clubs'),
     plays: [{ kind: 'attack', cards: [earlierClubs] }],
     damageDealt: 3,
   });
