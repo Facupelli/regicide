@@ -122,11 +122,10 @@ function validateSinglePlay(card: Card): HistoricalPlay {
   switch (card.kind) {
     case 'number':
     case 'animal':
+    case 'royal':
       return { kind: 'attack', cards: [card] };
     case 'jester':
       return { kind: 'jester', card };
-    case 'royal':
-      throw new Error('Only numbered cards and Animal Companion pairs are supported');
   }
   return assertNever(card);
 }
@@ -157,7 +156,7 @@ function isNumberCombo(cards: readonly Card[]): cards is NumberCombo {
 }
 
 function isAttackCard(card: Card): card is AttackCard {
-  return card.kind === 'number' || card.kind === 'animal';
+  return card.kind === 'number' || card.kind === 'animal' || card.kind === 'royal';
 }
 
 function applyPlay(world: World, player: Player, play: HistoricalPlay): World {
@@ -338,6 +337,7 @@ function selectedCardsFromHand(hand: readonly Card[], cardIds: readonly string[]
 function attackValue(card: AttackCard | JesterCard): number {
   if (card.kind === 'jester') return 0;
   if (card.kind === 'animal') return 1;
+  if (card.kind === 'royal') return royalCardValue(card);
   return card.rank;
 }
 

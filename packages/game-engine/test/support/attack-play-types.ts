@@ -1,10 +1,11 @@
-import type { AnimalCard, AttackPlay, NumberCard } from '../../src/game-engine.types.ts';
+import type { AnimalCard, AttackPlay, NumberCard, RoyalCard } from '../../src/game-engine.types.ts';
 
 type Ranked<R extends NumberCard['rank']> = NumberCard & { readonly rank: R };
 
 export function checkAttackPlayShapes(
   number: NumberCard,
   animal: AnimalCard,
+  royal: RoyalCard,
   two: Ranked<2>,
   three: Ranked<3>,
   four: Ranked<4>,
@@ -13,6 +14,9 @@ export function checkAttackPlayShapes(
 ): void {
   void ({ kind: 'attack', cards: [number] } satisfies AttackPlay);
   void ({ kind: 'attack', cards: [animal] } satisfies AttackPlay);
+  void ({ kind: 'attack', cards: [royal] } satisfies AttackPlay);
+  void ({ kind: 'attack', cards: [animal, royal] } satisfies AttackPlay);
+  void ({ kind: 'attack', cards: [royal, animal] } satisfies AttackPlay);
   void ({ kind: 'attack', cards: [animal, number] } satisfies AttackPlay);
   void ({ kind: 'attack', cards: [number, animal] } satisfies AttackPlay);
   void ({ kind: 'attack', cards: [animal, animal] } satisfies AttackPlay);
@@ -32,6 +36,12 @@ export function checkAttackPlayShapes(
   void ({ kind: 'attack', cards: [two, two, animal] } satisfies AttackPlay);
   // @ts-expect-error Mixed ranks cannot form a combo.
   void ({ kind: 'attack', cards: [two, three] } satisfies AttackPlay);
+  // @ts-expect-error Royals cannot form numbered combos.
+  void ({ kind: 'attack', cards: [royal, royal] } satisfies AttackPlay);
+  // @ts-expect-error Royals cannot combine with numbered cards.
+  void ({ kind: 'attack', cards: [royal, two] } satisfies AttackPlay);
+  // @ts-expect-error Royals cannot join a numbered combo.
+  void ({ kind: 'attack', cards: [two, two, royal] } satisfies AttackPlay);
   // @ts-expect-error A pair of 6s exceeds the combo limit.
   void ({ kind: 'attack', cards: [six, six] } satisfies AttackPlay);
   // @ts-expect-error A triple of 4s exceeds the combo limit.

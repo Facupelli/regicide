@@ -1,6 +1,13 @@
+import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Action } from '../../src/index.ts';
-import { assertRejectedWithoutMutation, transitionWithoutMutation } from '../support/assertions.ts';
+import {
+  allCardIds,
+  assertCardsInExactlyOneZone,
+  assertRejectedWithoutMutation,
+  handOf,
+  transitionWithoutMutation,
+} from '../support/assertions.ts';
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
 
@@ -66,6 +73,40 @@ void test('play-cards rejects empty cardIds without mutating state', () => {
 
   assertRejectedWithoutMutation(state, { kind: 'play-cards', playerId: 'alice', cardIds: [] });
 });
+
+for (const { rank, value } of [
+  { rank: 'jack', value: 10 },
+  { rank: 'queen', value: 15 },
+  { rank: 'king', value: 20 },
+] as const) {
+  void test(`a defeated ${rank} absorbs ${value} retaliation damage when discarded`, () => {
+    const royal = makeRoyal(rank, 'spades');
+    const reserve = makeCard(2, 'clubs');
+    const enemy = makeRoyal('king', 'hearts');
+    const players = [{ id: 'alice', hand: [royal, reserve] }];
+    const state = makeGameState({
+      players,
+      currentPlayer: 'alice',
+      enemy,
+      decision: { kind: 'await-damage-discard', requiredDamage: value },
+    });
+    const action = { kind: 'discard-for-damage', playerId: 'alice', cardIds: [royal.id] } as const;
+    const after = transitionWithoutMutation(state, action);
+
+    assert.deepEqual(handOf(after, 'alice'), [reserve]);
+    assert.deepEqual(after.world.discard, [royal]);
+    assert.deepEqual(after.decision, { kind: 'await-turn-action' });
+    assertCardsInExactlyOneZone(after, allCardIds(state));
+
+    const higherDamage = makeGameState({
+      players,
+      currentPlayer: 'alice',
+      enemy,
+      decision: { kind: 'await-damage-discard', requiredDamage: value + 1 },
+    });
+    assertRejectedWithoutMutation(higherDamage, action);
+  });
+}
 
 void test('damage discard validation', async (t) => {
   const fiveClubs = makeCard(5, 'clubs');

@@ -24,7 +24,7 @@ export type JesterCard = Readonly<{
 }>;
 export type Card = NumberCard | AnimalCard | RoyalCard | JesterCard;
 
-export type AttackCard = NumberCard | AnimalCard;
+export type AttackCard = NumberCard | AnimalCard | RoyalCard;
 type NumberCardOfRank<R extends NumberRank> = NumberCard & Readonly<{ rank: R }>;
 export type NumberCombo =
   | readonly [NumberCardOfRank<2>, NumberCardOfRank<2>]
@@ -39,7 +39,7 @@ export type AttackPlay = Readonly<{
   cards:
     | readonly [AttackCard]
     | readonly [AnimalCard, AttackCard]
-    | readonly [NumberCard, AnimalCard]
+    | readonly [AttackCard, AnimalCard]
     | NumberCombo;
 }>;
 export type JesterPlay = Readonly<{ kind: 'jester'; card: JesterCard }>;
