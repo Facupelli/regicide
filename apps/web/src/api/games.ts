@@ -24,26 +24,26 @@ export async function createSoloGame() {
   const lobby = await request('/games', { method: 'POST' }, CreateGameResponseSchema);
   const started = await request(
     `/games/${encodeURIComponent(lobby.gameId)}/start`,
-    { method: 'POST', headers: { 'X-Player-Id': lobby.playerId } },
+    { method: 'POST', headers: { Authorization: `Bearer ${lobby.playerToken}` } },
     StartGameResponseSchema,
   );
-  return { ...started, playerId: lobby.playerId };
+  return { ...started, playerId: lobby.playerId, playerToken: lobby.playerToken };
 }
 
-export function getGame(gameId: string, playerId?: string) {
+export function getGame(gameId: string, playerToken?: string) {
   return request(
     `/games/${encodeURIComponent(gameId)}`,
-    { method: 'GET', headers: playerId ? { 'X-Player-Id': playerId } : {} },
+    { method: 'GET', headers: playerToken ? { Authorization: `Bearer ${playerToken}` } : {} },
     GetGameResponseSchema,
   );
 }
 
-export function submitAction(gameId: string, playerId: string, command: PlayerCommand) {
+export function submitAction(gameId: string, playerToken: string, command: PlayerCommand) {
   return request(
     `/games/${encodeURIComponent(gameId)}/actions`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Player-Id': playerId },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${playerToken}` },
       body: JSON.stringify(command),
     },
     SubmitActionResponseSchema,

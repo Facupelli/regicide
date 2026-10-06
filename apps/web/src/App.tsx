@@ -7,7 +7,7 @@ import { Button } from './components/ui/Button.tsx';
 type ScreenState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; gameId: string; playerId: string; view: GameView }
+  | { status: 'loaded'; gameId: string; playerId: string; playerToken: string; view: GameView }
   | { status: 'error'; message: string };
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -52,8 +52,13 @@ function App() {
     setActionPending(true);
     setActionError(null);
     try {
-      const response = await submitAction(screen.gameId, screen.playerId, command);
-      setScreen({ status: 'loaded', playerId: screen.playerId, ...response });
+      const response = await submitAction(screen.gameId, screen.playerToken, command);
+      setScreen({
+        status: 'loaded',
+        playerId: screen.playerId,
+        playerToken: screen.playerToken,
+        ...response,
+      });
       setSelectedCardIds([]);
     } catch (error) {
       setActionError(errorMessage(error, 'Could not submit action'));

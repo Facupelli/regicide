@@ -4,9 +4,16 @@ import { GameViewSchema } from './game-view.ts';
 import { IdentifierSchema } from './identifier.ts';
 import { LobbyViewSchema } from './lobby-view.ts';
 
+const PlayerIdentityFields = {
+  playerId: IdentifierSchema,
+  playerToken: v.pipe(v.string(), v.minLength(1)),
+};
+export const PlayerIdentitySchema = v.strictObject(PlayerIdentityFields);
+export type PlayerIdentity = v.InferOutput<typeof PlayerIdentitySchema>;
+
 const LobbyResponseSchema = v.strictObject({
   gameId: IdentifierSchema,
-  playerId: IdentifierSchema,
+  ...PlayerIdentityFields,
   view: LobbyViewSchema,
 });
 

@@ -11,9 +11,7 @@ import { Hono } from 'hono';
 import { gameService } from '../games/game-service.ts';
 import { apiError } from '../http/api-error.ts';
 import { requireJsonContentType } from '../http/json-validation.ts';
-
-// Temporary caller-supplied identity until player authentication is introduced.
-const playerIdHeader = 'X-Player-Id';
+import { authenticateBearerPlayer, requirePlayerCredential } from '../http/player-auth.ts';
 
 export const gamesRoutes = new Hono()
   .post('/', (c) => {
@@ -23,13 +21,32 @@ export const gamesRoutes = new Hono()
   })
   .get('/:gameId', (c) => {
     const gameId = c.req.param('gameId');
-    const result = gameService.getGame({ gameId, playerId: c.req.header(playerIdHeader) });
+    // The lobby remains public. A playing game requires authentication before its view is read.
+    const publicResult = gameService.getGame({ gameId, playerId: undefined });
+    if (!publicResult.ok && publicResult.reason === 'game-not-found') {
+      return c.json(apiError('game-not-found', 'Game not found'), 404);
+    }
+    if (publicResult.ok) {
+      return c.json({ gameId, view: publicResult.view } satisfies GetGameResponse);
+    }
+
+    const identity = authenticateBearerPlayer({
+      gameId,
+      authorization: c.req.header('Authorization'),
+    });
+    if (!identity.ok) {
+      if (identity.reason === 'game-not-found') {
+        return c.json(apiError('game-not-found', 'Game not found'), 404);
+      }
+      return c.json(apiError('invalid-credential', 'Valid player credential required'), 401);
+    }
+    const result = gameService.getGame({ gameId, playerId: identity.playerId });
     if (!result.ok) {
       switch (result.reason) {
         case 'game-not-found':
           return c.json(apiError('game-not-found', 'Game not found'), 404);
         case 'player-id-required':
-          return c.json(apiError('invalid-request', 'X-Player-Id is required'), 400);
+          return c.json(apiError('invalid-credential', 'Valid player credential required'), 401);
         case 'player-not-in-game':
           return c.json(apiError('player-not-in-game', 'Player is not in the game'), 403);
       }
@@ -50,22 +67,26 @@ export const gamesRoutes = new Hono()
       }
     }
     return c.json(
-      { gameId, playerId: result.playerId, view: result.view } satisfies JoinGameResponse,
+      {
+        gameId,
+        playerId: result.playerId,
+        playerToken: result.playerToken,
+        view: result.view,
+      } satisfies JoinGameResponse,
       201,
     );
   })
-  .post('/:gameId/start', (c) => {
+  .post('/:gameId/start', requirePlayerCredential, (c) => {
     const gameId = c.req.param('gameId');
-    const playerId = c.req.header(playerIdHeader);
-    if (!playerId) return c.json(apiError('invalid-request', 'X-Player-Id is required'), 400);
-
-    const result = gameService.startGame({ gameId, playerId });
+    const result = gameService.startGame({ gameId, playerId: c.get('playerId') });
     if (!result.ok) {
       switch (result.reason) {
         case 'game-not-found':
           return c.json(apiError('game-not-found', 'Game not found'), 404);
         case 'game-already-started':
           return c.json(apiError('game-already-started', 'Game has already started'), 409);
+        case 'player-not-in-game':
+          return c.json(apiError('player-not-in-game', 'Player is not in the game'), 403);
         case 'not-host':
           return c.json(apiError('not-host', 'Only the host can start the game'), 403);
       }
@@ -74,6 +95,7 @@ export const gamesRoutes = new Hono()
   })
   .post(
     '/:gameId/actions',
+    requirePlayerCredential,
     requireJsonContentType,
     sValidator('json', SubmitActionRequestSchema, (result, c) => {
       if (!result.success) return c.json(apiError('invalid-request', 'Invalid request body'), 400);
@@ -82,10 +104,7 @@ export const gamesRoutes = new Hono()
     (c) => {
       const command = c.req.valid('json');
       const gameId = c.req.param('gameId');
-      const playerId = c.req.header(playerIdHeader);
-      if (!playerId) return c.json(apiError('invalid-request', 'X-Player-Id is required'), 400);
-
-      const result = gameService.submitCommand({ gameId, playerId, command });
+      const result = gameService.submitCommand({ gameId, playerId: c.get('playerId'), command });
       if (!result.ok) {
         switch (result.reason) {
           case 'game-not-found':

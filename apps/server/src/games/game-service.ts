@@ -5,16 +5,20 @@ import { toGameView } from '../adapters/game-view.ts';
 import { toLobbyView } from '../adapters/lobby-view.ts';
 import { toEngineAction } from '../adapters/player-command.ts';
 import { gameStore } from './game-store.ts';
+import { createSessionPlayer } from './player-auth.ts';
 
 const MAX_PLAYERS = 4;
 
 type JoinGameResult =
-  | { ok: true; playerId: string; view: LobbyView }
+  | { ok: true; playerId: string; playerToken: string; view: LobbyView }
   | { ok: false; reason: 'game-not-found' | 'game-already-started' | 'lobby-full' };
 
 type StartGameResult =
   | { ok: true; view: GameView }
-  | { ok: false; reason: 'game-not-found' | 'game-already-started' | 'not-host' };
+  | {
+      ok: false;
+      reason: 'game-not-found' | 'game-already-started' | 'player-not-in-game' | 'not-host';
+    };
 
 type GetGameResult =
   | { ok: true; view: LobbyView | GameView }
@@ -26,16 +30,16 @@ type SubmitCommandResult =
   | { ok: false; reason: 'invalid-action'; message: string };
 
 export const gameService = {
-  createGame(): { gameId: string; playerId: string; view: LobbyView } {
+  createGame(): { gameId: string; playerId: string; playerToken: string; view: LobbyView } {
     const gameId = randomUUID();
-    const playerId = randomUUID();
+    const { player, playerToken } = createSessionPlayer();
     const session = {
       phase: 'lobby' as const,
-      hostPlayerId: playerId,
-      players: [{ id: playerId }],
+      hostPlayerId: player.id,
+      players: [player],
     };
     gameStore.set(gameId, session);
-    return { gameId, playerId, view: toLobbyView(session) };
+    return { gameId, playerId: player.id, playerToken, view: toLobbyView(session) };
   },
 
   joinGame({ gameId }: { gameId: string }): JoinGameResult {
@@ -44,15 +48,18 @@ export const gameService = {
     if (session.phase !== 'lobby') return { ok: false, reason: 'game-already-started' };
     if (session.players.length >= MAX_PLAYERS) return { ok: false, reason: 'lobby-full' };
 
-    const playerId = randomUUID();
-    session.players.push({ id: playerId });
-    return { ok: true, playerId, view: toLobbyView(session) };
+    const { player, playerToken } = createSessionPlayer();
+    session.players.push(player);
+    return { ok: true, playerId: player.id, playerToken, view: toLobbyView(session) };
   },
 
   startGame({ gameId, playerId }: { gameId: string; playerId: string }): StartGameResult {
     const session = gameStore.get(gameId);
     if (!session) return { ok: false, reason: 'game-not-found' };
     if (session.phase !== 'lobby') return { ok: false, reason: 'game-already-started' };
+    if (!session.players.some((player) => player.id === playerId)) {
+      return { ok: false, reason: 'player-not-in-game' };
+    }
     if (session.hostPlayerId !== playerId) return { ok: false, reason: 'not-host' };
 
     const rngState = randomBytes(4).readUInt32BE(0);
