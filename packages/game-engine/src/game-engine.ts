@@ -2,10 +2,12 @@ import type {
   Action,
   Battle,
   Card,
+  ChooseNextPlayer,
   Decision,
   DiscardForDamage,
   EnemyRank,
   GameState,
+  JesterCard,
   NumberCard,
   PlayCards,
   Player,
@@ -28,6 +30,10 @@ export function transition(state: GameState, action: Action): GameState {
     case 'await-damage-discard':
       if (action.kind !== 'discard-for-damage') throw new Error('Not awaiting a damage discard');
       return handleDamageDiscard(world, player, decision, action);
+    case 'await-next-player-choice':
+      if (action.kind !== 'choose-next-player')
+        throw new Error('Not awaiting a next player choice');
+      return handleNextPlayerChoice(world, action);
   }
 
   return assertNever(decision);
@@ -37,8 +43,27 @@ function handleTurnAction(world: World, player: Player, action: PlayCards): Game
   const card = validatePlay(player, action);
   validateSupportedBattle(world.battle);
   const worldAfterPlay = applyPlay(world, player, card);
+  if (card.kind === 'jester') {
+    return {
+      world: {
+        ...worldAfterPlay,
+        battle: { ...worldAfterPlay.battle, immunityCancelled: true },
+      },
+      decision: { kind: 'await-next-player-choice' },
+    };
+  }
   const worldAfterSuitPower = resolveImmediateSuitPower(worldAfterPlay, card);
   return resolveAfterPlay(worldAfterSuitPower, card);
+}
+
+function handleNextPlayerChoice(world: World, action: ChooseNextPlayer): GameState {
+  if (!world.players.some((player) => player.id === action.targetPlayerId)) {
+    throw new Error('The chosen player is not in the game');
+  }
+  return {
+    world: { ...world, currentPlayer: action.targetPlayerId },
+    decision: { kind: 'await-turn-action' },
+  };
 }
 
 function handleDamageDiscard(
@@ -68,11 +93,11 @@ function handleDamageDiscard(
   };
 }
 
-function validatePlay(player: Player, action: PlayCards): NumberCard {
+function validatePlay(player: Player, action: PlayCards): NumberCard | JesterCard {
   if (action.cardIds.length !== 1) throw new Error('Only single-card plays are supported');
   const [card] = selectedCardsFromHand(player.hand, action.cardIds);
-  if (!card || card.kind !== 'number') {
-    throw new Error('Only single numbered card plays are supported');
+  if (!card || card.kind === 'royal') {
+    throw new Error('Only single numbered card or Jester plays are supported');
   }
   return card;
 }
@@ -83,7 +108,7 @@ function validateSupportedBattle(battle: Battle): void {
   }
 }
 
-function applyPlay(world: World, player: Player, card: NumberCard): World {
+function applyPlay(world: World, player: Player, card: NumberCard | JesterCard): World {
   return {
     ...world,
     players: world.players.map((candidate) =>
@@ -229,8 +254,8 @@ function selectedCardsFromHand(hand: readonly Card[], cardIds: readonly string[]
   });
 }
 
-function attackValue(card: NumberCard): number {
-  return card.rank;
+function attackValue(card: NumberCard | JesterCard): number {
+  return card.kind === 'jester' ? 0 : card.rank;
 }
 
 function attackDamage(battle: Battle, card: NumberCard): number {
@@ -238,20 +263,23 @@ function attackDamage(battle: Battle, card: NumberCard): number {
   return card.suit === 'clubs' && suitPowerActive(battle, card) ? value * 2 : value;
 }
 
-function suitPowerActive(battle: Battle, card: Card): boolean {
+function suitPowerActive(battle: Battle, card: NumberCard | RoyalCard): boolean {
   return card.suit !== battle.enemy.suit || battle.immunityCancelled;
 }
 
 function activeShield(battle: Battle): number {
   return battle.playedCards.reduce(
     (total, card) =>
-      total + (card.suit === 'spades' && suitPowerActive(battle, card) ? cardValue(card) : 0),
+      total +
+      (card.kind !== 'jester' && card.suit === 'spades' && suitPowerActive(battle, card)
+        ? cardValue(card)
+        : 0),
     0,
   );
 }
 
 function cardValue(card: Card): number {
-  return card.kind === 'number' ? card.rank : royalCardValue(card);
+  return card.kind === 'royal' ? royalCardValue(card) : attackValue(card);
 }
 
 function royalCardValue(card: RoyalCard): number {

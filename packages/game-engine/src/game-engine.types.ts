@@ -13,7 +13,11 @@ export type RoyalCard = Readonly<{
   rank: EnemyRank;
   suit: Suit;
 }>;
-export type Card = NumberCard | RoyalCard;
+export type JesterCard = Readonly<{
+  kind: 'jester';
+  id: string;
+}>;
+export type Card = NumberCard | RoyalCard | JesterCard;
 
 export type Player = Readonly<{ id: string; hand: readonly Card[] }>;
 export type Battle = Readonly<{
@@ -35,7 +39,8 @@ export type World = Readonly<{
 }>;
 export type Decision =
   | Readonly<{ kind: 'await-turn-action' }>
-  | Readonly<{ kind: 'await-damage-discard'; requiredDamage: number }>;
+  | Readonly<{ kind: 'await-damage-discard'; requiredDamage: number }>
+  | Readonly<{ kind: 'await-next-player-choice' }>;
 
 export type GameState = Readonly<{ world: World; decision: Decision }>;
 
@@ -49,4 +54,9 @@ export type DiscardForDamage = Readonly<{
   playerId: string;
   cardIds: readonly string[];
 }>;
-export type Action = PlayCards | DiscardForDamage;
+export type ChooseNextPlayer = Readonly<{
+  kind: 'choose-next-player';
+  playerId: string;
+  targetPlayerId: string;
+}>;
+export type Action = PlayCards | DiscardForDamage | ChooseNextPlayer;
