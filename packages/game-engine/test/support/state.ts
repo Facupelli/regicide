@@ -6,6 +6,7 @@ type Battle = World['battle'];
 type StateOptions = Readonly<{
   players: World['players'];
   currentPlayer: World['currentPlayer'];
+  consecutiveYields?: World['consecutiveYields'];
   enemy: Battle['enemy'];
   damageDealt?: Battle['damageDealt'];
   plays?: Battle['plays'];
@@ -20,6 +21,7 @@ type StateOptions = Readonly<{
 export function makeGameState({
   players,
   currentPlayer,
+  consecutiveYields = 0,
   enemy,
   damageDealt = 0,
   plays = [],
@@ -34,6 +36,7 @@ export function makeGameState({
     world: {
       players,
       currentPlayer,
+      consecutiveYields,
       battle: { enemy, damageDealt, plays, immunityCancelled },
       tavern,
       discard,

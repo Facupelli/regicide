@@ -56,6 +56,8 @@ export type World = Readonly<{
   /** Players in clockwise seating order. */
   players: readonly Player[];
   currentPlayer: string;
+  /** Number of successive turns on which a player yielded. */
+  consecutiveYields: number;
   battle: Battle;
   tavern: readonly Card[];
   discard: readonly Card[];
@@ -75,6 +77,7 @@ export type PlayCards = Readonly<{
   playerId: string;
   cardIds: readonly string[];
 }>;
+export type YieldTurn = Readonly<{ kind: 'yield'; playerId: string }>;
 export type DiscardForDamage = Readonly<{
   kind: 'discard-for-damage';
   playerId: string;
@@ -85,4 +88,4 @@ export type ChooseNextPlayer = Readonly<{
   playerId: string;
   targetPlayerId: string;
 }>;
-export type Action = PlayCards | DiscardForDamage | ChooseNextPlayer;
+export type Action = PlayCards | YieldTurn | DiscardForDamage | ChooseNextPlayer;

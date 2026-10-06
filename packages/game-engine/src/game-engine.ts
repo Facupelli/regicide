@@ -17,6 +17,7 @@ import type {
   RoyalCard,
   Suit,
   World,
+  YieldTurn,
 } from './game-engine.types.ts';
 
 export function transition(state: GameState, action: Action): GameState {
@@ -29,7 +30,8 @@ export function transition(state: GameState, action: Action): GameState {
 
   switch (decision.kind) {
     case 'await-turn-action':
-      if (action.kind !== 'play-cards') throw new Error('Not awaiting a turn play');
+      if (action.kind !== 'play-cards' && action.kind !== 'yield')
+        throw new Error('Not awaiting a turn action');
       return handleTurnAction(world, player, action);
     case 'await-damage-discard':
       if (action.kind !== 'discard-for-damage') throw new Error('Not awaiting a damage discard');
@@ -43,7 +45,14 @@ export function transition(state: GameState, action: Action): GameState {
   return assertNever(decision);
 }
 
-function handleTurnAction(world: World, player: Player, action: PlayCards): GameState {
+function handleTurnAction(world: World, player: Player, action: PlayCards | YieldTurn): GameState {
+  if (action.kind === 'yield') {
+    if (world.consecutiveYields >= world.players.length - 1) {
+      throw new Error('Every other player yielded on their previous turn');
+    }
+    return resolveRetaliation({ ...world, consecutiveYields: world.consecutiveYields + 1 });
+  }
+
   const play = validatePlay(player, action);
   const worldAfterPlay = applyPlay(world, player, play);
   switch (play.kind) {
@@ -160,6 +169,7 @@ function applyPlay(world: World, player: Player, play: HistoricalPlay): World {
         ? { ...candidate, hand: candidate.hand.filter((held) => !ids.has(held.id)) }
         : candidate,
     ),
+    consecutiveYields: 0,
     battle: { ...world.battle, plays: [...world.battle.plays, play] },
   };
 }
@@ -262,11 +272,14 @@ function resolveAfterPlay(world: World, play: AttackPlay): GameState {
     return resolveEnemyDefeat(world, 'exact');
   }
 
-  const requiredDamage = Math.max(0, enemyAttack(battle.enemy) - activeShield(battle));
-  const worldAfterDamage = { ...world, battle: { ...battle, damageDealt } };
+  return resolveRetaliation({ ...world, battle: { ...battle, damageDealt } });
+}
+
+function resolveRetaliation(world: World): GameState {
+  const requiredDamage = Math.max(0, enemyAttack(world.battle.enemy) - activeShield(world.battle));
   if (requiredDamage === 0) {
     return {
-      world: { ...worldAfterDamage, currentPlayer: nextPlayer(worldAfterDamage) },
+      world: { ...world, currentPlayer: nextPlayer(world) },
       decision: { kind: 'await-turn-action' },
     };
   }
@@ -278,7 +291,7 @@ function resolveAfterPlay(world: World, play: AttackPlay): GameState {
   }
 
   return {
-    world: worldAfterDamage,
+    world,
     decision: { kind: 'await-damage-discard', requiredDamage },
   };
 }
