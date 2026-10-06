@@ -19,6 +19,8 @@ import type {
   World,
   YieldTurn,
 } from './game-engine.types.ts';
+import { maxHandSize } from './player-count-rules.ts';
+import { shuffle } from './shuffle.ts';
 
 export function transition(state: GameState, action: Action): GameState {
   if (state.kind === 'game-over') throw new Error('The game is over');
@@ -229,20 +231,6 @@ function resolveHeartHeal(world: World, healCount: number): World {
   };
 }
 
-// Fisher-Yates on a copy; the LCG state is part of the world, never global.
-function shuffle(cards: readonly Card[], rngState: number): { cards: Card[]; rngState: number } {
-  const shuffled = [...cards];
-  let nextState = rngState;
-  for (let index = shuffled.length - 1; index > 0; index--) {
-    nextState = (Math.imul(nextState, 1664525) + 1013904223) >>> 0;
-    const otherIndex = Math.floor((nextState / 0x100000000) * (index + 1));
-    const card = shuffled[index]!;
-    shuffled[index] = shuffled[otherIndex]!;
-    shuffled[otherIndex] = card;
-  }
-  return { cards: shuffled, rngState: nextState };
-}
-
 function resolveDiamondDraw(world: World, drawCount: number): World {
   const handLimit = maxHandSize(world.players.length);
   const players: Player[] = world.players.map((player) => ({ ...player, hand: [...player.hand] }));
@@ -267,12 +255,6 @@ function resolveDiamondDraw(world: World, drawCount: number): World {
   }
 
   return { ...world, players, tavern: world.tavern.slice(drawn) };
-}
-
-function maxHandSize(playerCount: number): number {
-  const limit = HAND_LIMITS[playerCount - 1];
-  if (!limit) throw new Error('Only games with 1 to 4 players are supported');
-  return limit;
 }
 
 function resolveAfterPlay(world: World, play: AttackPlay): GameState {
@@ -407,8 +389,6 @@ function nextPlayer(world: World): string {
 function assertNever(value: never): never {
   throw new Error(`Unsupported decision: ${JSON.stringify(value)}`);
 }
-
-const HAND_LIMITS = [8, 7, 6, 5] as const;
 
 const ROYAL_RANK_DATA = {
   jack: { value: 10, health: 20 },
