@@ -58,6 +58,7 @@ const PublicGameFields = {
   tavern: v.strictObject({ remainingCards: NonNegativeIntegerSchema }),
   discard: v.strictObject({ cards: v.pipe(v.array(CardSchema), v.readonly()) }),
   castle: v.strictObject({ remainingCards: NonNegativeIntegerSchema }),
+  soloJestersRemaining: v.nullable(NonNegativeIntegerSchema),
 };
 
 export const ActiveGameViewSchema = v.strictObject({

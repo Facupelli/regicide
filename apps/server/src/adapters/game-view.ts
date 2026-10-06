@@ -30,6 +30,7 @@ export function toGameView(state: GameState, viewerId: string): GameView {
     tavern: { remainingCards: world.tavern.length },
     discard: { cards: world.discard.map(toProtocolCard) },
     castle: { remainingCards: world.castle.length },
+    soloJestersRemaining: world.soloJestersUsed === null ? null : 2 - world.soloJestersUsed,
   };
 
   if (state.kind === 'active') {
