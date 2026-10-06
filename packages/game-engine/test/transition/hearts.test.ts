@@ -194,17 +194,18 @@ void test('different seeds can shuffle discard and heal different cards', () => 
   );
 });
 
-for (const immunityCancelled of [false, true]) {
-  void test(`Hearts against Jack of Hearts ${immunityCancelled ? 'heal after immunity is cancelled' : 'do not heal while immune'} but still deal damage`, () => {
+for (const jesterPlayed of [false, true]) {
+  void test(`Hearts against Jack of Hearts ${jesterPlayed ? 'heal after immunity is cancelled' : 'do not heal while immune'} but still deal damage`, () => {
     const twoHearts = makeCard(2, 'hearts');
     const tenClubs = makeCard(10, 'clubs');
     const top = makeCard(3, 'diamonds');
     const discarded = makeCard(4, 'clubs');
+    const jester = { kind: 'jester', id: 'jester-one' } as const;
     const initial = makeGameState({
       players: [{ id: 'alice', hand: [twoHearts, tenClubs] }],
       currentPlayer: 'alice',
       enemy: makeRoyal('jack', 'hearts'),
-      immunityCancelled,
+      plays: jesterPlayed ? [{ kind: 'jester', card: jester }] : [],
       tavern: [top],
       discard: [discarded],
       rngState: 1,
@@ -217,10 +218,13 @@ for (const immunityCancelled of [false, true]) {
       cardIds: [twoHearts.id],
     });
 
-    assert.deepEqual(afterPlay.world.tavern, immunityCancelled ? [top, discarded] : [top]);
-    assert.deepEqual(afterPlay.world.discard, immunityCancelled ? [] : [discarded]);
+    assert.deepEqual(afterPlay.world.tavern, jesterPlayed ? [top, discarded] : [top]);
+    assert.deepEqual(afterPlay.world.discard, jesterPlayed ? [] : [discarded]);
     assert.equal(afterPlay.world.rngState, 1);
-    assert.deepEqual(afterPlay.world.battle.plays, [{ kind: 'attack', cards: [twoHearts] }]);
+    assert.deepEqual(afterPlay.world.battle.plays, [
+      ...(jesterPlayed ? [{ kind: 'jester', card: jester } as const] : []),
+      { kind: 'attack', cards: [twoHearts] },
+    ]);
     assert.equal(afterPlay.world.battle.damageDealt, 2);
     assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
     assertCardsInExactlyOneZone(afterPlay, originalIds);
@@ -279,7 +283,6 @@ for (const defeatKind of ['exact', 'overkill'] as const) {
       enemy: nextEnemy,
       damageDealt: 0,
       plays: [],
-      immunityCancelled: false,
     });
     assert.deepEqual(afterPlay.world.castle, [followingEnemy]);
     assert.equal(afterPlay.world.currentPlayer, 'alice');

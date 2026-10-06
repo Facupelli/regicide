@@ -11,7 +11,6 @@ type StateOptions = Readonly<{
   enemy: Battle['enemy'];
   damageDealt?: Battle['damageDealt'];
   plays?: Battle['plays'];
-  immunityCancelled?: Battle['immunityCancelled'];
   tavern?: World['tavern'];
   discard?: World['discard'];
   castle?: World['castle'];
@@ -28,7 +27,6 @@ export function makeGameState({
   enemy,
   damageDealt = 0,
   plays = [],
-  immunityCancelled = false,
   tavern = [],
   discard = [],
   castle = [],
@@ -42,7 +40,7 @@ export function makeGameState({
       currentPlayer,
       consecutiveYields,
       soloJestersUsed,
-      battle: { enemy, damageDealt, plays, immunityCancelled },
+      battle: { enemy, damageDealt, plays },
       tavern,
       discard,
       castle,

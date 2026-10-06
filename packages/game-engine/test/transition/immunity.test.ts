@@ -9,18 +9,21 @@ import {
 import { makeCard, makeRoyal } from '../support/cards.ts';
 import { makeGameState } from '../support/state.ts';
 
-for (const immunityCancelled of [false, true]) {
-  void test(`Clubs against Jack of Clubs ${immunityCancelled ? 'double damage after immunity is cancelled' : 'deal normal damage while immune'}`, () => {
+for (const jesterPlayed of [false, true]) {
+  void test(`Clubs against Jack of Clubs ${jesterPlayed ? 'double damage after immunity is cancelled' : 'deal normal damage while immune'}`, () => {
     const fiveClubs = makeCard(5, 'clubs');
     const earlierClubs = makeCard(2, 'clubs');
     const tenHearts = makeCard(10, 'hearts');
+    const jester = { kind: 'jester', id: 'jester-one' } as const;
     const initial = makeGameState({
       players: [{ id: 'alice', hand: [fiveClubs, tenHearts] }],
       currentPlayer: 'alice',
       enemy: makeRoyal('jack', 'clubs'),
-      plays: [{ kind: 'attack', cards: [earlierClubs] }],
+      plays: [
+        { kind: 'attack', cards: [earlierClubs] },
+        ...(jesterPlayed ? [{ kind: 'jester', card: jester } as const] : []),
+      ],
       damageDealt: 2,
-      immunityCancelled,
     });
     const originalIds = allCardIds(initial);
 
@@ -32,25 +35,27 @@ for (const immunityCancelled of [false, true]) {
 
     assert.deepEqual(afterPlay.world.battle.plays, [
       { kind: 'attack', cards: [earlierClubs] },
+      ...(jesterPlayed ? [{ kind: 'jester', card: jester }] : []),
       { kind: 'attack', cards: [fiveClubs] },
     ]);
     // Earlier Clubs damage is never recalculated when immunity is cancelled.
-    assert.equal(afterPlay.world.battle.damageDealt, immunityCancelled ? 12 : 7);
+    assert.equal(afterPlay.world.battle.damageDealt, jesterPlayed ? 12 : 7);
     assert.deepEqual(handOf(afterPlay, 'alice'), [tenHearts]);
     assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
     assertCardsInExactlyOneZone(afterPlay, originalIds);
   });
 
-  void test(`Diamonds against Jack of Diamonds ${immunityCancelled ? 'draw after immunity is cancelled' : 'do not draw while immune'}`, () => {
+  void test(`Diamonds against Jack of Diamonds ${jesterPlayed ? 'draw after immunity is cancelled' : 'do not draw while immune'}`, () => {
     const fourDiamonds = makeCard(4, 'diamonds');
     const tenHearts = makeCard(10, 'hearts');
     const twoHearts = makeCard(2, 'hearts');
     const threeHearts = makeCard(3, 'hearts');
+    const jester = { kind: 'jester', id: 'jester-one' } as const;
     const initial = makeGameState({
       players: [{ id: 'alice', hand: [fourDiamonds, tenHearts] }],
       currentPlayer: 'alice',
       enemy: makeRoyal('jack', 'diamonds'),
-      immunityCancelled,
+      plays: jesterPlayed ? [{ kind: 'jester', card: jester }] : [],
       tavern: [twoHearts, threeHearts],
     });
     const originalIds = allCardIds(initial);
@@ -63,26 +68,32 @@ for (const immunityCancelled of [false, true]) {
 
     assert.deepEqual(
       handOf(afterPlay, 'alice'),
-      immunityCancelled ? [tenHearts, twoHearts, threeHearts] : [tenHearts],
+      jesterPlayed ? [tenHearts, twoHearts, threeHearts] : [tenHearts],
     );
-    assert.deepEqual(afterPlay.world.tavern, immunityCancelled ? [] : [twoHearts, threeHearts]);
-    assert.deepEqual(afterPlay.world.battle.plays, [{ kind: 'attack', cards: [fourDiamonds] }]);
+    assert.deepEqual(afterPlay.world.tavern, jesterPlayed ? [] : [twoHearts, threeHearts]);
+    assert.deepEqual(afterPlay.world.battle.plays, [
+      ...(jesterPlayed ? [{ kind: 'jester', card: jester }] : []),
+      { kind: 'attack', cards: [fourDiamonds] },
+    ]);
     assert.equal(afterPlay.world.battle.damageDealt, 4);
     assert.deepEqual(afterPlay.decision, { kind: 'await-damage-discard', requiredDamage: 10 });
     assertCardsInExactlyOneZone(afterPlay, originalIds);
   });
 
-  void test(`Spades against Jack of Spades ${immunityCancelled ? 'shield including earlier plays after immunity is cancelled' : 'do not shield while immune'}`, () => {
+  void test(`Spades against Jack of Spades ${jesterPlayed ? 'shield including earlier plays after immunity is cancelled' : 'do not shield while immune'}`, () => {
     const earlierSpades = makeCard(4, 'spades');
     const threeSpades = makeCard(3, 'spades');
     const tenHearts = makeCard(10, 'hearts');
+    const jester = { kind: 'jester', id: 'jester-one' } as const;
     const initial = makeGameState({
       players: [{ id: 'alice', hand: [threeSpades, tenHearts] }],
       currentPlayer: 'alice',
       enemy: makeRoyal('jack', 'spades'),
-      plays: [{ kind: 'attack', cards: [earlierSpades] }],
+      plays: [
+        { kind: 'attack', cards: [earlierSpades] },
+        ...(jesterPlayed ? [{ kind: 'jester', card: jester } as const] : []),
+      ],
       damageDealt: 4,
-      immunityCancelled,
     });
     const originalIds = allCardIds(initial);
 
@@ -94,13 +105,14 @@ for (const immunityCancelled of [false, true]) {
 
     assert.deepEqual(afterPlay.world.battle.plays, [
       { kind: 'attack', cards: [earlierSpades] },
+      ...(jesterPlayed ? [{ kind: 'jester', card: jester }] : []),
       { kind: 'attack', cards: [threeSpades] },
     ]);
     assert.equal(afterPlay.world.battle.damageDealt, 7);
     assert.deepEqual(handOf(afterPlay, 'alice'), [tenHearts]);
     assert.deepEqual(afterPlay.decision, {
       kind: 'await-damage-discard',
-      requiredDamage: immunityCancelled ? 3 : 10,
+      requiredDamage: jesterPlayed ? 3 : 10,
     });
     assertCardsInExactlyOneZone(afterPlay, originalIds);
   });

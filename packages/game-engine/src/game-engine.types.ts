@@ -50,7 +50,6 @@ export type Battle = Readonly<{
   enemy: RoyalCard;
   damageDealt: number;
   plays: readonly HistoricalPlay[];
-  immunityCancelled: boolean;
 }>;
 export type World = Readonly<{
   /** Players in clockwise seating order. */

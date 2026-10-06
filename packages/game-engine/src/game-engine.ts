@@ -88,10 +88,7 @@ function handleTurnAction(
     case 'jester':
       return {
         kind: 'active',
-        world: {
-          ...worldAfterPlay,
-          battle: { ...worldAfterPlay.battle, immunityCancelled: true },
-        },
+        world: worldAfterPlay,
         decision: { kind: 'await-next-player-choice' },
       };
     case 'attack':
@@ -379,7 +376,6 @@ function resolveEnemyDefeat(world: World, defeatKind: DefeatKind): GameState {
       enemy: nextEnemy,
       damageDealt: 0,
       plays: [],
-      immunityCancelled: false,
     },
   });
 }
@@ -409,7 +405,7 @@ function attackDamage(battle: Battle, play: AttackPlay): number {
 }
 
 function suitPowerActive(battle: Battle, suit: Suit): boolean {
-  return suit !== battle.enemy.suit || battle.immunityCancelled;
+  return suit !== battle.enemy.suit || battle.plays.some((play) => play.kind === 'jester');
 }
 
 function activeShield(battle: Battle): number {

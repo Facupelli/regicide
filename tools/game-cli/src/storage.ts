@@ -133,8 +133,7 @@ function battleOf(value: unknown): value is Battle {
     typeof value.damageDealt === 'number' &&
     Number.isFinite(value.damageDealt) &&
     Array.isArray(value.plays) &&
-    value.plays.every(playOf) &&
-    typeof value.immunityCancelled === 'boolean'
+    value.plays.every(playOf)
   );
 }
 

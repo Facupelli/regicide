@@ -121,7 +121,6 @@ void test('overkill King defeat discards the enemy, cleans up plays, and reveals
     enemy,
     damageDealt: 36,
     plays: [{ kind: 'attack', cards: [eightClubs] }],
-    immunityCancelled: true,
     castle: [nextEnemy, followingEnemy],
   });
   const originalIds = allCardIds(initial);
@@ -141,7 +140,6 @@ void test('overkill King defeat discards the enemy, cleans up plays, and reveals
     enemy: nextEnemy,
     damageDealt: 0,
     plays: [],
-    immunityCancelled: false,
   });
   assert.deepEqual(afterPlay.world.castle, [followingEnemy]);
   assert.equal(afterPlay.world.currentPlayer, 'alice');
@@ -168,7 +166,6 @@ void test('defeat moves all cards from separate attacks, an Animal pair, and a J
     currentPlayer: 'alice',
     enemy,
     damageDealt: 19,
-    immunityCancelled: true,
     plays: [
       { kind: 'attack', cards: [eightClubs] },
       { kind: 'attack', cards: [companion, twoSpades] },
@@ -199,7 +196,6 @@ void test('defeat moves all cards from separate attacks, an Animal pair, and a J
     enemy: nextEnemy,
     damageDealt: 0,
     plays: [],
-    immunityCancelled: false,
   });
   assert.deepEqual(after.world.castle, [followingEnemy]);
   assert.deepEqual(handOf(after, 'alice'), []);
@@ -226,7 +222,6 @@ void test('exact Queen defeat puts the enemy on Tavern top, cleans up plays, and
     enemy,
     damageDealt: 24,
     plays: [{ kind: 'attack', cards: [sevenClubs] }],
-    immunityCancelled: true,
     tavern: [twoHearts, sixDiamonds],
     castle: [nextEnemy, followingEnemy],
   });
@@ -247,7 +242,6 @@ void test('exact Queen defeat puts the enemy on Tavern top, cleans up plays, and
     enemy: nextEnemy,
     damageDealt: 0,
     plays: [],
-    immunityCancelled: false,
   });
   assert.deepEqual(afterPlay.world.castle, [followingEnemy]);
   assert.equal(afterPlay.world.currentPlayer, 'alice');

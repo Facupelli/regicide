@@ -38,7 +38,6 @@ void test('a Jester played alone cancels immunity without damage or retaliation,
     { kind: 'attack', cards: [earlierClubs] },
     { kind: 'jester', card: jester },
   ]);
-  assert.equal(afterPlay.world.battle.immunityCancelled, true);
   assert.equal(afterPlay.world.battle.damageDealt, 3); // The Jester's attack value is 0.
   assert.deepEqual(afterPlay.world.discard, []);
   assert.equal(afterPlay.world.currentPlayer, 'alice');
