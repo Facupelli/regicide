@@ -2,22 +2,36 @@ import * as v from 'valibot';
 import { PlayerCommandSchema } from './commands.ts';
 import { GameViewSchema } from './game-view.ts';
 import { IdentifierSchema } from './identifier.ts';
+import { LobbyViewSchema } from './lobby-view.ts';
 
-const GameResponseSchema = v.strictObject({
+const LobbyResponseSchema = v.strictObject({
+  gameId: IdentifierSchema,
+  playerId: IdentifierSchema,
+  view: LobbyViewSchema,
+});
+
+export const CreateGameResponseSchema = LobbyResponseSchema;
+export type CreateGameResponse = v.InferOutput<typeof CreateGameResponseSchema>;
+
+export const JoinGameResponseSchema = LobbyResponseSchema;
+export type JoinGameResponse = v.InferOutput<typeof JoinGameResponseSchema>;
+
+export const GetGameResponseSchema = v.strictObject({
+  gameId: IdentifierSchema,
+  view: v.union([LobbyViewSchema, GameViewSchema]),
+});
+export type GetGameResponse = v.InferOutput<typeof GetGameResponseSchema>;
+
+export const StartGameResponseSchema = v.strictObject({
   gameId: IdentifierSchema,
   view: GameViewSchema,
 });
-
-export const CreateGameResponseSchema = GameResponseSchema;
-export type CreateGameResponse = v.InferOutput<typeof CreateGameResponseSchema>;
-
-export const GetGameResponseSchema = GameResponseSchema;
-export type GetGameResponse = v.InferOutput<typeof GetGameResponseSchema>;
+export type StartGameResponse = v.InferOutput<typeof StartGameResponseSchema>;
 
 export const SubmitActionRequestSchema = PlayerCommandSchema;
 export type SubmitActionRequest = v.InferOutput<typeof SubmitActionRequestSchema>;
 
-export const SubmitActionResponseSchema = GameResponseSchema;
+export const SubmitActionResponseSchema = StartGameResponseSchema;
 export type SubmitActionResponse = v.InferOutput<typeof SubmitActionResponseSchema>;
 
 export const ApiErrorSchema = v.strictObject({

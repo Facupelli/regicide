@@ -1,13 +1,13 @@
 import { useRef, useState } from 'react';
 import type { GameView, PlayerCommand } from '@regicide/protocol';
-import { ApiClientError, createGame, submitAction } from './api/games.ts';
+import { ApiClientError, createSoloGame, submitAction } from './api/games.ts';
 import { GameTable } from './components/game/GameTable.tsx';
 import { Button } from './components/ui/Button.tsx';
 
 type ScreenState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; gameId: string; view: GameView }
+  | { status: 'loaded'; gameId: string; playerId: string; view: GameView }
   | { status: 'error'; message: string };
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -30,7 +30,7 @@ function App() {
     setActionError(null);
     setScreen({ status: 'loading' });
     try {
-      const response = await createGame();
+      const response = await createSoloGame();
       setScreen({ status: 'loaded', ...response });
     } catch (error) {
       setScreen({ status: 'error', message: errorMessage(error, 'Could not start a game') });
@@ -52,8 +52,8 @@ function App() {
     setActionPending(true);
     setActionError(null);
     try {
-      const response = await submitAction(screen.gameId, command);
-      setScreen({ status: 'loaded', ...response });
+      const response = await submitAction(screen.gameId, screen.playerId, command);
+      setScreen({ status: 'loaded', playerId: screen.playerId, ...response });
       setSelectedCardIds([]);
     } catch (error) {
       setActionError(errorMessage(error, 'Could not submit action'));

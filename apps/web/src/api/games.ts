@@ -2,6 +2,7 @@ import {
   ApiErrorSchema,
   CreateGameResponseSchema,
   GetGameResponseSchema,
+  StartGameResponseSchema,
   SubmitActionResponseSchema,
   type PlayerCommand,
 } from '@regicide/protocol';
@@ -19,20 +20,30 @@ export class ApiClientError extends Error {
   }
 }
 
-export function createGame() {
-  return request('/games', { method: 'POST' }, CreateGameResponseSchema);
+export async function createSoloGame() {
+  const lobby = await request('/games', { method: 'POST' }, CreateGameResponseSchema);
+  const started = await request(
+    `/games/${encodeURIComponent(lobby.gameId)}/start`,
+    { method: 'POST', headers: { 'X-Player-Id': lobby.playerId } },
+    StartGameResponseSchema,
+  );
+  return { ...started, playerId: lobby.playerId };
 }
 
-export function getGame(gameId: string) {
-  return request(`/games/${encodeURIComponent(gameId)}`, { method: 'GET' }, GetGameResponseSchema);
+export function getGame(gameId: string, playerId?: string) {
+  return request(
+    `/games/${encodeURIComponent(gameId)}`,
+    { method: 'GET', headers: playerId ? { 'X-Player-Id': playerId } : {} },
+    GetGameResponseSchema,
+  );
 }
 
-export function submitAction(gameId: string, command: PlayerCommand) {
+export function submitAction(gameId: string, playerId: string, command: PlayerCommand) {
   return request(
     `/games/${encodeURIComponent(gameId)}/actions`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Player-Id': playerId },
       body: JSON.stringify(command),
     },
     SubmitActionResponseSchema,

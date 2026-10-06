@@ -19,6 +19,9 @@ export type {
   Suit,
 } from './cards.ts';
 
+export { LobbyViewSchema } from './lobby-view.ts';
+export type { LobbyView } from './lobby-view.ts';
+
 export { PlayerCommandSchema } from './commands.ts';
 export type { PlayerCommand } from './commands.ts';
 
@@ -49,6 +52,8 @@ export {
   ApiErrorSchema,
   CreateGameResponseSchema,
   GetGameResponseSchema,
+  JoinGameResponseSchema,
+  StartGameResponseSchema,
   SubmitActionRequestSchema,
   SubmitActionResponseSchema,
 } from './api.ts';
@@ -56,6 +61,8 @@ export type {
   ApiError,
   CreateGameResponse,
   GetGameResponse,
+  JoinGameResponse,
+  StartGameResponse,
   SubmitActionRequest,
   SubmitActionResponse,
 } from './api.ts';
