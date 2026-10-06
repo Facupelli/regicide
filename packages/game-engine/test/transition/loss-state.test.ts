@@ -49,6 +49,34 @@ void test('unsurvivable retaliation ends the game without losing cards or mutati
   });
 });
 
+void test('solo retaliation with insufficient total hand value ends in loss without a discard decision', () => {
+  const attack = makeCard(2, 'clubs');
+  const weak = makeCard(3, 'hearts');
+  const state = makeGameState({
+    players: [{ id: 'alice', hand: [attack, weak] }],
+    currentPlayer: 'alice',
+    enemy: makeRoyal('jack', 'spades'),
+    soloJestersUsed: 0,
+  });
+  const retaliation = transitionWithBattle(state, {
+    kind: 'play-cards',
+    playerId: 'alice',
+    cardIds: [attack.id],
+  });
+  assert.equal(retaliation.kind, 'active');
+  assert.deepEqual(retaliation.decision, { kind: 'await-solo-retaliation' });
+
+  const lost = transitionWithBattle(retaliation, {
+    kind: 'decline-solo-jester',
+    playerId: 'alice',
+  });
+  assert.equal(lost.kind, 'game-over');
+  assert.equal(lost.result, 'loss');
+  assert.equal(lost.decision, undefined);
+  assert.deepEqual(handOf(lost, 'alice'), [weak]);
+  assertCardsInExactlyOneZone(lost, allCardIds(state));
+});
+
 void test('a sufficient discard can empty the hand and still advance to a playable next turn', () => {
   const attack = makeCard(2, 'clubs');
   const ten = makeCard(10, 'hearts');

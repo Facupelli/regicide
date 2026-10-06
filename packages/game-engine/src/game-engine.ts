@@ -140,7 +140,9 @@ function handleDamageDiscard(
   action: DiscardForDamage,
 ): GameState {
   const selected = selectedCardsFromHand(player.hand, action.cardIds);
-  if (selected.reduce((total, card) => total + cardValue(card), 0) < decision.requiredDamage) {
+  if (
+    selected.reduce((total, card) => total + damageDiscardValue(card), 0) < decision.requiredDamage
+  ) {
     throw new Error('Selected cards do not absorb enough damage');
   }
 
@@ -187,15 +189,78 @@ function enterTurn(world: World): GameState {
   return { kind: 'active', world, decision: { kind: 'await-turn-action' } };
 }
 
-function validatePlay(player: Player, action: PlayCards): HistoricalPlay {
-  if (action.cardIds.length > 4) throw new Error('At most four cards can be played together');
-  const cards = selectedCardsFromHand(player.hand, action.cardIds);
+export type PlayValidation =
+  | Readonly<{ kind: 'valid'; play: HistoricalPlay }>
+  | Readonly<{
+      kind: 'invalid';
+      reason:
+        | 'empty'
+        | 'duplicate'
+        | 'too-many'
+        | 'jester-pair'
+        | 'animal-pair'
+        | 'combo-too-large'
+        | 'combo-mixed-ranks'
+        | 'unsupported-pair';
+    }>;
+
+/** Checks whether these cards form a legal play, independent of turn ownership and game state. */
+export function validateCardPlay(cards: readonly Card[]): PlayValidation {
+  if (cards.length === 0) return { kind: 'invalid', reason: 'empty' };
+  if (new Set(cards.map((card) => card.id)).size !== cards.length) {
+    return { kind: 'invalid', reason: 'duplicate' };
+  }
+  if (cards.length > 4) return { kind: 'invalid', reason: 'too-many' };
   if (cards.length === 1) {
     const [card] = cards;
-    if (!card) throw new Error('Select a card to play');
-    return validateSinglePlay(card);
+    if (card) return { kind: 'valid', play: validateSinglePlay(card) };
   }
-  return validateMultiCardPlay(cards);
+
+  if (cards.length === 2) {
+    const [first, second] = cards;
+    if (first && second && isAttackCard(first) && isAttackCard(second)) {
+      if (first.kind === 'animal') {
+        return { kind: 'valid', play: { kind: 'attack', cards: [first, second] } };
+      }
+      if (second.kind === 'animal') {
+        return { kind: 'valid', play: { kind: 'attack', cards: [first, second] } };
+      }
+    }
+  }
+  if (isNumberCombo(cards)) return { kind: 'valid', play: { kind: 'attack', cards } };
+  if (cards.some((card) => card.kind === 'jester')) {
+    return { kind: 'invalid', reason: 'jester-pair' };
+  }
+  if (cards.some((card) => card.kind === 'animal')) {
+    return { kind: 'invalid', reason: 'animal-pair' };
+  }
+  const [first] = cards;
+  if (first?.kind === 'number' && cards.every((card) => card.kind === 'number')) {
+    return {
+      kind: 'invalid',
+      reason: cards.every((card) => card.rank === first.rank)
+        ? 'combo-too-large'
+        : 'combo-mixed-ranks',
+    };
+  }
+  return { kind: 'invalid', reason: 'unsupported-pair' };
+}
+
+function validatePlay(player: Player, action: PlayCards): HistoricalPlay {
+  const result = validateCardPlay(selectedCardsFromHand(player.hand, action.cardIds));
+  if (result.kind === 'valid') return result.play;
+  switch (result.reason) {
+    case 'empty':
+      throw new Error('Select a card to play');
+    case 'duplicate':
+      throw new Error("Select distinct cards from the current player's hand");
+    case 'too-many':
+      throw new Error('At most four cards can be played together');
+    default:
+      throw new Error(
+        'Only Animal Companion pairs or same-rank numbered combos of value 10 or less are supported',
+      );
+  }
 }
 
 function validateSinglePlay(card: Card): HistoricalPlay {
@@ -208,20 +273,6 @@ function validateSinglePlay(card: Card): HistoricalPlay {
       return { kind: 'jester', card };
   }
   return assertNever(card);
-}
-
-function validateMultiCardPlay(cards: readonly Card[]): AttackPlay {
-  if (cards.length === 2) {
-    const [first, second] = cards;
-    if (first && second && isAttackCard(first) && isAttackCard(second)) {
-      if (first.kind === 'animal') return { kind: 'attack', cards: [first, second] };
-      if (second.kind === 'animal') return { kind: 'attack', cards: [first, second] };
-    }
-  }
-  if (isNumberCombo(cards)) return { kind: 'attack', cards };
-  throw new Error(
-    'Only Animal Companion pairs or same-rank numbered combos of value 10 or less are supported',
-  );
 }
 
 function isNumberCombo(cards: readonly Card[]): cards is NumberCombo {
@@ -349,7 +400,7 @@ function resolveRetaliation(world: World): GameState {
 
   const player = world.players.find((candidate) => candidate.id === world.currentPlayer);
   if (!player) throw new Error('The current player is not in the game');
-  if (requiredDamage > player.hand.reduce((total, held) => total + cardValue(held), 0)) {
+  if (requiredDamage > player.hand.reduce((total, held) => total + damageDiscardValue(held), 0)) {
     return { kind: 'game-over', world, result: 'loss' };
   }
 
@@ -437,8 +488,8 @@ function activeShield(battle: Battle): number {
   }, 0);
 }
 
-function cardValue(card: Card): number {
-  return card.kind === 'royal' ? royalCardValue(card) : attackValue(card);
+export function damageDiscardValue(card: Card): number {
+  return attackValue(card);
 }
 
 function royalCardValue(card: RoyalCard): number {

@@ -1,6 +1,11 @@
 import { useRef, useState } from 'react';
 import type { Card, GameView, Interaction, PlayerCommand } from '@regicide/protocol';
 import { ApiClientError, createGame, submitAction } from './api/games.ts';
+import {
+  evaluatePlaySelection,
+  selectedDamageValue,
+  type PlaySelectionState,
+} from './game-interaction/selection.ts';
 
 type ScreenState =
   | { status: 'idle' }
@@ -132,6 +137,10 @@ function GameDetails({
 }) {
   const interaction = view.status === 'active' ? view.interaction : null;
   const canSelect = interaction?.kind === 'turn' || interaction?.kind === 'damage-discard';
+  const playSelection = evaluatePlaySelection(view.viewer.hand, selectedCardIds);
+  const selectedDamage = selectedDamageValue(view.viewer.hand, selectedCardIds);
+  const incomingDamage =
+    view.status === 'active' ? Math.max(0, view.battle.enemyAttack - view.battle.shield) : 0;
 
   return (
     <section aria-label="Game details">
@@ -201,6 +210,9 @@ function GameDetails({
           <InteractionControls
             interaction={interaction}
             selectedCardIds={selectedCardIds}
+            playSelection={playSelection}
+            selectedDamage={selectedDamage}
+            incomingDamage={incomingDamage}
             actionPending={actionPending}
             onAction={onAction}
           />
@@ -227,11 +239,17 @@ function GameDetails({
 function InteractionControls({
   interaction,
   selectedCardIds,
+  playSelection,
+  selectedDamage,
+  incomingDamage,
   actionPending,
   onAction,
 }: {
   interaction: Interaction;
   selectedCardIds: string[];
+  playSelection: PlaySelectionState;
+  selectedDamage: number;
+  incomingDamage: number;
   actionPending: boolean;
   onAction: (command: PlayerCommand) => void;
 }) {
@@ -239,11 +257,18 @@ function InteractionControls({
     case 'turn':
       return (
         <>
+          <p>
+            {playSelection.kind === 'empty'
+              ? 'No cards selected.'
+              : playSelection.kind === 'valid'
+                ? 'Legal play selected.'
+                : `Invalid play: ${playSelection.reason}`}
+          </p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               className={actionButtonClass}
-              disabled={actionPending || selectedCardIds.length === 0}
+              disabled={actionPending || playSelection.kind !== 'valid'}
               onClick={() => onAction({ kind: 'play-cards', cardIds: selectedCardIds })}
             >
               Play selected cards
@@ -275,7 +300,8 @@ function InteractionControls({
     case 'solo-retaliation':
       return (
         <>
-          <p>Before taking damage, choose whether to use a Solo Jester.</p>
+          <p>The enemy will deal {incomingDamage} damage.</p>
+          <p>Use a Solo Jester to discard your hand and refill to 8 cards before taking damage?</p>
           <div className="flex flex-wrap gap-2">
             {interaction.canUseSoloJester && (
               <button
@@ -303,10 +329,17 @@ function InteractionControls({
       return (
         <>
           <p>Discard cards to absorb {interaction.requiredDamage} damage.</p>
+          <p>
+            Selected damage: {selectedDamage} / {interaction.requiredDamage}
+          </p>
           <button
             type="button"
             className={actionButtonClass}
-            disabled={actionPending || selectedCardIds.length === 0}
+            disabled={
+              actionPending ||
+              selectedCardIds.length === 0 ||
+              selectedDamage < interaction.requiredDamage
+            }
             onClick={() => onAction({ kind: 'discard-for-damage', cardIds: selectedCardIds })}
           >
             Discard selected cards
