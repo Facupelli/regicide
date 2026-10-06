@@ -1,3 +1,4 @@
+import { upgradeWebSocket } from '@hono/node-server';
 import { sValidator } from '@hono/standard-validator';
 import {
   SubmitActionRequestSchema,
@@ -8,7 +9,10 @@ import {
   type SubmitActionResponse,
 } from '@regicide/protocol';
 import { Hono } from 'hono';
+import { gameHub } from '../games/game-hub.ts';
 import { gameService } from '../games/game-service.ts';
+import { gameStore } from '../games/game-store.ts';
+import { authenticatePlayer } from '../games/player-auth.ts';
 import { apiError } from '../http/api-error.ts';
 import { requireJsonContentType } from '../http/json-validation.ts';
 import { authenticateBearerPlayer, requirePlayerCredential } from '../http/player-auth.ts';
@@ -18,6 +22,32 @@ export const gamesRoutes = new Hono()
     const result = gameService.createGame();
     c.header('Location', `/games/${result.gameId}`);
     return c.json(result satisfies CreateGameResponse, 201);
+  })
+  .get('/:gameId/ws', async (c) => {
+    const gameId = c.req.param('gameId');
+    const identity = authenticatePlayer({ gameId, playerToken: c.req.query('playerToken') ?? '' });
+    if (!identity.ok) {
+      if (identity.reason === 'game-not-found') {
+        return c.json(apiError('game-not-found', 'Game not found'), 404);
+      }
+      return c.json(apiError('invalid-credential', 'Valid player credential required'), 401);
+    }
+    if (gameStore.get(gameId)?.phase !== 'playing') {
+      return c.json(apiError('game-not-started', 'Game has not started'), 409);
+    }
+    if (c.req.header('Upgrade')?.toLowerCase() !== 'websocket') {
+      return c.json(apiError('invalid-request', 'WebSocket upgrade required'), 400);
+    }
+
+    const playerId = identity.playerId;
+    return await upgradeWebSocket(c, {
+      onOpen(_event, socket) {
+        gameHub.connect(gameId, playerId, socket);
+      },
+      onClose(_event, socket) {
+        gameHub.disconnect(gameId, playerId, socket);
+      },
+    });
   })
   .get('/:gameId', (c) => {
     const gameId = c.req.param('gameId');

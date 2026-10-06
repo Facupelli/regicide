@@ -19,6 +19,9 @@ export type {
   Suit,
 } from './cards.ts';
 
+export { GameUpdatedMessageSchema } from './game-updated.ts';
+export type { GameUpdatedMessage } from './game-updated.ts';
+
 export { LobbyViewSchema } from './lobby-view.ts';
 export type { LobbyView } from './lobby-view.ts';
 

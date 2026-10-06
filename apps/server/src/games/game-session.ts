@@ -12,6 +12,7 @@ export type GameSession =
   | LobbySession
   | {
       phase: 'playing';
+      revision: number;
       hostPlayerId: string;
       players: SessionPlayer[];
       state: GameState;

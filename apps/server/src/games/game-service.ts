@@ -4,6 +4,7 @@ import type { GameView, LobbyView, PlayerCommand } from '@regicide/protocol';
 import { toGameView } from '../adapters/game-view.ts';
 import { toLobbyView } from '../adapters/lobby-view.ts';
 import { toEngineAction } from '../adapters/player-command.ts';
+import { gameHub } from './game-hub.ts';
 import { gameStore } from './game-store.ts';
 import { createSessionPlayer } from './player-auth.ts';
 
@@ -64,7 +65,7 @@ export const gameService = {
 
     const rngState = randomBytes(4).readUInt32BE(0);
     const state = setupGame({ playerIds: session.players.map((player) => player.id), rngState });
-    gameStore.set(gameId, { ...session, phase: 'playing', state });
+    gameStore.set(gameId, { ...session, phase: 'playing', revision: 0, state });
     return { ok: true, view: toGameView(state, playerId) };
   },
 
@@ -106,6 +107,8 @@ export const gameService = {
     }
 
     session.state = nextState;
+    session.revision += 1;
+    gameHub.publishGame(gameId);
     return { ok: true, view: toGameView(nextState, playerId) };
   },
 };
