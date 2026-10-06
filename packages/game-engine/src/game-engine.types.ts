@@ -58,6 +58,8 @@ export type World = Readonly<{
   currentPlayer: string;
   /** Number of successive turns on which a player yielded. */
   consecutiveYields: number;
+  /** Solo Jester uses consumed; null for multiplayer games. */
+  soloJestersUsed: 0 | 1 | 2 | null;
   battle: Battle;
   tavern: readonly Card[];
   discard: readonly Card[];
@@ -66,11 +68,13 @@ export type World = Readonly<{
   rngState: number;
 }>;
 export type ResolvedWorld = Omit<World, 'battle'>;
+export type SoloVictoryRank = 'gold' | 'silver' | 'bronze';
 
 export type Decision =
   | Readonly<{ kind: 'await-turn-action' }>
   | Readonly<{ kind: 'await-damage-discard'; requiredDamage: number }>
-  | Readonly<{ kind: 'await-next-player-choice' }>;
+  | Readonly<{ kind: 'await-next-player-choice' }>
+  | Readonly<{ kind: 'await-solo-retaliation' }>;
 
 export type GameState =
   | Readonly<{ kind: 'active'; world: World; decision: Decision; result?: never }>
@@ -93,4 +97,12 @@ export type ChooseNextPlayer = Readonly<{
   playerId: string;
   targetPlayerId: string;
 }>;
-export type Action = PlayCards | YieldTurn | DiscardForDamage | ChooseNextPlayer;
+export type UseSoloJester = Readonly<{ kind: 'use-solo-jester'; playerId: string }>;
+export type DeclineSoloJester = Readonly<{ kind: 'decline-solo-jester'; playerId: string }>;
+export type Action =
+  | PlayCards
+  | YieldTurn
+  | DiscardForDamage
+  | ChooseNextPlayer
+  | UseSoloJester
+  | DeclineSoloJester;

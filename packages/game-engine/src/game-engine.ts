@@ -5,6 +5,7 @@ import type {
   Battle,
   Card,
   ChooseNextPlayer,
+  DeclineSoloJester,
   Decision,
   DiscardForDamage,
   EnemyRank,
@@ -16,6 +17,7 @@ import type {
   Player,
   RoyalCard,
   Suit,
+  UseSoloJester,
   World,
   YieldTurn,
 } from './game-engine.types.ts';
@@ -33,9 +35,17 @@ export function transition(state: GameState, action: Action): GameState {
 
   switch (decision.kind) {
     case 'await-turn-action':
-      if (action.kind !== 'play-cards' && action.kind !== 'yield')
+      if (
+        action.kind !== 'play-cards' &&
+        action.kind !== 'yield' &&
+        action.kind !== 'use-solo-jester'
+      )
         throw new Error('Not awaiting a turn action');
       return handleTurnAction(world, player, action);
+    case 'await-solo-retaliation':
+      if (action.kind !== 'use-solo-jester' && action.kind !== 'decline-solo-jester')
+        throw new Error('Not awaiting a solo retaliation choice');
+      return handleSoloRetaliation(world, player, action);
     case 'await-damage-discard':
       if (action.kind !== 'discard-for-damage') throw new Error('Not awaiting a damage discard');
       return handleDamageDiscard(world, player, decision, action);
@@ -48,12 +58,19 @@ export function transition(state: GameState, action: Action): GameState {
   return assertNever(decision);
 }
 
-function handleTurnAction(world: World, player: Player, action: PlayCards | YieldTurn): GameState {
+function handleTurnAction(
+  world: World,
+  player: Player,
+  action: PlayCards | YieldTurn | UseSoloJester,
+): GameState {
+  if (action.kind === 'use-solo-jester') {
+    return enterTurn(replaceSoloHand(world, player));
+  }
   if (action.kind === 'yield') {
     if (!canYield(world)) {
       throw new Error('Every other player yielded on their previous turn');
     }
-    return resolveRetaliation({ ...world, consecutiveYields: world.consecutiveYields + 1 });
+    return startRetaliation({ ...world, consecutiveYields: world.consecutiveYields + 1 });
   }
 
   const play = validatePlay(player, action);
@@ -72,6 +89,35 @@ function handleTurnAction(world: World, player: Player, action: PlayCards | Yiel
       return resolveAfterPlay(resolveImmediateSuitPower(worldAfterPlay, play), play);
   }
   return assertNever(play);
+}
+
+function handleSoloRetaliation(
+  world: World,
+  player: Player,
+  action: UseSoloJester | DeclineSoloJester,
+): GameState {
+  if (action.kind === 'decline-solo-jester') return resolveRetaliation(world);
+  return startRetaliation(replaceSoloHand(world, player));
+}
+
+function replaceSoloHand(world: World, player: Player): World {
+  if (!hasSoloJester(world)) throw new Error('No solo Jester available');
+  const drawCount = Math.min(maxHandSize(world.players.length), world.tavern.length);
+  return {
+    ...world,
+    soloJestersUsed: world.soloJestersUsed === 0 ? 1 : 2,
+    players: world.players.map((candidate) =>
+      candidate.id === player.id
+        ? { ...candidate, hand: world.tavern.slice(0, drawCount) }
+        : candidate,
+    ),
+    discard: [...world.discard, ...player.hand],
+    tavern: world.tavern.slice(drawCount),
+  };
+}
+
+function hasSoloJester(world: World): boolean {
+  return world.players.length === 1 && world.soloJestersUsed !== null && world.soloJestersUsed < 2;
 }
 
 function handleNextPlayerChoice(world: World, action: ChooseNextPlayer): GameState {
@@ -117,7 +163,7 @@ function hasLegalCardPlay(player: Player): boolean {
 function enterTurn(world: World): GameState {
   const player = world.players.find((candidate) => candidate.id === world.currentPlayer);
   if (!player) throw new Error('The current player is not in the game');
-  if (!canYield(world) && !hasLegalCardPlay(player)) {
+  if (!canYield(world) && !hasLegalCardPlay(player) && !hasSoloJester(world)) {
     return { kind: 'game-over', world, result: 'loss' };
   }
   return { kind: 'active', world, decision: { kind: 'await-turn-action' } };
@@ -267,7 +313,14 @@ function resolveAfterPlay(world: World, play: AttackPlay): GameState {
     return resolveEnemyDefeat(world, 'exact');
   }
 
-  return resolveRetaliation({ ...world, battle: { ...battle, damageDealt } });
+  return startRetaliation({ ...world, battle: { ...battle, damageDealt } });
+}
+
+function startRetaliation(world: World): GameState {
+  if (hasSoloJester(world)) {
+    return { kind: 'active', world, decision: { kind: 'await-solo-retaliation' } };
+  }
+  return resolveRetaliation(world);
 }
 
 function resolveRetaliation(world: World): GameState {

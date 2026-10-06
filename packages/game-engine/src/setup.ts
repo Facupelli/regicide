@@ -69,6 +69,7 @@ export function setupGame({ playerIds, rngState }: SetupConfig): GameState {
       players,
       currentPlayer: playerIds[0]!,
       consecutiveYields: 0,
+      soloJestersUsed: playerIds.length === 1 ? 0 : null,
       battle: { enemy: enemy!, damageDealt: 0, plays: [], immunityCancelled: false },
       tavern: tavern.cards.slice(dealt),
       discard: [],

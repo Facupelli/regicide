@@ -7,6 +7,7 @@ type StateOptions = Readonly<{
   players: World['players'];
   currentPlayer: World['currentPlayer'];
   consecutiveYields?: World['consecutiveYields'];
+  soloJestersUsed?: World['soloJestersUsed'];
   enemy: Battle['enemy'];
   damageDealt?: Battle['damageDealt'];
   plays?: Battle['plays'];
@@ -22,6 +23,8 @@ export function makeGameState({
   players,
   currentPlayer,
   consecutiveYields = 0,
+  // Synthetic solo states default to exhausted uses so unrelated rule tests keep automatic retaliation.
+  soloJestersUsed = players.length === 1 ? 2 : null,
   enemy,
   damageDealt = 0,
   plays = [],
@@ -38,6 +41,7 @@ export function makeGameState({
       players,
       currentPlayer,
       consecutiveYields,
+      soloJestersUsed,
       battle: { enemy, damageDealt, plays, immunityCancelled },
       tavern,
       discard,
