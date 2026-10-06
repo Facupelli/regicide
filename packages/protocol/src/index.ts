@@ -47,7 +47,6 @@ export type {
 
 export {
   ApiErrorSchema,
-  CreateGameRequestSchema,
   CreateGameResponseSchema,
   GetGameResponseSchema,
   SubmitActionRequestSchema,
@@ -55,7 +54,6 @@ export {
 } from './api.ts';
 export type {
   ApiError,
-  CreateGameRequest,
   CreateGameResponse,
   GetGameResponse,
   SubmitActionRequest,

@@ -3,12 +3,6 @@ import { PlayerCommandSchema } from './commands.ts';
 import { GameViewSchema } from './game-view.ts';
 import { IdentifierSchema } from './identifier.ts';
 
-// Solo is the only supported creation mode, so no request fields are needed yet.
-export const CreateGameRequestSchema = v.strictObject({});
-// Intentionally empty: the solo creation request has no options.
-// eslint-disable-next-line typescript/no-generated-empty-object-type
-export type CreateGameRequest = v.InferOutput<typeof CreateGameRequestSchema>;
-
 const GameResponseSchema = v.strictObject({
   gameId: IdentifierSchema,
   view: GameViewSchema,
