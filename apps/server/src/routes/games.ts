@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { sValidator } from '@hono/standard-validator';
-import { setupGame, transition } from '@regicide/game-engine';
+import { setupGame } from '@regicide/game-engine';
 import {
   SubmitActionRequestSchema,
   type CreateGameResponse,
@@ -9,7 +9,7 @@ import {
 } from '@regicide/protocol';
 import { Hono } from 'hono';
 import { toGameView } from '../adapters/game-view.ts';
-import { toEngineAction } from '../adapters/player-command.ts';
+import { gameService } from '../games/game-service.ts';
 import { gameStore } from '../games/game-store.ts';
 import { apiError } from '../http/api-error.ts';
 import { requireJsonContentType } from '../http/json-validation.ts';
@@ -48,19 +48,14 @@ export const gamesRoutes = new Hono()
       const session = gameStore.get(gameId);
       if (!session) return c.json(apiError('game-not-found', 'Game not found'), 404);
 
-      const action = toEngineAction(command, session.playerId);
-      let nextState;
-      try {
-        nextState = transition(session.state, action);
-      } catch (error) {
-        if (error instanceof Error) return c.json(apiError('invalid-action', error.message), 409);
-        throw error;
+      const result = gameService.submitCommand({ gameId, playerId: session.playerId, command });
+      if (!result.ok) {
+        if (result.reason === 'game-not-found') {
+          return c.json(apiError('game-not-found', 'Game not found'), 404);
+        }
+        return c.json(apiError('invalid-action', result.message), 409);
       }
 
-      session.state = nextState;
-      return c.json({
-        gameId,
-        view: toGameView(nextState, session.playerId),
-      } satisfies SubmitActionResponse);
+      return c.json({ gameId, view: result.view } satisfies SubmitActionResponse);
     },
   );
