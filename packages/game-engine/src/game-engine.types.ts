@@ -30,6 +30,8 @@ export type World = Readonly<{
   tavern: readonly Card[];
   discard: readonly Card[];
   castle: readonly RoyalCard[];
+  /** Unsigned 32-bit state for deterministic discard shuffles. */
+  rngState: number;
 }>;
 export type Decision =
   | Readonly<{ kind: 'await-turn-action' }>

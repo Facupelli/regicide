@@ -202,3 +202,37 @@ simple deterministic transformations
 ```
 
 Do not broaden the engine beyond the behavior required by the current slice.
+
+## **13. Test domain contracts, not incidental algorithms**
+
+Tests should lock down observable domain behavior and intentional compatibility contracts, not incidental implementation choices.
+
+For example, when testing deterministic shuffling, prefer asserting:
+
+```text
+same state + same action → same resulting state
+
+the correct number of cards move from discard to Tavern
+
+healed cards are placed at the bottom of Tavern
+
+unhealed cards remain in discard
+
+no cards are duplicated or lost
+```
+
+Do not normally assert a specific PRNG internal state or exact seeded permutation unless the RNG algorithm itself has explicitly been declared part of the engine's compatibility contract.
+
+A deterministic implementation may change internally while preserving the same domain guarantees.
+
+This applies beyond randomness. Avoid tests that unnecessarily bind behavior to:
+
+- a particular helper implementation;
+- internal intermediate representations;
+- incidental array construction strategies;
+- private algorithm choices;
+- exact error wording when only failure semantics matter.
+
+Tests should make refactoring difficult **only when the refactor would change meaningful engine behavior**.
+
+When an implementation detail must become stable—for example, because persisted games, cross-version replays, or network synchronization depend on it—make that compatibility requirement explicit before testing the exact representation or algorithm.

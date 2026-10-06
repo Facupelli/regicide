@@ -44,10 +44,6 @@ void test('play validation', async (t) => {
       action: { kind: 'play-cards', playerId: 'alice', cardIds: [fiveClubs.id, sixDiamonds.id] },
     },
     {
-      name: 'rejects unsupported Hearts plays',
-      action: { kind: 'play-cards', playerId: 'alice', cardIds: [twoHearts.id] },
-    },
-    {
       name: 'rejects a discard action during the play phase',
       action: {
         kind: 'discard-for-damage',

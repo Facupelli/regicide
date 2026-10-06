@@ -13,6 +13,7 @@ type StateOptions = Readonly<{
   tavern?: World['tavern'];
   discard?: World['discard'];
   castle?: World['castle'];
+  rngState?: World['rngState'];
   decision?: GameState['decision'];
 }>;
 
@@ -26,6 +27,7 @@ export function makeGameState({
   tavern = [],
   discard = [],
   castle = [],
+  rngState = 1,
   decision = { kind: 'await-turn-action' },
 }: StateOptions): GameState {
   return {
@@ -36,6 +38,7 @@ export function makeGameState({
       tavern,
       discard,
       castle,
+      rngState,
     },
     decision,
   };

@@ -71,12 +71,8 @@ function handleDamageDiscard(
 function validatePlay(player: Player, action: PlayCards): NumberCard {
   if (action.cardIds.length !== 1) throw new Error('Only single-card plays are supported');
   const [card] = selectedCardsFromHand(player.hand, action.cardIds);
-  if (
-    !card ||
-    card.kind !== 'number' ||
-    (card.suit !== 'clubs' && card.suit !== 'spades' && card.suit !== 'diamonds')
-  ) {
-    throw new Error('Only numbered Clubs, Spades, and Diamonds plays are supported');
+  if (!card || card.kind !== 'number') {
+    throw new Error('Only single numbered card plays are supported');
   }
   return card;
 }
@@ -100,9 +96,35 @@ function applyPlay(world: World, player: Player, card: NumberCard): World {
 }
 
 function resolveImmediateSuitPower(world: World, card: NumberCard): World {
-  return card.suit === 'diamonds' && suitPowerActive(world.battle, card)
-    ? resolveDiamondDraw(world, attackValue(card))
-    : world;
+  if (!suitPowerActive(world.battle, card)) return world;
+  if (card.suit === 'hearts') return resolveHeartHeal(world, attackValue(card));
+  if (card.suit === 'diamonds') return resolveDiamondDraw(world, attackValue(card));
+  return world;
+}
+
+function resolveHeartHeal(world: World, healCount: number): World {
+  const { cards, rngState } = shuffle(world.discard, world.rngState);
+  const healed = Math.min(healCount, cards.length);
+  return {
+    ...world,
+    discard: cards.slice(healed),
+    tavern: [...world.tavern, ...cards.slice(0, healed)],
+    rngState,
+  };
+}
+
+// Fisher-Yates on a copy; the LCG state is part of the world, never global.
+function shuffle(cards: readonly Card[], rngState: number): { cards: Card[]; rngState: number } {
+  const shuffled = [...cards];
+  let nextState = rngState;
+  for (let index = shuffled.length - 1; index > 0; index--) {
+    nextState = (Math.imul(nextState, 1664525) + 1013904223) >>> 0;
+    const otherIndex = Math.floor((nextState / 0x100000000) * (index + 1));
+    const card = shuffled[index]!;
+    shuffled[index] = shuffled[otherIndex]!;
+    shuffled[otherIndex] = card;
+  }
+  return { cards: shuffled, rngState: nextState };
 }
 
 function resolveDiamondDraw(world: World, drawCount: number): World {
