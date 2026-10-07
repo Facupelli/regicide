@@ -18,7 +18,7 @@ export function EnemyArea({
 }) {
   return (
     <section
-      className={`flex items-center gap-2 lg:col-span-1 lg:col-start-2 lg:row-start-2 lg:flex-row lg:justify-center lg:gap-6 lg:text-left ${hasOpponents ? 'col-span-2 col-start-2 row-start-2 flex-row justify-start text-left' : 'col-span-3 col-start-1 row-start-1 flex-col justify-center text-center'}`}
+      className={`flex items-center gap-4 lg:col-span-1 lg:col-start-2 lg:row-start-2 lg:flex-row lg:justify-center lg:gap-6 lg:text-left ${hasOpponents ? 'col-span-2 col-start-2 row-start-2 flex-row justify-start text-left' : 'col-span-3 col-start-1 row-start-1 flex-col justify-center text-center'}`}
       aria-label="Enemy"
     >
       {battle ? (

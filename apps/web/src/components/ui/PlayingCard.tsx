@@ -14,13 +14,13 @@ const sizes: Record<CardVariant, string> = {
   hand: 'w-[var(--hand-card-width,clamp(4.5rem,19vw,6.5rem))] shrink-0 lg:w-[clamp(4rem,6.4vw,5.5rem)]',
   enemy: 'w-[clamp(5rem,12svh,6rem)] sm:w-[clamp(5rem,12svh,9rem)] lg:w-36',
   played: 'w-16 shrink-0 sm:w-18 lg:w-16',
-  pile: 'w-10 sm:w-12',
+  pile: 'w-[var(--pile-card-width,2.5rem)] sm:w-[var(--pile-card-width,3rem)]',
 };
 
 const cardStates = {
   normal: 'border-card-border',
   selected:
-    '-translate-y-8 border-card-selected ring-2 ring-card-selected ring-offset-2 ring-offset-table lg:-translate-y-2',
+    '-translate-y-6 border-card-selected ring-2 ring-card-selected ring-offset-2 ring-offset-table lg:-translate-y-2',
   unavailable: 'cursor-not-allowed border-dashed border-card-unavailable opacity-50 grayscale',
   pending: 'cursor-wait opacity-60',
 } as const;

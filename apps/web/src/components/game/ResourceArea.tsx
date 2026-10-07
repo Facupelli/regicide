@@ -86,7 +86,7 @@ export function ResourceArea({
       <div
         className={`col-span-3 flex items-start lg:contents ${hasOpponents ? 'row-start-5' : 'row-start-4'} ${view.soloJestersRemaining !== null ? 'justify-between' : 'justify-center'}`}
       >
-        <div className="flex items-start gap-4 lg:contents">
+        <div className="flex items-start gap-6 [--pile-card-width:3rem] sm:[--pile-card-width:3.5rem] lg:contents lg:[--pile-card-width:3rem]">
           <ResourcePile
             label="Tavern"
             count={view.tavern.remainingCards}

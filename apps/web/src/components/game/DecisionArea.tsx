@@ -180,11 +180,7 @@ function InteractionControls({
         </div>
       );
     case 'waiting':
-      return (
-        <p data-verify="decision">
-          Waiting for another player.
-        </p>
-      );
+      return <p data-verify="decision">Waiting for another player.</p>;
     case 'choose-next-player':
       return (
         <div className="flex flex-wrap items-center justify-between gap-3">

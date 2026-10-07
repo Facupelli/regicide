@@ -38,10 +38,10 @@ export function PlayerHand({
   const local = view.players.find((player) => player.id === view.viewer.id);
   return (
     <section
-      className={`col-span-3 min-w-0 [--hand-card-width:clamp(4.5rem,19vw,6.5rem)] lg:col-span-1 lg:col-start-2 lg:row-start-5 ${hasOpponents ? 'row-start-6' : 'row-start-5'}`}
+      className={`relative col-span-3 min-w-0 [--hand-card-width:clamp(4.5rem,19vw,6.5rem)] lg:col-span-1 lg:col-start-2 lg:row-start-5 ${hasOpponents ? 'row-start-6' : 'row-start-5'}`}
       aria-label="Your hand"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 lg:mb-2">
+      <div className="absolute top-7 left-1 flex -translate-y-full flex-wrap items-center justify-between gap-2 lg:static lg:mb-2 lg:translate-y-0">
         <h2 className="text-xs font-normal lg:text-sm lg:font-semibold">
           Your hand<span className="hidden lg:inline"> ({view.viewer.hand.length})</span>
         </h2>

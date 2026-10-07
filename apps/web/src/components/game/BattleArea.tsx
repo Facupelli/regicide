@@ -16,10 +16,7 @@ export function BattleArea({
     >
       <h2 className="text-center text-sm leading-tight">Current play</h2>
       {battle?.plays.length ? (
-        <div
-          className="flex max-w-full gap-2 overflow-x-auto py-2"
-          aria-label="Accepted plays"
-        >
+        <div className="flex max-w-full gap-2 overflow-x-auto py-2" aria-label="Accepted plays">
           {battle.plays.map((play, index) => (
             <div
               className="flex shrink-0 gap-0.5 border-r border-border pr-2 last:border-0"
@@ -33,7 +30,7 @@ export function BattleArea({
           ))}
         </div>
       ) : (
-        <div className="py-2 max-lg:[@media(max-height:740px)]:hidden lg:hidden" aria-hidden="true">
+        <div className="py-2 lg:hidden" aria-hidden="true">
           <div className="aspect-5/7 w-16 sm:w-18" />
         </div>
       )}
