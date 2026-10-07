@@ -1,4 +1,6 @@
 import type { BattleView, Suit } from '@regicide/protocol';
+import { useGamePresentation } from '../../game-presentation/GamePresentationContext.ts';
+import { gamePresentationAnchor } from '../../game-presentation/game-presentation.types.ts';
 import { PlayingCard } from '../ui/PlayingCard.tsx';
 import { HeartIcon, ShieldIcon, SwordIcon } from '../ui/icons/GameStatIcons.tsx';
 
@@ -16,6 +18,7 @@ export function EnemyArea({
   battle: BattleView | undefined;
   hasOpponents: boolean;
 }) {
+  const { registerAnchor } = useGamePresentation();
   return (
     <section
       className={`flex items-center gap-4 lg:col-span-1 lg:col-start-2 lg:row-start-2 lg:flex-row lg:justify-center lg:gap-6 lg:text-left ${hasOpponents ? 'col-span-2 col-start-2 row-start-2 flex-row justify-start text-left' : 'col-span-3 col-start-1 row-start-1 flex-col justify-center text-center'}`}
@@ -23,7 +26,11 @@ export function EnemyArea({
     >
       {battle ? (
         <>
-          <PlayingCard card={battle.enemy} variant="enemy" />
+          <PlayingCard
+            card={battle.enemy}
+            variant="enemy"
+            elementRef={(element) => registerAnchor(gamePresentationAnchor.enemy, element)}
+          />
           <div className="min-w-0 space-y-1.5 lg:max-w-64 lg:space-y-3">
             <div
               className={`flex text-sm lg:block lg:space-y-3 ${hasOpponents ? 'flex-col items-start gap-1.5' : 'items-center justify-center gap-3'}`}

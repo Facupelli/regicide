@@ -1,11 +1,22 @@
-import type { Card } from '@regicide/protocol';
+import type { Card, RoyalCard } from '@regicide/protocol';
 
-export type GamePresentationAnchorKey = `card:${string}` | `player:${string}` | 'discard';
+export type GamePresentationAnchorKey =
+  | `card:${string}`
+  | `player:${string}`
+  | `battle-card:${string}`
+  | 'battle-target'
+  | 'enemy'
+  | 'discard'
+  | 'tavern';
 
 export const gamePresentationAnchor = {
   card: (cardId: string): GamePresentationAnchorKey => `card:${cardId}`,
   player: (playerId: string): GamePresentationAnchorKey => `player:${playerId}`,
+  battleCard: (cardId: string): GamePresentationAnchorKey => `battle-card:${cardId}`,
+  battleTarget: 'battle-target' as const,
+  enemy: 'enemy' as const,
   discard: 'discard' as const,
+  tavern: 'tavern' as const,
 };
 
 export type RectSnapshot = {
@@ -23,7 +34,35 @@ export type PreparedCardsDiscardedForDamage = {
   fallbackDestination: RectSnapshot | null;
 };
 
-export type PreparedGamePresentation = PreparedCardsDiscardedForDamage;
+export type PreparedCardsPlayed = {
+  type: 'cardsPlayed';
+  eventId: number;
+  playerId: string;
+  cards: Array<{ card: Card; source: RectSnapshot | null }>;
+  fallbackBattleTarget: RectSnapshot | null;
+};
+
+export type PreparedEnemyDefeatSequence = {
+  type: 'enemyDefeatSequence';
+  eventId: number;
+  defeatEventId: number;
+  playerId: string;
+  playedCards: PreparedCardsPlayed['cards'];
+  battleCards: Array<{ card: Card; source: RectSnapshot | null; newlyPlayed: boolean }>;
+  enemy: {
+    card: RoyalCard;
+    source: RectSnapshot | null;
+    destination: 'discard' | 'tavern';
+  };
+  fallbackBattleTarget: RectSnapshot | null;
+  fallbackDiscard: RectSnapshot | null;
+  fallbackTavern: RectSnapshot | null;
+};
+
+export type PreparedGamePresentation =
+  | PreparedCardsDiscardedForDamage
+  | PreparedCardsPlayed
+  | PreparedEnemyDefeatSequence;
 
 export function snapshotRect(element: HTMLElement | undefined): RectSnapshot | null {
   if (!element) return null;

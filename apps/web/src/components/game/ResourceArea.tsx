@@ -95,6 +95,7 @@ export function ResourceArea({
         <div className="flex items-start gap-6 [--pile-card-width:3rem] sm:[--pile-card-width:3.5rem] lg:contents lg:[--pile-card-width:3rem]">
           <ResourcePile
             label="Tavern"
+            cardElementRef={(element) => registerAnchor(gamePresentationAnchor.tavern, element)}
             count={view.tavern.remainingCards}
             className="lg:col-start-3 lg:row-start-2"
           />

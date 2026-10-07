@@ -19,8 +19,18 @@ export type {
   Suit,
 } from './cards.ts';
 
-export { CardsDiscardedForDamageEventSchema, GameEventSchema } from './game-event.ts';
-export type { CardsDiscardedForDamageEvent, GameEvent } from './game-event.ts';
+export {
+  CardsDiscardedForDamageEventSchema,
+  CardsPlayedEventSchema,
+  EnemyDefeatedEventSchema,
+  GameEventSchema,
+} from './game-event.ts';
+export type {
+  CardsDiscardedForDamageEvent,
+  CardsPlayedEvent,
+  EnemyDefeatedEvent,
+  GameEvent,
+} from './game-event.ts';
 
 export { GameUpdatedMessageSchema } from './game-updated.ts';
 export type { GameUpdatedMessage } from './game-updated.ts';
