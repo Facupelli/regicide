@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { GameView, LobbyView, PlayerCommand } from '@regicide/protocol';
 import { connectGameSocket } from './api/game-socket.ts';
@@ -12,8 +12,8 @@ import {
   submitAction,
 } from './api/games.ts';
 import { GameTable } from './components/game/GameTable.tsx';
+import { EntryScreen } from './components/entry/EntryScreen.tsx';
 import { LobbyScreen } from './components/lobby/LobbyScreen.tsx';
-import { Button } from './components/ui/Button.tsx';
 import { useGamePresentation } from './game-presentation/GamePresentationContext.ts';
 
 type Identity = { gameId: string; playerId: string; playerToken: string };
@@ -58,8 +58,8 @@ function App() {
       presentation.reset();
     }
   }, [presentation, presentationSessionKey]);
-  const [joinId, setJoinId] = useState('');
-  const [soloScenario, setSoloScenario] = useState('');
+  // Preserve the entry screen's last scenario for New Game until scenario behavior is revisited.
+  const lastEntryScenario = useRef('');
   const [lobbyPending, setLobbyPending] = useState(false);
   const [lobbyError, setLobbyError] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection>({ revision: -1, ids: [] });
@@ -158,8 +158,9 @@ function App() {
     };
   }
 
-  async function createCoop() {
+  async function createCoop(soloScenario: string) {
     if (operationInFlight.current || actionInFlight.current) return;
+    lastEntryScenario.current = soloScenario;
     operationInFlight.current = true;
     pendingScenarioStart.current = null;
     setScreen({ status: 'loading' });
@@ -174,14 +175,9 @@ function App() {
     }
   }
 
-  async function joinCoop(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function joinCoop(id: string, soloScenario: string) {
     if (operationInFlight.current || actionInFlight.current) return;
-    const id = joinId.trim();
-    if (!id) {
-      setScreen({ status: 'error', message: 'Enter a game ID to join.' });
-      return;
-    }
+    lastEntryScenario.current = soloScenario;
     operationInFlight.current = true;
     pendingScenarioStart.current = null;
     setScreen({ status: 'loading' });
@@ -196,14 +192,15 @@ function App() {
     }
   }
 
-  async function startSolo() {
+  async function startSolo(scenario = lastEntryScenario.current) {
     if (operationInFlight.current || actionInFlight.current || resetInFlight.current) return;
+    lastEntryScenario.current = scenario;
     operationInFlight.current = true;
     setScreen({ status: 'loading' });
     setSelection({ revision: -1, ids: [] });
     setActionError(null);
     try {
-      const devScenario = import.meta.env.DEV && soloScenario ? soloScenario : undefined;
+      const devScenario = import.meta.env.DEV && scenario ? scenario : undefined;
       const response = await createSoloGame(devScenario);
       setScreen(playing(response, response.view, devScenario));
     } catch (error) {
@@ -375,7 +372,7 @@ function App() {
           selectedCardIds={selectedCardIds}
           onToggleCard={toggleCard}
           onAction={sendAction}
-          onNewGame={startSolo}
+          onNewGame={() => void startSolo()}
           onResetScenario={
             import.meta.env.DEV && screen.devScenario ? resetCurrentScenario : undefined
           }
@@ -402,72 +399,13 @@ function App() {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10 font-sans text-foreground">
-      <div className="w-full max-w-md rounded-xl border border-border bg-panel p-6 shadow-xl sm:p-8">
-        <h1 className="text-3xl font-bold">Regicide</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Take on the castle together, or play solo.
-        </p>
-        <div className="mt-8 flex flex-col gap-4">
-          {import.meta.env.DEV && (
-            <div className="flex flex-col gap-2">
-              <label htmlFor="solo-scenario" className="font-medium">
-                Scenario
-              </label>
-              <select
-                id="solo-scenario"
-                value={soloScenario}
-                onChange={(event) => setSoloScenario(event.target.value)}
-                disabled={screen.status === 'loading'}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-card-selected"
-              >
-                <option value="">Normal game</option>
-                <option value="enemy-defeat-exact-vs-overkill">
-                  Enemy defeat - exact vs overkill
-                </option>
-              </select>
-            </div>
-          )}
-          <Button onClick={startSolo} disabled={screen.status === 'loading'}>
-            Start Solo Game
-          </Button>
-          <Button onClick={createCoop} disabled={screen.status === 'loading'}>
-            Create Co-op Game
-          </Button>
-          <form
-            onSubmit={joinCoop}
-            className="mt-2 flex flex-col gap-3 border-t border-border pt-6"
-          >
-            <label htmlFor="game-id" className="font-medium">
-              Join a game
-            </label>
-            <input
-              id="game-id"
-              type="text"
-              autoComplete="off"
-              spellCheck={false}
-              value={joinId}
-              onChange={(event) => setJoinId(event.target.value)}
-              placeholder="Paste game ID"
-              className="w-full min-w-0 rounded-lg border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-card-selected"
-            />
-            <Button type="submit" disabled={screen.status === 'loading'}>
-              Join Game
-            </Button>
-          </form>
-        </div>
-        {screen.status === 'loading' && (
-          <p role="status" className="mt-5 text-sm">
-            Loading game...
-          </p>
-        )}
-        {screen.status === 'error' && (
-          <p role="alert" className="mt-5 text-sm text-danger">
-            {screen.message}
-          </p>
-        )}
-      </div>
-    </main>
+    <EntryScreen
+      loading={screen.status === 'loading'}
+      error={screen.status === 'error' ? screen.message : null}
+      onCreateCoop={createCoop}
+      onJoinCoop={joinCoop}
+      onStartSolo={startSolo}
+    />
   );
 }
 
