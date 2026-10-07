@@ -11,9 +11,9 @@ import {
   startGame,
   submitAction,
 } from './api/games.ts';
-import { GameTable } from './components/game/GameTable.tsx';
 import { EntryScreen } from './components/entry/EntryScreen.tsx';
 import { LobbyScreen } from './components/lobby/LobbyScreen.tsx';
+import { PlayingScreen } from './components/game/PlayingScreen.tsx';
 import { useGamePresentation } from './game-presentation/GamePresentationContext.ts';
 
 type Identity = { gameId: string; playerId: string; playerToken: string };
@@ -31,8 +31,7 @@ type ScreenState =
     } & Identity)
   | { status: 'error'; message: string };
 
-type PlayingScreen = Extract<ScreenState, { status: 'playing' }>;
-type Selection = { revision: number; ids: string[] };
+type PlayingState = Extract<ScreenState, { status: 'playing' }>;
 
 function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiClientError) {
@@ -62,7 +61,6 @@ function App() {
   const lastEntryScenario = useRef('');
   const [lobbyPending, setLobbyPending] = useState(false);
   const [lobbyError, setLobbyError] = useState<string | null>(null);
-  const [selection, setSelection] = useState<Selection>({ revision: -1, ids: [] });
   const [actionError, setActionError] = useState<{ revision: number; message: string } | null>(
     null,
   );
@@ -143,7 +141,7 @@ function App() {
     });
   }, [gameId, playerToken, presentation]);
 
-  function playing(identity: Identity, view: GameView, devScenario?: string): PlayingScreen {
+  function playing(identity: Identity, view: GameView, devScenario?: string): PlayingState {
     // The server starts at revision 0. The first socket snapshot establishes the client revision.
     return {
       status: 'playing',
@@ -197,7 +195,6 @@ function App() {
     lastEntryScenario.current = scenario;
     operationInFlight.current = true;
     setScreen({ status: 'loading' });
-    setSelection({ revision: -1, ids: [] });
     setActionError(null);
     try {
       const devScenario = import.meta.env.DEV && scenario ? scenario : undefined;
@@ -241,27 +238,6 @@ function App() {
     }
   }
 
-  const selectedCardIds =
-    screen.status === 'playing' && selection.revision === screen.revision ? selection.ids : [];
-
-  function toggleCard(cardId: string) {
-    if (
-      screen.status !== 'playing' ||
-      screen.connection !== 'live' ||
-      screen.awaitingUpdate ||
-      actionInFlight.current ||
-      resetInFlight.current
-    )
-      return;
-    setSelection((current) => {
-      const ids = current.revision === screen.revision ? current.ids : [];
-      return {
-        revision: screen.revision,
-        ids: ids.includes(cardId) ? ids.filter((id) => id !== cardId) : [...ids, cardId],
-      };
-    });
-  }
-
   async function sendAction(command: PlayerCommand) {
     if (
       screen.status !== 'playing' ||
@@ -286,7 +262,6 @@ function App() {
           ? { ...current, awaitingUpdate: true }
           : current,
       );
-      setSelection({ revision: -1, ids: [] });
     } catch (error) {
       setActionError({
         revision: screen.revision,
@@ -335,53 +310,21 @@ function App() {
   }
 
   if (screen.status === 'playing') {
-    const syncMessage =
-      screen.connection === 'connecting'
-        ? 'Connecting to live game...'
-        : screen.awaitingUpdate
-          ? 'Waiting for game update...'
-          : null;
-    let phase: string;
-    if (screen.view.status === 'game-over') {
-      phase = screen.view.result === 'win' ? 'victory' : 'defeat';
-    } else if (screen.view.interaction.kind === 'damage-discard') {
-      phase = 'discard';
-    } else if (screen.view.interaction.kind === 'turn') {
-      phase = 'play';
-    } else {
-      phase = screen.view.interaction.kind;
-    }
-    let turn: 'you' | 'other' | undefined;
-    if (screen.view.status === 'active') {
-      turn = screen.view.currentPlayerId === screen.view.viewer.id ? 'you' : 'other';
-    }
     return (
-      <main
-        className="min-h-svh bg-table font-sans lg:min-h-dvh"
-        data-verify="game"
-        data-phase={phase}
-        data-turn={turn}
-      >
-        {syncMessage && (
-          <p role="status" className="bg-panel px-4 py-2 text-center text-sm text-foreground">
-            {syncMessage}
-          </p>
-        )}
-        <GameTable
-          view={screen.view}
-          selectedCardIds={selectedCardIds}
-          onToggleCard={toggleCard}
-          onAction={sendAction}
-          onNewGame={() => void startSolo()}
-          onResetScenario={
-            import.meta.env.DEV && screen.devScenario ? resetCurrentScenario : undefined
-          }
-          resetPending={resetPending}
-          actionPending={actionPending}
-          actionsDisabled={screen.connection !== 'live' || screen.awaitingUpdate || resetPending}
-          actionError={actionError?.revision === screen.revision ? actionError.message : null}
-        />
-      </main>
+      <PlayingScreen
+        view={screen.view}
+        revision={screen.revision}
+        connection={screen.connection}
+        awaitingUpdate={screen.awaitingUpdate}
+        actionPending={actionPending}
+        resetPending={resetPending}
+        actionError={actionError?.revision === screen.revision ? actionError.message : null}
+        onAction={sendAction}
+        onNewGame={() => void startSolo()}
+        onResetScenario={
+          import.meta.env.DEV && screen.devScenario ? resetCurrentScenario : undefined
+        }
+      />
     );
   }
 
