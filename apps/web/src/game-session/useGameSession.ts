@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
 import type { GameView, LobbyView, PlayerCommand } from '@regicide/protocol';
 import { connectGameSocket } from '../api/game-socket.ts';
 import {
@@ -26,15 +25,17 @@ type Identity = { gameId: string; playerId: string; playerToken: string };
 type LobbyStart =
   | { status: 'ready' }
   | { status: 'pending' }
+  | { status: 'accepted' }
   | { status: 'error'; message: string };
 type PlayingOperation = 'idle' | 'submitting' | 'resetting';
+type DevScenario = { name: string; origin: 'solo' | 'co-op' };
 type PlayingState = {
   status: 'playing';
   view: GameView;
   live: LiveState;
   operation: PlayingOperation;
   actionError: string | null;
-  devScenario?: string | undefined;
+  devScenario?: DevScenario | undefined;
 } & Identity;
 type SessionState =
   | { status: 'idle' }
@@ -65,7 +66,7 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-function playing(identity: Identity, view: GameView, devScenario?: string): PlayingState {
+function playing(identity: Identity, view: GameView, devScenario?: DevScenario): PlayingState {
   // The server starts at revision 0. The first socket snapshot establishes the client revision.
   return {
     status: 'playing',
@@ -110,8 +111,6 @@ export function useGameSession() {
   const entryInFlight = useRef(false);
   const playingInFlight = useRef(false);
   const pendingScenarioStart = useRef<{ gameId: string; scenario: string } | null>(null);
-  // Preserve the entry screen's last scenario for New Game until scenario behavior is revisited.
-  const lastEntryScenario = useRef('');
   const presentation = useGamePresentation();
 
   useLayoutEffect(() => {
@@ -145,14 +144,19 @@ export function useGameSession() {
           return;
         }
         if (current.status === 'lobby') {
-          const devScenario =
+          const scenario =
             pendingScenarioStart.current?.gameId === gameId
               ? pendingScenarioStart.current.scenario
               : undefined;
           pendingScenarioStart.current = null;
-          flushSync(() => {
+          presentation.switchSession(gameId);
+          presentation.presentUpdate([], current.playerId, () => {
             setState({
-              ...playing(current, message.view, devScenario),
+              ...playing(
+                current,
+                message.view,
+                scenario ? { name: scenario, origin: 'co-op' } : undefined,
+              ),
               live: { revision: message.revision, sync: 'ready' },
             });
           });
@@ -171,9 +175,7 @@ export function useGameSession() {
           });
           return;
         }
-        // Presentation still sequences around the React commit here until slice 5.
-        const prepared = presentation.prepare(message.events, current.playerId);
-        flushSync(() => {
+        presentation.presentUpdate(message.events, current.playerId, () => {
           setState((latest) =>
             latest.status === 'playing' &&
             latest.gameId === gameId &&
@@ -188,7 +190,6 @@ export function useGameSession() {
               : latest,
           );
         });
-        presentation.enqueue(prepared);
       },
       onDisconnected() {
         setState((current) => {
@@ -205,9 +206,8 @@ export function useGameSession() {
     });
   }, [gameId, playerToken, presentation]);
 
-  async function createCoop(soloScenario: string) {
+  async function createCoop() {
     if (entryInFlight.current || playingInFlight.current) return;
-    lastEntryScenario.current = soloScenario;
     entryInFlight.current = true;
     pendingScenarioStart.current = null;
     setState({ status: 'loading' });
@@ -221,9 +221,8 @@ export function useGameSession() {
     }
   }
 
-  async function joinCoop(id: string, soloScenario: string) {
+  async function joinCoop(id: string) {
     if (entryInFlight.current || playingInFlight.current) return;
-    lastEntryScenario.current = soloScenario;
     entryInFlight.current = true;
     pendingScenarioStart.current = null;
     setState({ status: 'loading' });
@@ -237,15 +236,22 @@ export function useGameSession() {
     }
   }
 
-  async function startSolo(scenario = lastEntryScenario.current) {
+  async function startSolo(scenario?: string) {
     if (entryInFlight.current || playingInFlight.current) return;
-    lastEntryScenario.current = scenario;
     entryInFlight.current = true;
+    presentation.switchSession(null);
     setState({ status: 'loading' });
     try {
       const devScenario = import.meta.env.DEV && scenario ? scenario : undefined;
       const response = await createSoloGame(devScenario);
-      setState(playing(response, response.view, devScenario));
+      presentation.switchSession(response.gameId);
+      setState(
+        playing(
+          response,
+          response.view,
+          devScenario ? { name: devScenario, origin: 'solo' } : undefined,
+        ),
+      );
     } catch (error) {
       setState({ status: 'error', message: errorMessage(error, 'Could not start a game') });
     } finally {
@@ -253,11 +259,21 @@ export function useGameSession() {
     }
   }
 
+  function startNewSoloGame() {
+    const current = stateRef.current;
+    const scenario =
+      current.status === 'playing' && current.devScenario?.origin === 'solo'
+        ? current.devScenario.name
+        : undefined;
+    return startSolo(scenario);
+  }
+
   async function startCoop(scenario?: string) {
     const current = stateRef.current;
     if (
       current.status !== 'lobby' ||
       current.view.hostPlayerId !== current.playerId ||
+      (current.start.status !== 'ready' && current.start.status !== 'error') ||
       entryInFlight.current
     )
       return;
@@ -269,19 +285,21 @@ export function useGameSession() {
         ? { ...latest, start: { status: 'pending' } }
         : latest,
     );
-    pendingScenarioStart.current = scenario ? { gameId: current.gameId, scenario } : null;
+    const devScenario = import.meta.env.DEV && scenario ? scenario : undefined;
+    pendingScenarioStart.current = devScenario
+      ? { gameId: current.gameId, scenario: devScenario }
+      : null;
     try {
       // The socket may arrive before the HTTP response. Keep pending context game-scoped.
-      await startGame(current.gameId, current.playerToken, scenario);
-      if (scenario) {
-        setState((latest) =>
-          latest.status === 'playing' &&
-          latest.gameId === current.gameId &&
-          latest.playerToken === current.playerToken
-            ? { ...latest, devScenario: scenario }
-            : latest,
-        );
-      }
+      await startGame(current.gameId, current.playerToken, devScenario);
+      setState((latest) => {
+        if (latest.status !== 'lobby' && latest.status !== 'playing') return latest;
+        if (latest.gameId !== current.gameId || latest.playerToken !== current.playerToken)
+          return latest;
+        if (latest.status === 'lobby') return { ...latest, start: { status: 'accepted' } };
+        if (devScenario) return { ...latest, devScenario: { name: devScenario, origin: 'co-op' } };
+        return latest;
+      });
     } catch (error) {
       // A game update may already have confirmed the start despite a lost HTTP response.
       pendingScenarioStart.current = null;
@@ -297,18 +315,10 @@ export function useGameSession() {
       );
     } finally {
       entryInFlight.current = false;
-      setState((latest) =>
-        latest.status === 'lobby' &&
-        latest.gameId === current.gameId &&
-        latest.playerToken === current.playerToken &&
-        latest.start.status === 'pending'
-          ? { ...latest, start: { status: 'ready' } }
-          : latest,
-      );
     }
   }
 
-  async function submit(command: PlayerCommand) {
+  async function submit(command: PlayerCommand): Promise<'accepted' | 'not-accepted'> {
     const current = stateRef.current;
     if (
       current.status !== 'playing' ||
@@ -316,7 +326,7 @@ export function useGameSession() {
       current.live.sync !== 'ready' ||
       playingInFlight.current
     )
-      return;
+      return 'not-accepted';
     playingInFlight.current = true;
     setState((latest) =>
       latest.status === 'playing' &&
@@ -335,6 +345,7 @@ export function useGameSession() {
           ? { ...latest, live: requestAccepted(latest.live, current.live.revision) }
           : latest,
       );
+      return 'accepted';
     } catch (error) {
       setState((latest) =>
         latest.status === 'playing' &&
@@ -344,6 +355,7 @@ export function useGameSession() {
           ? { ...latest, actionError: errorMessage(error, 'Could not submit action') }
           : latest,
       );
+      return 'not-accepted';
     } finally {
       playingInFlight.current = false;
       setState((latest) =>
@@ -407,10 +419,10 @@ export function useGameSession() {
 
   return {
     screen: toScreen(state),
-    presentationSessionKey: state.status === 'playing' ? state.gameId : null,
     createCoop,
     joinCoop,
     startSolo,
+    startNewSoloGame,
     startCoop,
     submit,
     resetCurrentScenario,

@@ -19,7 +19,7 @@ export function PlayingScreen({
   sync: 'connecting' | 'ready' | 'awaiting-update';
   operation: 'idle' | 'submitting' | 'resetting';
   actionError: string | null;
-  onAction: (command: PlayerCommand) => void;
+  onAction: (command: PlayerCommand) => Promise<'accepted' | 'not-accepted'>;
   onNewGame: () => void;
   onResetScenario?: (() => void) | undefined;
 }) {
@@ -38,6 +38,12 @@ export function PlayingScreen({
         ids: ids.includes(cardId) ? ids.filter((id) => id !== cardId) : [...ids, cardId],
       };
     });
+  }
+
+  async function submit(command: PlayerCommand) {
+    if ((await onAction(command)) === 'accepted') {
+      setSelection({ viewVersion: '', ids: [] });
+    }
   }
 
   const syncMessage = getSyncMessage(sync);
@@ -60,7 +66,7 @@ export function PlayingScreen({
         view={view}
         selectedCardIds={selectedCardIds}
         onToggleCard={toggleCard}
-        onAction={onAction}
+        onAction={submit}
         onNewGame={onNewGame}
         onResetScenario={onResetScenario}
         resetPending={resetPending}

@@ -29,6 +29,5 @@ export function requestAccepted(live: LiveState, submittedAtRevision: number): L
 }
 
 export function viewVersion(gameId: string, live: LiveState): string {
-  const acknowledged = live.sync === 'awaiting-update' || live.sync === 'reconnecting-after-submit';
-  return `${gameId}:${live.revision}:${acknowledged ? 'accepted' : 'current'}`;
+  return `${gameId}:${live.revision}`;
 }

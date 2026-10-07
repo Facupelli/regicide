@@ -10,9 +10,9 @@ export function EntryScreen({
 }: {
   loading: boolean;
   error: string | null;
-  onCreateCoop: (soloScenario: string) => void;
-  onJoinCoop: (gameId: string, soloScenario: string) => void;
-  onStartSolo: (scenario: string) => void;
+  onCreateCoop: () => void;
+  onJoinCoop: (gameId: string) => void;
+  onStartSolo: (scenario?: string) => void;
 }) {
   const [joinId, setJoinId] = useState('');
   const [soloScenario, setSoloScenario] = useState('');
@@ -26,7 +26,7 @@ export function EntryScreen({
       return;
     }
     setJoinError(null);
-    onJoinCoop(id, soloScenario);
+    onJoinCoop(id);
   }
 
   return (
@@ -59,7 +59,7 @@ export function EntryScreen({
           <Button
             onClick={() => {
               setJoinError(null);
-              onStartSolo(soloScenario);
+              onStartSolo(import.meta.env.DEV && soloScenario ? soloScenario : undefined);
             }}
             disabled={loading}
           >
@@ -68,7 +68,7 @@ export function EntryScreen({
           <Button
             onClick={() => {
               setJoinError(null);
-              onCreateCoop(soloScenario);
+              onCreateCoop();
             }}
             disabled={loading}
           >

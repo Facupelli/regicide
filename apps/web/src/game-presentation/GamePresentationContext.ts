@@ -1,15 +1,15 @@
 import type { GameEvent } from '@regicide/protocol';
 import { createContext, useContext } from 'react';
-import type {
-  GamePresentationAnchorKey,
-  PreparedGamePresentation,
-} from './game-presentation.types.ts';
+import type { GamePresentationAnchorKey } from './game-presentation.types.ts';
 
 export type GamePresentationContextValue = {
   registerAnchor: (key: GamePresentationAnchorKey, element: HTMLElement | null) => void;
-  prepare: (events: readonly GameEvent[], localPlayerId: string) => PreparedGamePresentation[];
-  enqueue: (presentations: readonly PreparedGamePresentation[]) => void;
-  reset: () => void;
+  presentUpdate: (
+    events: readonly GameEvent[],
+    localPlayerId: string,
+    commitView: () => void,
+  ) => void;
+  switchSession: (sessionKey: string | null) => void;
 };
 
 export const GamePresentationContext = createContext<GamePresentationContextValue | null>(null);

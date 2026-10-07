@@ -1,6 +1,6 @@
 import type { CardsPlayedEvent, GameEvent } from '@regicide/protocol';
 import { memo, useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { CardsDiscardedForDamagePresentation } from './CardsDiscardedForDamagePresentation.tsx';
 import { CardsPlayedPresentation } from './CardsPlayedPresentation.tsx';
 import { EnemyDefeatSequencePresentation } from './EnemyDefeatSequencePresentation.tsx';
@@ -77,6 +77,8 @@ const GamePresentationOverlay = memo(function GamePresentationOverlay({
 
 export function GamePresentationProvider({ children }: { children: ReactNode }) {
   const anchors = useRef(new Map<GamePresentationAnchorKey, HTMLElement>());
+  // Scope only the animation queue, not game or connection state.
+  const sessionKey = useRef<string | null>(null);
   const [queue, setQueue] = useState<QueueState>({ active: null, pending: [] });
 
   const registerAnchor = useCallback(
@@ -211,9 +213,20 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
     });
   }, []);
 
-  const reset = useCallback(() => {
+  const switchSession = useCallback((key: string | null) => {
+    if (sessionKey.current === key) return;
+    sessionKey.current = key;
     setQueue({ active: null, pending: [] });
   }, []);
+
+  const presentUpdate = useCallback(
+    (events: readonly GameEvent[], localPlayerId: string, commitView: () => void) => {
+      const prepared = prepare(events, localPlayerId);
+      flushSync(commitView);
+      enqueue(prepared);
+    },
+    [prepare, enqueue],
+  );
 
   const onComplete = useCallback((completed: PreparedGamePresentation) => {
     setQueue((current) => {
@@ -224,8 +237,8 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
   }, []);
 
   const value = useMemo(
-    () => ({ registerAnchor, prepare, enqueue, reset }),
-    [registerAnchor, prepare, enqueue, reset],
+    () => ({ registerAnchor, presentUpdate, switchSession }),
+    [registerAnchor, presentUpdate, switchSession],
   );
 
   return (

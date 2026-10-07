@@ -1,22 +1,11 @@
-import { useLayoutEffect, useRef } from 'react';
 import { EntryScreen } from './components/entry/EntryScreen.tsx';
 import { LobbyScreen } from './components/lobby/LobbyScreen.tsx';
 import { PlayingScreen } from './components/game/PlayingScreen.tsx';
-import { useGamePresentation } from './game-presentation/GamePresentationContext.ts';
 import { useGameSession } from './game-session/useGameSession.ts';
 
 function App() {
   const session = useGameSession();
-  const { screen, presentationSessionKey } = session;
-  const presentation = useGamePresentation();
-  const previousPresentationSessionKey = useRef(presentationSessionKey);
-
-  useLayoutEffect(() => {
-    if (previousPresentationSessionKey.current !== presentationSessionKey) {
-      previousPresentationSessionKey.current = presentationSessionKey;
-      presentation.reset();
-    }
-  }, [presentation, presentationSessionKey]);
+  const { screen } = session;
 
   if (screen.status === 'playing') {
     return (
@@ -27,7 +16,7 @@ function App() {
         operation={screen.operation}
         actionError={screen.actionError}
         onAction={session.submit}
-        onNewGame={() => void session.startSolo()}
+        onNewGame={session.startNewSoloGame}
         onResetScenario={screen.canResetScenario ? session.resetCurrentScenario : undefined}
       />
     );
@@ -39,7 +28,7 @@ function App() {
         gameId={screen.gameId}
         playerId={screen.playerId}
         view={screen.view}
-        pending={screen.start.status === 'pending'}
+        pending={screen.start.status === 'pending' || screen.start.status === 'accepted'}
         error={screen.start.status === 'error' ? screen.start.message : null}
         onStart={session.startCoop}
       />
