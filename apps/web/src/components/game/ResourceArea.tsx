@@ -81,7 +81,7 @@ export function ResourceArea({
       <ResourcePile
         label="Castle"
         count={view.castle.remainingCards}
-        className={`col-start-1 lg:row-start-2 lg:mt-0 lg:self-stretch ${view.status === 'active' || view.result === 'loss' ? 'mt-10 self-start sm:mt-[4.25rem]' : 'self-center'} ${hasOpponents ? 'row-start-2' : 'row-start-1'}`}
+        className={`col-start-1 lg:row-start-2 lg:mt-0 lg:self-stretch ${!hasOpponents && (view.status === 'active' || view.result === 'loss') ? 'mt-10 self-start sm:mt-[4.25rem]' : 'self-center'} ${hasOpponents ? 'row-start-2' : 'row-start-1'}`}
       />
       <div
         className={`col-span-3 flex items-start lg:contents ${hasOpponents ? 'row-start-5' : 'row-start-4'} ${view.soloJestersRemaining !== null ? 'justify-between' : 'justify-center'}`}

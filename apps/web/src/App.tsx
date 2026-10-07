@@ -256,8 +256,27 @@ function App() {
         : screen.awaitingUpdate
           ? 'Waiting for game update...'
           : null;
+    let phase: string;
+    if (screen.view.status === 'game-over') {
+      phase = screen.view.result === 'win' ? 'victory' : 'defeat';
+    } else if (screen.view.interaction.kind === 'damage-discard') {
+      phase = 'discard';
+    } else if (screen.view.interaction.kind === 'turn') {
+      phase = 'play';
+    } else {
+      phase = screen.view.interaction.kind;
+    }
+    let turn: 'you' | 'other' | undefined;
+    if (screen.view.status === 'active') {
+      turn = screen.view.currentPlayerId === screen.view.viewer.id ? 'you' : 'other';
+    }
     return (
-      <main className="min-h-svh bg-table font-sans lg:min-h-dvh">
+      <main
+        className="min-h-svh bg-table font-sans lg:min-h-dvh"
+        data-verify="game"
+        data-phase={phase}
+        data-turn={turn}
+      >
         {syncMessage && (
           <p role="status" className="bg-panel px-4 py-2 text-center text-sm text-foreground">
             {syncMessage}

@@ -6,4 +6,21 @@ SESSION_ID="${PI_SESSION_ID:-default}"
 
 export CHROME_DEVTOOLS_AXI_SESSION="regicide-${SESSION_ID}"
 
-exec pnpm exec chrome-devtools-axi "$@"
+if [[ "${1:-}" == "game-state" ]]; then
+  if [[ "$#" -ne 1 ]]; then
+    printf 'usage: bin/browser game-state\n' >&2
+    exit 2
+  fi
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  extractor="$(<"${script_dir}/scripts/browser/game-state.js")"
+  if ! output="$(pnpm exec chrome-devtools-axi eval --full "${extractor#export default }")"; then
+    printf '%s\n' "$output" >&2
+    exit 1
+  fi
+  printf '%s\n' "$output" | node "${script_dir}/scripts/browser/print-game-state.js"
+elif [[ "${1:-}" == "--help" && "$#" -eq 1 ]]; then
+  pnpm exec chrome-devtools-axi --help
+  printf '\ngame-state    Print compact rendered Regicide gameplay state (active games only)\n'
+else
+  exec pnpm exec chrome-devtools-axi "$@"
+fi

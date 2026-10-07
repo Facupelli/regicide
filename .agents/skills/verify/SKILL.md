@@ -1,17 +1,17 @@
 ---
 name: verify
-description: Verify Regicide end to end through the real local web application and HTTP API after browser-visible gameplay changes.
+description: Verify Regicide behavior through the real local web application and HTTP API after user-visible or gameplay changes.
 ---
 
 # Verify
 
-Verify behavior through the real running application.
+Verify the changed behavior through the real running application.
 
-Runtime behavior is the source of truth. Use source code only to understand or debug what you observe.
+Runtime behavior is the source of truth. Use source code only to understand or debug an observation.
 
 ## Environment
 
-The developer starts the local applications before verification.
+The developer owns the local application processes.
 
 Expected services:
 
@@ -20,7 +20,7 @@ Expected services:
 
 Do not start, restart, or stop developer-owned application servers unless explicitly asked.
 
-## Verification interfaces
+## Interfaces
 
 Use:
 
@@ -29,48 +29,73 @@ bin/browser       Browser interaction
 pnpm verify:http  Deterministic HTTP verification
 ```
 
-Use `bin/browser` for all browser interaction.
+Use `bin/browser` for browser work. Do not invoke `chrome-devtools-axi` directly or manage its session environment.
 
-Do not invoke `chrome-devtools-axi` directly or manage its session environment yourself.
-
-## Deterministic baseline
-
-Before investigating a browser-visible failure that may involve the backend, run:
-
-```bash
-pnpm verify:http
-```
-
-Treat this as the deterministic HTTP contract baseline.
-
-If it passes while the browser flow fails, investigate the web/API-client/browser boundary first.
-
-## Browser readiness
-
-Before browser verification:
+Before browser verification, run:
 
 ```bash
 bin/browser pages
 ```
 
-If the browser tool or required application is unavailable, report the infrastructure problem instead of rebuilding the tooling.
+If the browser or application is unavailable, report the infrastructure problem.
+
+## Verification scope
+
+Verify the smallest real user flow that proves the requested behavior.
+
+Do not play through unrelated game phases only to reach the state under test.
+
+When a deep gameplay state is required, prefer a deterministic legal setup through the HTTP interface when that setup is not itself under test. Then exercise the behavior being verified through the real UI.
+
+A full-game playthrough is required only when the behavior being verified depends on the complete game progression or the user explicitly requests one.
+
+## HTTP baseline
+
+Run:
+
+```bash
+pnpm verify:http
+```
+
+when the change can affect server behavior or when a browser failure may originate at the web/server boundary.
+
+Treat a passing HTTP verification as the deterministic server-contract baseline.
+
+Do not rerun it during the same verification unless relevant code or server state changed.
+
+## Browser snapshots
+
+Browser commands may return a fresh `snapshot:` as part of their own output.
+
+When a command returns a snapshot, that snapshot is the current accessibility tree. Do not immediately run `bin/browser snapshot` again.
+
+Use an explicit snapshot only when:
+
+- no current snapshot is available;
+- the page changed asynchronously after the last browser output;
+- a reference became stale;
+- the UI structure is unknown and broader inspection is necessary.
+
+Snapshot references are transient. Use references only from the newest relevant snapshot.
+
+Prefer accessible names and roles. Use stable identifiers only when semantic identity is insufficient.
 
 ## Interaction
 
 Exercise behavior through the real UI.
 
-Prefer stable semantic targets:
+Prefer:
 
-- visible labels
-- accessible names
-- roles
-- stable identifiers
+- accessible names;
+- visible labels;
+- roles;
+- stable application identifiers.
 
-Avoid targeting controls by incidental position, ordering, or surrounding markup when a semantic target is available.
+Avoid incidental position, ordering, or surrounding markup.
 
-Snapshot references are transient. After navigation or a state-changing interaction, refresh the snapshot before reusing references when needed.
+Once an interaction sequence is known and no reasoning is required between its steps, group it instead of alternating one command and one broad observation.
 
-Do not guess unfamiliar browser commands. Use:
+Do not guess browser commands. Use:
 
 ```bash
 bin/browser --help
@@ -79,21 +104,22 @@ bin/browser <command> --help
 
 ## Observation
 
-Use the smallest observation that proves or disproves the expected behavior.
+Collect only the evidence needed for the current decision.
 
-Prefer:
+Prefer, in order:
 
-- focused snapshots for nearby UI state;
-- `eval` for a specific DOM value or property;
-- focused network inspection for a specific request;
-- console inspection for runtime errors;
-- broad snapshots only when the UI structure is unknown.
+1. a focused `eval` or project-specific read-only probe for known state;
+2. the fresh snapshot already returned by the previous browser action;
+3. a focused network or console query;
+4. an explicit broad snapshot when the structure is unknown.
 
-Do not collect large unfiltered browser, network, or console output unless focused evidence is insufficient.
+Do not repeatedly inspect the full page to read values that can be obtained with a compact probe.
+
+Observation may inspect application state. It must not inject, mutate, or force the state being verified.
 
 ## Waiting
 
-Prefer observable application state over arbitrary delays.
+Wait for observable application state instead of arbitrary delays.
 
 Examples:
 
@@ -104,89 +130,69 @@ bin/browser wait "Victory"
 bin/browser wait "Defeat"
 ```
 
-Use a numeric wait only when no useful observable state exists.
+After a wait, use evidence already returned by the command when sufficient. Do not add a snapshot automatically.
 
-Use grouped browser commands only when the interaction sequence is already known and no reasoning is needed between steps.
+Use numeric waits only when no observable state exists.
 
-## Gameplay verification
+## Gameplay proof
 
-For gameplay changes, exercise the real player flow far enough to prove the behavior.
+For a gameplay change, prove the specific affected transition.
 
-Typical solo flow:
+Relevant evidence can include:
 
-```text
-Start Solo Game
-→ inspect the current state
-→ select card(s)
-→ submit an action
-→ handle the next interaction
-→ verify the resulting state
-```
+- the user action;
+- current interaction;
+- hand contents or count;
+- enemy health, attack, or shield;
+- Tavern, Castle, or discard state;
+- victory or defeat;
+- the corresponding HTTP request and response when needed.
 
-When relevant, continue through later turns, enemy defeat, Solo Jester use, damage discard, victory, or defeat.
+Do not infer correctness from the absence of errors.
 
-Verify visible state changes that matter to the behavior, such as:
-
-- hand contents
-- enemy damage
-- shield
-- Tavern count
-- Castle count
-- discard count
-- current interaction
-- victory or defeat
-
-Do not infer correctness only from the absence of errors.
+Do not continue playing after the requested behavior is proven unless later state is part of the behavior under test.
 
 ## Invalid actions
 
-When relevant, deliberately exercise an invalid action through the UI.
+When rejection behavior is relevant, exercise one representative invalid action through the real UI.
 
 Verify that:
 
 - the action is rejected;
-- the UI shows the error;
-- the authoritative game view does not change unexpectedly;
-- the player can correct the selection and continue.
+- the error is visible;
+- authoritative game state does not change unexpectedly;
+- the user can correct the action and continue.
 
-## Network and console evidence
+Do not exhaustively explore invalid combinations unless requested.
 
-Use focused network inspection when a browser action needs deeper verification:
+## Network and console
+
+Inspect network traffic only when needed to prove or debug the browser/server boundary.
 
 ```bash
 bin/browser network --type fetch --limit 30
-```
-
-Inspect a specific request with:
-
-```bash
 bin/browser network-get <id>
 ```
 
-Check browser errors with:
+Check relevant browser errors before declaring browser verification clean:
 
 ```bash
 bin/browser console --type error --limit 30
 ```
 
-A UI interaction is not cleanly verified if it causes a new relevant console error.
+Do not repeatedly query network or console state after every interaction.
 
-## Evidence
+## Result
 
-A successful verification should show concrete runtime evidence for the requested behavior.
+Report a verification as `VERIFIED`, `NOT VERIFIED`, or `INCONCLUSIVE`.
 
-When useful, combine:
+A successful verification names the behavior exercised and the concrete runtime evidence that proves it.
 
-- the real user action;
-- the resulting UI state;
-- the relevant request/response;
-- console output.
-
-If verification exposes a bug, unexpected state, failed request, or console error, report it instead of working around it.
+If a bug, unexpected state, failed request, console error, or infrastructure problem appears, report it. Do not work around it to obtain a passing result.
 
 ## Cleanup
 
-Before finishing, stop every browser session created by the verification run:
+Stop browser sessions created by the verification run:
 
 ```bash
 bin/browser stop

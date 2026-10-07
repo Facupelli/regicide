@@ -18,37 +18,43 @@ export function EnemyArea({
 }) {
   return (
     <section
-      className={`col-span-3 col-start-1 flex flex-col items-center justify-center gap-2 text-center lg:col-span-1 lg:col-start-2 lg:row-start-2 lg:flex-row lg:gap-6 lg:text-left ${hasOpponents ? 'row-start-2' : 'row-start-1'}`}
+      className={`flex items-center gap-2 lg:col-span-1 lg:col-start-2 lg:row-start-2 lg:flex-row lg:justify-center lg:gap-6 lg:text-left ${hasOpponents ? 'col-span-2 col-start-2 row-start-2 flex-row justify-start text-left' : 'col-span-3 col-start-1 row-start-1 flex-col justify-center text-center'}`}
       aria-label="Enemy"
     >
       {battle ? (
         <>
           <PlayingCard card={battle.enemy} variant="enemy" />
           <div className="min-w-0 space-y-1.5 lg:max-w-64 lg:space-y-3">
-            <div className="flex items-center justify-center gap-3 text-sm lg:block lg:space-y-3">
-              <div className="contents lg:flex lg:justify-start lg:gap-4">
+            <div
+              className={`flex text-sm lg:block lg:space-y-3 ${hasOpponents ? 'flex-col items-start gap-1.5' : 'items-center justify-center gap-3'}`}
+            >
+              <div
+                className={`${hasOpponents ? 'flex gap-2' : 'contents'} lg:flex lg:justify-start lg:gap-4`}
+              >
                 <span className="inline-flex items-center gap-1">
                   <span className="sr-only">Health </span>
                   <HeartIcon className="size-4" />
-                  <strong className="whitespace-nowrap">
+                  <strong className="whitespace-nowrap" data-verify="enemy-health">
                     {Math.max(0, battle.enemyHealth - battle.damageDealt)} / {battle.enemyHealth}
                   </strong>
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <span className="sr-only">Attack </span>
                   <SwordIcon className="size-4" />
-                  <strong>{battle.enemyAttack}</strong>
+                  <strong data-verify="enemy-attack">{battle.enemyAttack}</strong>
                 </span>
               </div>
-              <div className="contents lg:flex lg:justify-start">
+              <div className={`${hasOpponents ? 'flex' : 'contents'} lg:flex lg:justify-start`}>
                 <span className="inline-flex items-center gap-1">
                   <span className="sr-only">Shield </span>
                   <ShieldIcon className="size-4" />
-                  <strong>{battle.shield}</strong>
+                  <strong data-verify="enemy-shield">{battle.shield}</strong>
                 </span>
               </div>
             </div>
-            <p className="whitespace-nowrap text-xs text-muted-foreground lg:whitespace-normal">
+            <p
+              className={`text-xs text-muted-foreground lg:whitespace-normal ${hasOpponents ? 'whitespace-normal' : 'whitespace-nowrap'}`}
+            >
               {battle.immunityCancelled
                 ? 'Suit immunity cancelled'
                 : `Immune to ${battle.enemy.suit}: ${blockedSuitEffects[battle.enemy.suit]}`}

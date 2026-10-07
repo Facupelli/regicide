@@ -53,12 +53,12 @@ export function DecisionArea({
         />
       )}
       {actionError && (
-        <p role="alert" className="mt-2 text-danger">
+        <p role="alert" className="text-danger">
           {actionError}
         </p>
       )}
       {actionPending && (
-        <p role="status" className="mt-2 text-sm">
+        <p role="status" className="text-sm">
           Submitting action...
         </p>
       )}
@@ -87,7 +87,7 @@ function InteractionControls({
     case 'turn':
       return (
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <p>
+          <p data-verify="decision">
             <span className="lg:hidden">
               {playSelection.kind === 'empty'
                 ? 'Select cards'
@@ -124,18 +124,21 @@ function InteractionControls({
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div>
             {interaction.requiredDamage === 0 ? (
-              <p>No cards need to be discarded.</p>
+              <p data-verify="decision">
+                <span data-verify="zero-damage">No cards need to be discarded.</span>
+              </p>
             ) : interaction.canAcceptDefeat ? (
-              <p>
+              <p data-verify="decision">
                 Your hand cannot absorb {interaction.requiredDamage} damage. Use a Solo Jester or
                 accept defeat.
               </p>
             ) : (
-              <p>Select cards to discard.</p>
+              <p data-verify="decision">Select cards to discard.</p>
             )}
             {interaction.requiredDamage > 0 && (
               <p>
-                Selected damage: {selectedDamage} / {interaction.requiredDamage}
+                Selected damage: <span data-verify="selected-damage">{selectedDamage}</span> /{' '}
+                <span data-verify="required-damage">{interaction.requiredDamage}</span>
               </p>
             )}
           </div>
@@ -177,11 +180,15 @@ function InteractionControls({
         </div>
       );
     case 'waiting':
-      return <p className="mt-2">Waiting for another player.</p>;
+      return (
+        <p data-verify="decision">
+          Waiting for another player.
+        </p>
+      );
     case 'choose-next-player':
       return (
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p>Choose the next player.</p>
+          <p data-verify="decision">Choose the next player.</p>
           <div className="flex flex-wrap gap-2">
             {interaction.eligiblePlayerIds.map((playerId) => (
               <Button

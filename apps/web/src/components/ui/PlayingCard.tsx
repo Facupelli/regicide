@@ -110,6 +110,7 @@ export function PlayingCard({
       <button
         type="button"
         className={classes}
+        data-verify={variant === 'hand' && card ? 'hand-card' : undefined}
         aria-label={`${name}${unavailableReason ? `, unavailable: ${unavailableReason}` : ''}`}
         aria-pressed={selected}
         aria-disabled={Boolean(unavailableReason) || disabled}
@@ -123,7 +124,16 @@ export function PlayingCard({
     );
   }
   return (
-    <span className={classes} role="img" aria-label={name}>
+    <span
+      className={classes}
+      role="img"
+      aria-label={name}
+      data-verify={
+        card && variant !== 'pile'
+          ? `${variant === 'played' ? 'current-play' : variant}-card`
+          : undefined
+      }
+    >
       {face}
     </span>
   );

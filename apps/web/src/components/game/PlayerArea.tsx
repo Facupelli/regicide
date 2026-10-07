@@ -17,7 +17,12 @@ export function PlayerSeat({
       <span className="max-w-24 truncate font-semibold" title={local ? 'You' : player.id}>
         {local ? 'You' : `Player ${player.id}`}
       </span>
-      <span className="whitespace-nowrap text-muted-foreground">{player.handSize} cards</span>
+      <span
+        className="whitespace-nowrap text-muted-foreground"
+        data-verify={local ? undefined : 'other-player-hand-count'}
+      >
+        {player.handSize} cards
+      </span>
       {active && <span className="whitespace-nowrap text-card-selected">Current turn</span>}
     </div>
   );
