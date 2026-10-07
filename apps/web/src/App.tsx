@@ -1,37 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import type { GameView, LobbyView, PlayerCommand } from '@regicide/protocol';
+import type { PlayerCommand } from '@regicide/protocol';
 import { connectGameSocket } from './api/game-socket.ts';
-import {
-  ApiClientError,
-  createGame,
-  createSoloGame,
-  joinGame,
-  resetScenario,
-  startGame,
-  submitAction,
-} from './api/games.ts';
+import { ApiClientError, resetScenario, submitAction } from './api/games.ts';
 import { EntryScreen } from './components/entry/EntryScreen.tsx';
 import { LobbyScreen } from './components/lobby/LobbyScreen.tsx';
 import { PlayingScreen } from './components/game/PlayingScreen.tsx';
 import { useGamePresentation } from './game-presentation/GamePresentationContext.ts';
-
-type Identity = { gameId: string; playerId: string; playerToken: string };
-type ScreenState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | ({ status: 'lobby'; view: LobbyView } & Identity)
-  | ({
-      status: 'playing';
-      view: GameView;
-      revision: number;
-      connection: 'connecting' | 'live';
-      awaitingUpdate: boolean;
-      devScenario?: string | undefined;
-    } & Identity)
-  | { status: 'error'; message: string };
-
-type PlayingState = Extract<ScreenState, { status: 'playing' }>;
+import { useGameSession } from './game-session/useGameSession.ts';
 
 function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiClientError) {
@@ -41,15 +17,13 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 function App() {
-  const [screen, setScreen] = useState<ScreenState>({ status: 'idle' });
-  const screenRef = useRef(screen);
+  const actionInFlight = useRef(false);
+  const resetInFlight = useRef(false);
+  const session = useGameSession(() => actionInFlight.current || resetInFlight.current);
+  const { screen, readScreen, updateScreen, gameStarted } = session;
   const presentation = useGamePresentation();
   const presentationSessionKey = screen.status === 'playing' ? screen.gameId : null;
   const previousPresentationSessionKey = useRef(presentationSessionKey);
-
-  useLayoutEffect(() => {
-    screenRef.current = screen;
-  }, [screen]);
 
   useLayoutEffect(() => {
     if (previousPresentationSessionKey.current !== presentationSessionKey) {
@@ -57,19 +31,13 @@ function App() {
       presentation.reset();
     }
   }, [presentation, presentationSessionKey]);
-  // Preserve the entry screen's last scenario for New Game until scenario behavior is revisited.
-  const lastEntryScenario = useRef('');
-  const [lobbyPending, setLobbyPending] = useState(false);
-  const [lobbyError, setLobbyError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<{ revision: number; message: string } | null>(
-    null,
-  );
+  const [actionError, setActionError] = useState<{
+    gameId: string;
+    revision: number;
+    message: string;
+  } | null>(null);
   const [actionPending, setActionPending] = useState(false);
-  const operationInFlight = useRef(false);
-  const actionInFlight = useRef(false);
-  const resetInFlight = useRef(false);
   const [resetPending, setResetPending] = useState(false);
-  const pendingScenarioStart = useRef<{ gameId: string; scenario: string } | null>(null);
 
   const gameId =
     screen.status === 'lobby' || screen.status === 'playing' ? screen.gameId : undefined;
@@ -81,7 +49,7 @@ function App() {
       gameId,
       playerToken,
       onLobbyUpdated(message) {
-        setScreen((current) =>
+        updateScreen((current) =>
           current.status === 'lobby' &&
           current.gameId === gameId &&
           current.playerToken === playerToken
@@ -90,7 +58,7 @@ function App() {
         );
       },
       onGameUpdated(message) {
-        const current = screenRef.current;
+        const current = readScreen();
         if (
           (current.status !== 'lobby' && current.status !== 'playing') ||
           current.gameId !== gameId ||
@@ -99,38 +67,28 @@ function App() {
           return;
         }
         if (current.status === 'lobby') {
-          const devScenario =
-            pendingScenarioStart.current?.gameId === gameId
-              ? pendingScenarioStart.current.scenario
-              : undefined;
-          pendingScenarioStart.current = null;
-          flushSync(() => {
-            setScreen({
-              ...playing(current, message.view, devScenario),
-              revision: message.revision,
-              connection: 'live',
-            });
-          });
+          gameStarted(gameId, playerToken, message.view, message.revision);
           return;
         }
         if (message.revision <= current.revision) {
-          if (current.connection !== 'live') setScreen({ ...current, connection: 'live' });
+          if (current.connection !== 'live')
+            updateScreen(() => ({ ...current, connection: 'live' }));
           return;
         }
         const prepared = presentation.prepare(message.events, current.playerId);
         flushSync(() => {
-          setScreen({
+          updateScreen(() => ({
             ...current,
             revision: message.revision,
             view: message.view,
             connection: 'live',
             awaitingUpdate: false,
-          });
+          }));
         });
         presentation.enqueue(prepared);
       },
       onDisconnected() {
-        setScreen((current) =>
+        updateScreen((current) =>
           current.status === 'playing' &&
           current.gameId === gameId &&
           current.playerToken === playerToken
@@ -139,104 +97,7 @@ function App() {
         );
       },
     });
-  }, [gameId, playerToken, presentation]);
-
-  function playing(identity: Identity, view: GameView, devScenario?: string): PlayingState {
-    // The server starts at revision 0. The first socket snapshot establishes the client revision.
-    return {
-      status: 'playing',
-      gameId: identity.gameId,
-      playerId: identity.playerId,
-      playerToken: identity.playerToken,
-      view,
-      revision: -1,
-      connection: 'connecting',
-      awaitingUpdate: false,
-      ...(devScenario !== undefined ? { devScenario } : {}),
-    };
-  }
-
-  async function createCoop(soloScenario: string) {
-    if (operationInFlight.current || actionInFlight.current) return;
-    lastEntryScenario.current = soloScenario;
-    operationInFlight.current = true;
-    pendingScenarioStart.current = null;
-    setScreen({ status: 'loading' });
-    setLobbyError(null);
-    try {
-      const response = await createGame();
-      setScreen({ status: 'lobby', ...response });
-    } catch (error) {
-      setScreen({ status: 'error', message: errorMessage(error, 'Could not create a game') });
-    } finally {
-      operationInFlight.current = false;
-    }
-  }
-
-  async function joinCoop(id: string, soloScenario: string) {
-    if (operationInFlight.current || actionInFlight.current) return;
-    lastEntryScenario.current = soloScenario;
-    operationInFlight.current = true;
-    pendingScenarioStart.current = null;
-    setScreen({ status: 'loading' });
-    setLobbyError(null);
-    try {
-      const response = await joinGame(id);
-      setScreen({ status: 'lobby', ...response });
-    } catch (error) {
-      setScreen({ status: 'error', message: errorMessage(error, 'Could not join the game') });
-    } finally {
-      operationInFlight.current = false;
-    }
-  }
-
-  async function startSolo(scenario = lastEntryScenario.current) {
-    if (operationInFlight.current || actionInFlight.current || resetInFlight.current) return;
-    lastEntryScenario.current = scenario;
-    operationInFlight.current = true;
-    setScreen({ status: 'loading' });
-    setActionError(null);
-    try {
-      const devScenario = import.meta.env.DEV && scenario ? scenario : undefined;
-      const response = await createSoloGame(devScenario);
-      setScreen(playing(response, response.view, devScenario));
-    } catch (error) {
-      setScreen({ status: 'error', message: errorMessage(error, 'Could not start a game') });
-    } finally {
-      operationInFlight.current = false;
-    }
-  }
-
-  async function startCoop(scenario?: string) {
-    if (
-      screen.status !== 'lobby' ||
-      screen.view.hostPlayerId !== screen.playerId ||
-      operationInFlight.current
-    )
-      return;
-    operationInFlight.current = true;
-    setLobbyPending(true);
-    setLobbyError(null);
-    pendingScenarioStart.current = scenario ? { gameId: screen.gameId, scenario } : null;
-    try {
-      // The socket may arrive before the HTTP response. Keep pending context game-scoped.
-      await startGame(screen.gameId, screen.playerToken, scenario);
-      if (scenario) {
-        setScreen((current) =>
-          current.status === 'playing' && current.gameId === screen.gameId
-            ? { ...current, devScenario: scenario }
-            : current,
-        );
-      }
-    } catch (error) {
-      // A game update may already have confirmed the start despite a lost HTTP response.
-      pendingScenarioStart.current = null;
-      setLobbyError(errorMessage(error, 'Could not start the game'));
-    } finally {
-      operationInFlight.current = false;
-      setLobbyPending(false);
-    }
-  }
+  }, [gameId, playerToken, presentation, readScreen, updateScreen, gameStarted]);
 
   async function sendAction(command: PlayerCommand) {
     if (
@@ -254,7 +115,7 @@ function App() {
     try {
       await submitAction(screen.gameId, screen.playerToken, command);
       // The HTTP response confirms success; the socket supplies the resulting shared view.
-      setScreen((current) =>
+      updateScreen((current) =>
         current.status === 'playing' &&
         current.gameId === screen.gameId &&
         current.playerToken === screen.playerToken &&
@@ -264,6 +125,7 @@ function App() {
       );
     } catch (error) {
       setActionError({
+        gameId: screen.gameId,
         revision: screen.revision,
         message: errorMessage(error, 'Could not submit action'),
       });
@@ -290,7 +152,7 @@ function App() {
     try {
       await resetScenario(screen.gameId, screen.playerToken);
       // The socket supplies the new revision and player-specific view.
-      setScreen((current) =>
+      updateScreen((current) =>
         current.status === 'playing' &&
         current.gameId === screen.gameId &&
         current.playerToken === screen.playerToken &&
@@ -300,6 +162,7 @@ function App() {
       );
     } catch (error) {
       setActionError({
+        gameId: screen.gameId,
         revision: screen.revision,
         message: errorMessage(error, 'Could not reset scenario'),
       });
@@ -318,9 +181,13 @@ function App() {
         awaitingUpdate={screen.awaitingUpdate}
         actionPending={actionPending}
         resetPending={resetPending}
-        actionError={actionError?.revision === screen.revision ? actionError.message : null}
+        actionError={
+          actionError?.gameId === screen.gameId && actionError.revision === screen.revision
+            ? actionError.message
+            : null
+        }
         onAction={sendAction}
-        onNewGame={() => void startSolo()}
+        onNewGame={() => void session.startSolo()}
         onResetScenario={
           import.meta.env.DEV && screen.devScenario ? resetCurrentScenario : undefined
         }
@@ -334,9 +201,9 @@ function App() {
         gameId={screen.gameId}
         playerId={screen.playerId}
         view={screen.view}
-        pending={lobbyPending}
-        error={lobbyError}
-        onStart={startCoop}
+        pending={screen.start.status === 'pending'}
+        error={screen.start.status === 'error' ? screen.start.message : null}
+        onStart={session.startCoop}
       />
     );
   }
@@ -345,9 +212,9 @@ function App() {
     <EntryScreen
       loading={screen.status === 'loading'}
       error={screen.status === 'error' ? screen.message : null}
-      onCreateCoop={createCoop}
-      onJoinCoop={joinCoop}
-      onStartSolo={startSolo}
+      onCreateCoop={session.createCoop}
+      onJoinCoop={session.joinCoop}
+      onStartSolo={session.startSolo}
     />
   );
 }
