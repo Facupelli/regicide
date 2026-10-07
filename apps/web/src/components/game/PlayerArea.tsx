@@ -1,16 +1,21 @@
 import type { GameView, PublicPlayer } from '@regicide/protocol';
+import { useGamePresentation } from '../../game-presentation/GamePresentationContext.ts';
+import { gamePresentationAnchor } from '../../game-presentation/game-presentation.types.ts';
 
 export function PlayerSeat({
   player,
   active,
   local = false,
+  elementRef,
 }: {
   player: PublicPlayer;
   active: boolean;
   local?: boolean;
+  elementRef?: (element: HTMLElement | null) => void;
 }) {
   return (
     <div
+      ref={elementRef}
       className={`flex min-w-0 flex-wrap items-center justify-center gap-x-2 rounded-lg border px-2 py-1 text-xs transition-colors motion-reduce:transition-none ${active ? 'border-card-selected bg-card-selected/10' : 'border-border bg-panel/60'}`}
       aria-label={`${local ? 'Your seat' : `Player ${player.id}`}, ${player.handSize} cards${active ? ', current player' : ''}`}
     >
@@ -29,6 +34,7 @@ export function PlayerSeat({
 }
 
 export function PlayerArea({ view }: { view: GameView }) {
+  const { registerAnchor } = useGamePresentation();
   const opponents = view.players.filter((player) => player.id !== view.viewer.id);
   if (!opponents.length) return null;
   const positions =
@@ -50,6 +56,9 @@ export function PlayerArea({ view }: { view: GameView }) {
           <PlayerSeat
             player={player}
             active={view.status === 'active' && view.currentPlayerId === player.id}
+            elementRef={(element) =>
+              registerAnchor(gamePresentationAnchor.player(player.id), element)
+            }
           />
         </div>
       ))}

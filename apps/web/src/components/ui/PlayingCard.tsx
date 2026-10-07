@@ -33,6 +33,7 @@ export function PlayingCard({
   unavailableReason,
   disabled = false,
   onToggle,
+  elementRef,
 }: {
   card?: Card;
   variant: CardVariant;
@@ -41,6 +42,7 @@ export function PlayingCard({
   unavailableReason?: string | undefined;
   disabled?: boolean;
   onToggle?: (() => void) | undefined;
+  elementRef?: (element: HTMLElement | null) => void;
 }) {
   const rank =
     card?.kind === 'number'
@@ -108,6 +110,7 @@ export function PlayingCard({
   if (onToggle) {
     return (
       <button
+        ref={elementRef}
         type="button"
         className={classes}
         data-verify={variant === 'hand' && card ? 'hand-card' : undefined}
@@ -125,6 +128,7 @@ export function PlayingCard({
   }
   return (
     <span
+      ref={elementRef}
       className={classes}
       role="img"
       aria-label={name}

@@ -1,3 +1,5 @@
+import { useGamePresentation } from '../../game-presentation/GamePresentationContext.ts';
+import { gamePresentationAnchor } from '../../game-presentation/game-presentation.types.ts';
 import type { TableProps } from './table.types.ts';
 import { PlayingCard } from '../ui/PlayingCard.tsx';
 
@@ -9,6 +11,7 @@ function ResourcePile({
   usable = false,
   actionPending = false,
   onUse,
+  cardElementRef,
 }: {
   label: string;
   count: number;
@@ -17,11 +20,13 @@ function ResourcePile({
   usable?: boolean;
   actionPending?: boolean;
   onUse?: () => void;
+  cardElementRef?: (element: HTMLElement | null) => void;
 }) {
   const contents = (
     <>
       <div className="relative">
         <PlayingCard
+          {...(cardElementRef ? { elementRef: cardElementRef } : {})}
           variant="pile"
           label={`${label} pile`}
           {...(jester ? { card: { kind: 'jester' as const, id: 'solo-resource' } } : {})}
@@ -71,6 +76,7 @@ export function ResourceArea({
 }: Pick<TableProps, 'view' | 'actionPending' | 'actionsDisabled' | 'onAction'> & {
   hasOpponents: boolean;
 }) {
+  const { registerAnchor } = useGamePresentation();
   const usable =
     view.status === 'active' &&
     (view.interaction.kind === 'turn' || view.interaction.kind === 'damage-discard') &&
@@ -94,6 +100,7 @@ export function ResourceArea({
           />
           <ResourcePile
             label="Discard"
+            cardElementRef={(element) => registerAnchor(gamePresentationAnchor.discard, element)}
             count={view.discard.cards.length}
             className="lg:col-start-1 lg:row-start-3"
           />

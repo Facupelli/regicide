@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { flushSync } from 'react-dom';
 import type { GameView, LobbyView, PlayerCommand } from '@regicide/protocol';
 import { connectGameSocket } from './api/game-socket.ts';
 import {
@@ -12,6 +13,7 @@ import {
 import { GameTable } from './components/game/GameTable.tsx';
 import { LobbyScreen } from './components/lobby/LobbyScreen.tsx';
 import { Button } from './components/ui/Button.tsx';
+import { useGamePresentation } from './game-presentation/GamePresentationContext.ts';
 
 type Identity = { gameId: string; playerId: string; playerToken: string };
 type ScreenState =
@@ -27,6 +29,7 @@ type ScreenState =
     } & Identity)
   | { status: 'error'; message: string };
 
+type PlayingScreen = Extract<ScreenState, { status: 'playing' }>;
 type Selection = { revision: number; ids: string[] };
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -38,6 +41,21 @@ function errorMessage(error: unknown, fallback: string): string {
 
 function App() {
   const [screen, setScreen] = useState<ScreenState>({ status: 'idle' });
+  const screenRef = useRef(screen);
+  const presentation = useGamePresentation();
+  const presentationSessionKey = screen.status === 'playing' ? screen.gameId : null;
+  const previousPresentationSessionKey = useRef(presentationSessionKey);
+
+  useLayoutEffect(() => {
+    screenRef.current = screen;
+  }, [screen]);
+
+  useLayoutEffect(() => {
+    if (previousPresentationSessionKey.current !== presentationSessionKey) {
+      previousPresentationSessionKey.current = presentationSessionKey;
+      presentation.reset();
+    }
+  }, [presentation, presentationSessionKey]);
   const [joinId, setJoinId] = useState('');
   const [lobbyPending, setLobbyPending] = useState(false);
   const [lobbyError, setLobbyError] = useState<string | null>(null);
@@ -68,32 +86,39 @@ function App() {
         );
       },
       onGameUpdated(message) {
-        setScreen((current) => {
-          if (
-            (current.status !== 'lobby' && current.status !== 'playing') ||
-            current.gameId !== gameId ||
-            current.playerToken !== playerToken
-          ) {
-            return current;
-          }
-          if (current.status === 'lobby') {
-            return {
+        const current = screenRef.current;
+        if (
+          (current.status !== 'lobby' && current.status !== 'playing') ||
+          current.gameId !== gameId ||
+          current.playerToken !== playerToken
+        ) {
+          return;
+        }
+        if (current.status === 'lobby') {
+          flushSync(() => {
+            setScreen({
               ...playing(current, message.view),
               revision: message.revision,
               connection: 'live',
-            };
-          }
-          if (message.revision <= current.revision) {
-            return current.connection === 'live' ? current : { ...current, connection: 'live' };
-          }
-          return {
+            });
+          });
+          return;
+        }
+        if (message.revision <= current.revision) {
+          if (current.connection !== 'live') setScreen({ ...current, connection: 'live' });
+          return;
+        }
+        const prepared = presentation.prepare(message.events, current.playerId);
+        flushSync(() => {
+          setScreen({
             ...current,
             revision: message.revision,
             view: message.view,
             connection: 'live',
             awaitingUpdate: false,
-          };
+          });
         });
+        presentation.enqueue(prepared);
       },
       onDisconnected() {
         setScreen((current) =>
@@ -105,9 +130,9 @@ function App() {
         );
       },
     });
-  }, [gameId, playerToken]);
+  }, [gameId, playerToken, presentation]);
 
-  function playing(identity: Identity, view: GameView): ScreenState {
+  function playing(identity: Identity, view: GameView): PlayingScreen {
     // The server starts at revision 0. The first socket snapshot establishes the client revision.
     return {
       status: 'playing',

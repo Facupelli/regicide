@@ -12,6 +12,7 @@
   "dependencies": {
     "@regicide/game-engine": "workspace:*",
     "@regicide/protocol": "workspace:*",
+    "motion": "^14.0.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "valibot": "^1.5.0"
