@@ -1,5 +1,6 @@
 import type { WebSocketLike } from '@hono/node-server';
 import { GameUpdatedMessageSchema, LobbyUpdatedMessageSchema } from '@regicide/protocol';
+import type { GameEvent } from '@regicide/protocol';
 import type { WSContext } from 'hono/ws';
 import * as v from 'valibot';
 import { toGameView } from '../adapters/game-view.ts';
@@ -31,7 +32,7 @@ class GameHub {
     if (session.phase === 'lobby') {
       this.sendLobby(gameId, playerId, session, [socket]);
     } else {
-      this.sendGame(gameId, playerId, session, [socket]);
+      this.sendGame(gameId, playerId, session, [socket], []);
     }
   }
 
@@ -57,14 +58,14 @@ class GameHub {
     }
   }
 
-  publishGame(gameId: string): void {
+  publishGame(gameId: string, events: readonly GameEvent[] = []): void {
     const players = this.connections.get(gameId);
     if (!players) return;
     const session = gameStore.get(gameId);
     if (session?.phase !== 'playing') throw new Error('Cannot publish a game that is not playing');
 
     for (const [playerId, sockets] of players) {
-      this.sendGame(gameId, playerId, session, sockets);
+      this.sendGame(gameId, playerId, session, sockets, events);
     }
   }
 
@@ -85,12 +86,14 @@ class GameHub {
     playerId: string,
     session: PlayingSession,
     sockets: Iterable<GameSocket>,
+    events: readonly GameEvent[],
   ): void {
     const message = JSON.stringify(
       v.parse(GameUpdatedMessageSchema, {
         type: 'game-updated',
         revision: session.revision,
         view: toGameView(session.state, playerId),
+        events,
       }),
     );
     this.sendToSockets(gameId, playerId, message, sockets);

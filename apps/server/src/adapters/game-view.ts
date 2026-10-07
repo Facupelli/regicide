@@ -6,17 +6,11 @@ import {
   soloVictoryRank,
   type GameState,
 } from '@regicide/game-engine';
-import type {
-  BattleView,
-  Card,
-  GameView,
-  HistoricalPlayView,
-  Interaction,
-} from '@regicide/protocol';
+import type { BattleView, GameView, HistoricalPlayView, Interaction } from '@regicide/protocol';
+import { toProtocolCard } from './card.ts';
 
 type ActiveState = Extract<GameState, { kind: 'active' }>;
 type BattleState = Exclude<GameState, { kind: 'game-over'; result: 'win' }>;
-type EngineCard = ActiveState['world']['players'][number]['hand'][number];
 type EnginePlay = ActiveState['world']['battle']['plays'][number];
 
 export function toGameView(state: GameState, viewerId: string): GameView {
@@ -62,30 +56,6 @@ function toBattleView(state: BattleState): BattleView {
     ...battleStats(state),
     plays: battle.plays.map(toHistoricalPlayView),
   };
-}
-
-function toProtocolCard(
-  card: Extract<EngineCard, { kind: 'royal' }>,
-): Extract<Card, { kind: 'royal' }>;
-function toProtocolCard(
-  card: Extract<EngineCard, { kind: 'jester' }>,
-): Extract<Card, { kind: 'jester' }>;
-function toProtocolCard(
-  card: Exclude<EngineCard, { kind: 'jester' }>,
-): Exclude<Card, { kind: 'jester' }>;
-function toProtocolCard(card: EngineCard): Card;
-function toProtocolCard(card: EngineCard): Card {
-  switch (card.kind) {
-    case 'number':
-      return { kind: 'number', id: card.id, rank: card.rank, suit: card.suit };
-    case 'animal':
-      return { kind: 'animal', id: card.id, suit: card.suit };
-    case 'royal':
-      return { kind: 'royal', id: card.id, rank: card.rank, suit: card.suit };
-    case 'jester':
-      return { kind: 'jester', id: card.id };
-  }
-  return assertNever(card);
 }
 
 function toHistoricalPlayView(play: EnginePlay): HistoricalPlayView {

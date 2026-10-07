@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { setupGame, transition } from '@regicide/game-engine';
-import type { GameView, LobbyView, PlayerCommand } from '@regicide/protocol';
+import type { GameEvent, GameView, LobbyView, PlayerCommand } from '@regicide/protocol';
+import { toProtocolCard } from '../adapters/card.ts';
 import { toGameView } from '../adapters/game-view.ts';
 import { toLobbyView } from '../adapters/lobby-view.ts';
 import { toEngineAction } from '../adapters/player-command.ts';
@@ -66,7 +67,7 @@ export const gameService = {
 
     const rngState = randomBytes(4).readUInt32BE(0);
     const state = setupGame({ playerIds: session.players.map((player) => player.id), rngState });
-    gameStore.set(gameId, { ...session, phase: 'playing', revision: 0, state });
+    gameStore.set(gameId, { ...session, phase: 'playing', revision: 0, nextEventId: 1, state });
     gameHub.publishGame(gameId);
     return { ok: true, view: toGameView(state, playerId) };
   },
@@ -108,9 +109,26 @@ export const gameService = {
       throw error;
     }
 
+    const events: GameEvent[] = [];
+    if (action.kind === 'discard-for-damage' && action.cardIds.length > 0) {
+      // The engine appends the selected cards in discard order. Use its result, not request data.
+      const discarded = nextState.world.discard.slice(session.state.world.discard.length);
+      if (discarded.length !== action.cardIds.length) {
+        throw new Error('Damage discard did not append the expected number of cards');
+      }
+      const cards = discarded.map(toProtocolCard);
+      events.push({
+        id: session.nextEventId,
+        type: 'cardsDiscardedForDamage',
+        playerId,
+        cards,
+      });
+      session.nextEventId += 1;
+    }
+
     session.state = nextState;
     session.revision += 1;
-    gameHub.publishGame(gameId);
+    gameHub.publishGame(gameId, events);
     return { ok: true, view: toGameView(nextState, playerId) };
   },
 };

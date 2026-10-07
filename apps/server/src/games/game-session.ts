@@ -13,6 +13,7 @@ export type GameSession =
   | {
       phase: 'playing';
       revision: number;
+      nextEventId: number;
       hostPlayerId: string;
       players: SessionPlayer[];
       state: GameState;
