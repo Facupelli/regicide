@@ -2,47 +2,45 @@ import { useState } from 'react';
 import type { GameView, PlayerCommand } from '@regicide/protocol';
 import { GameTable } from './GameTable.tsx';
 
-type Selection = { revision: number; ids: string[] };
+type Selection = { viewVersion: string; ids: string[] };
 
 export function PlayingScreen({
   view,
-  revision,
-  connection,
-  awaitingUpdate,
-  actionPending,
-  resetPending,
+  viewVersion,
+  sync,
+  operation,
   actionError,
   onAction,
   onNewGame,
   onResetScenario,
 }: {
   view: GameView;
-  revision: number;
-  connection: 'connecting' | 'live';
-  awaitingUpdate: boolean;
-  actionPending: boolean;
-  resetPending: boolean;
+  viewVersion: string;
+  sync: 'connecting' | 'ready' | 'awaiting-update';
+  operation: 'idle' | 'submitting' | 'resetting';
   actionError: string | null;
   onAction: (command: PlayerCommand) => void;
   onNewGame: () => void;
   onResetScenario?: (() => void) | undefined;
 }) {
-  const [selection, setSelection] = useState<Selection>({ revision: -1, ids: [] });
-  const actionsDisabled = connection !== 'live' || awaitingUpdate || resetPending;
-  const selectedCardIds = selection.revision === revision && !awaitingUpdate ? selection.ids : [];
+  const [selection, setSelection] = useState<Selection>({ viewVersion: '', ids: [] });
+  const actionPending = operation === 'submitting';
+  const resetPending = operation === 'resetting';
+  const actionsDisabled = sync !== 'ready' || resetPending;
+  const selectedCardIds = selection.viewVersion === viewVersion ? selection.ids : [];
 
   function toggleCard(cardId: string) {
     if (actionsDisabled || actionPending) return;
     setSelection((current) => {
-      const ids = current.revision === revision ? current.ids : [];
+      const ids = current.viewVersion === viewVersion ? current.ids : [];
       return {
-        revision,
+        viewVersion,
         ids: ids.includes(cardId) ? ids.filter((id) => id !== cardId) : [...ids, cardId],
       };
     });
   }
 
-  const syncMessage = getSyncMessage(connection, awaitingUpdate);
+  const syncMessage = getSyncMessage(sync);
   const phase = getPhase(view);
   const turn = getTurn(view);
 
@@ -74,9 +72,9 @@ export function PlayingScreen({
   );
 }
 
-function getSyncMessage(connection: 'connecting' | 'live', awaitingUpdate: boolean): string | null {
-  if (connection === 'connecting') return 'Connecting to live game...';
-  if (awaitingUpdate) return 'Waiting for game update...';
+function getSyncMessage(sync: 'connecting' | 'ready' | 'awaiting-update'): string | null {
+  if (sync === 'connecting') return 'Connecting to live game...';
+  if (sync === 'awaiting-update') return 'Waiting for game update...';
   return null;
 }
 
