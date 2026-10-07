@@ -5,7 +5,13 @@ import type { TableProps } from './table.types.ts';
 
 type DecisionProps = Pick<
   TableProps,
-  'view' | 'selectedCardIds' | 'actionPending' | 'actionError' | 'onAction' | 'onNewGame'
+  | 'view'
+  | 'selectedCardIds'
+  | 'actionPending'
+  | 'actionsDisabled'
+  | 'actionError'
+  | 'onAction'
+  | 'onNewGame'
 > & { playSelection: PlaySelectionState; selectedDamage: number; hasOpponents: boolean };
 
 export function DecisionArea({
@@ -15,6 +21,7 @@ export function DecisionArea({
   selectedDamage,
   hasOpponents,
   actionPending,
+  actionsDisabled,
   actionError,
   onAction,
   onNewGame,
@@ -37,10 +44,11 @@ export function DecisionArea({
       ) : (
         <InteractionControls
           interaction={view.interaction}
+          viewerId={view.viewer.id}
           selectedCardIds={selectedCardIds}
           playSelection={playSelection}
           selectedDamage={selectedDamage}
-          actionPending={actionPending}
+          actionPending={actionPending || actionsDisabled}
           onAction={onAction}
         />
       )}
@@ -60,6 +68,7 @@ export function DecisionArea({
 
 function InteractionControls({
   interaction,
+  viewerId,
   selectedCardIds,
   playSelection,
   selectedDamage,
@@ -67,6 +76,7 @@ function InteractionControls({
   onAction,
 }: {
   interaction: Interaction;
+  viewerId: string;
   selectedCardIds: string[];
   playSelection: PlaySelectionState;
   selectedDamage: number;
@@ -169,6 +179,21 @@ function InteractionControls({
     case 'waiting':
       return <p className="mt-2">Waiting for another player.</p>;
     case 'choose-next-player':
-      return <p className="mt-2">Choosing the next player is not supported by the solo UI yet.</p>;
+      return (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p>Choose the next player.</p>
+          <div className="flex flex-wrap gap-2">
+            {interaction.eligiblePlayerIds.map((playerId) => (
+              <Button
+                key={playerId}
+                disabled={actionPending}
+                onClick={() => onAction({ kind: 'choose-next-player', targetPlayerId: playerId })}
+              >
+                {playerId === viewerId ? 'You' : `Player ${playerId.slice(0, 8)}`}
+              </Button>
+            ))}
+          </div>
+        </div>
+      );
   }
 }

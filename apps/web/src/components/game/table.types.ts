@@ -7,5 +7,6 @@ export type TableProps = {
   onAction: (command: PlayerCommand) => void;
   onNewGame: () => void;
   actionPending: boolean;
+  actionsDisabled: boolean;
   actionError: string | null;
 };

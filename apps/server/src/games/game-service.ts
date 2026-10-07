@@ -51,6 +51,7 @@ export const gameService = {
 
     const { player, playerToken } = createSessionPlayer();
     session.players.push(player);
+    gameHub.publishLobby(gameId);
     return { ok: true, playerId: player.id, playerToken, view: toLobbyView(session) };
   },
 
@@ -66,6 +67,7 @@ export const gameService = {
     const rngState = randomBytes(4).readUInt32BE(0);
     const state = setupGame({ playerIds: session.players.map((player) => player.id), rngState });
     gameStore.set(gameId, { ...session, phase: 'playing', revision: 0, state });
+    gameHub.publishGame(gameId);
     return { ok: true, view: toGameView(state, playerId) };
   },
 

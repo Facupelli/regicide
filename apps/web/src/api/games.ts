@@ -1,7 +1,7 @@
 import {
   ApiErrorSchema,
   CreateGameResponseSchema,
-  GetGameResponseSchema,
+  JoinGameResponseSchema,
   StartGameResponseSchema,
   SubmitActionResponseSchema,
   type PlayerCommand,
@@ -20,44 +20,53 @@ export class ApiClientError extends Error {
   }
 }
 
-export async function createSoloGame() {
-  const lobby = await request('/games', { method: 'POST' }, CreateGameResponseSchema);
-  const started = await request(
-    `/games/${encodeURIComponent(lobby.gameId)}/start`,
-    { method: 'POST', headers: { Authorization: `Bearer ${lobby.playerToken}` } },
-    StartGameResponseSchema,
-  );
-  return { ...started, playerId: lobby.playerId, playerToken: lobby.playerToken };
+const gamePath = (gameId: string) => `/games/${encodeURIComponent(gameId)}`;
+
+export function createGame() {
+  return request('/games', { method: 'POST' }, CreateGameResponseSchema);
 }
 
-export function getGame(gameId: string, playerToken?: string) {
+export function joinGame(gameId: string) {
+  return request(`${gamePath(gameId)}/join`, { method: 'POST' }, JoinGameResponseSchema);
+}
+
+export function startGame(gameId: string, playerToken: string) {
   return request(
-    `/games/${encodeURIComponent(gameId)}`,
-    { method: 'GET', headers: playerToken ? { Authorization: `Bearer ${playerToken}` } : {} },
-    GetGameResponseSchema,
+    `${gamePath(gameId)}/start`,
+    { method: 'POST', playerToken },
+    StartGameResponseSchema,
   );
+}
+
+export async function createSoloGame() {
+  const lobby = await createGame();
+  const started = await startGame(lobby.gameId, lobby.playerToken);
+  return { ...started, playerId: lobby.playerId, playerToken: lobby.playerToken };
 }
 
 export function submitAction(gameId: string, playerToken: string, command: PlayerCommand) {
   return request(
-    `/games/${encodeURIComponent(gameId)}/actions`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${playerToken}` },
-      body: JSON.stringify(command),
-    },
+    `${gamePath(gameId)}/actions`,
+    { method: 'POST', playerToken, body: JSON.stringify(command) },
     SubmitActionResponseSchema,
   );
 }
 
 async function request<T extends v.GenericSchema>(
   url: string,
-  init: RequestInit,
+  options: { method: 'POST'; playerToken?: string; body?: string },
   schema: T,
 ): Promise<v.InferOutput<T>> {
   let response: Response;
   try {
-    response = await fetch(url, init);
+    response = await fetch(url, {
+      method: options.method,
+      headers: {
+        ...(options.playerToken ? { Authorization: `Bearer ${options.playerToken}` } : {}),
+        ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      },
+      ...(options.body !== undefined ? { body: options.body } : {}),
+    });
   } catch {
     throw new ApiClientError(0, 'network-error', 'Could not connect to the game server');
   }

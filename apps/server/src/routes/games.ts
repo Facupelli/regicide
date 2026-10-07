@@ -11,7 +11,6 @@ import {
 import { Hono } from 'hono';
 import { gameHub } from '../games/game-hub.ts';
 import { gameService } from '../games/game-service.ts';
-import { gameStore } from '../games/game-store.ts';
 import { authenticatePlayer } from '../games/player-auth.ts';
 import { apiError } from '../http/api-error.ts';
 import { requireJsonContentType } from '../http/json-validation.ts';
@@ -31,9 +30,6 @@ export const gamesRoutes = new Hono()
         return c.json(apiError('game-not-found', 'Game not found'), 404);
       }
       return c.json(apiError('invalid-credential', 'Valid player credential required'), 401);
-    }
-    if (gameStore.get(gameId)?.phase !== 'playing') {
-      return c.json(apiError('game-not-started', 'Game has not started'), 409);
     }
     if (c.req.header('Upgrade')?.toLowerCase() !== 'websocket') {
       return c.json(apiError('invalid-request', 'WebSocket upgrade required'), 400);

@@ -1,9 +1,10 @@
 import type { WebSocketLike } from '@hono/node-server';
-import { GameUpdatedMessageSchema } from '@regicide/protocol';
+import { GameUpdatedMessageSchema, LobbyUpdatedMessageSchema } from '@regicide/protocol';
 import type { WSContext } from 'hono/ws';
 import * as v from 'valibot';
 import { toGameView } from '../adapters/game-view.ts';
-import type { GameSession } from './game-session.ts';
+import { toLobbyView } from '../adapters/lobby-view.ts';
+import type { GameSession, LobbySession } from './game-session.ts';
 import { gameStore } from './game-store.ts';
 
 type PlayingSession = Extract<GameSession, { phase: 'playing' }>;
@@ -14,8 +15,7 @@ class GameHub {
 
   connect(gameId: string, playerId: string, socket: GameSocket): void {
     const session = gameStore.get(gameId);
-    if (session?.phase !== 'playing')
-      throw new Error('Cannot connect to a game that is not playing');
+    if (!session) throw new Error('Cannot connect to a game that does not exist');
 
     let players = this.connections.get(gameId);
     if (!players) {
@@ -28,7 +28,11 @@ class GameHub {
       players.set(playerId, sockets);
     }
     sockets.add(socket);
-    this.sendSnapshot(gameId, playerId, session, [socket]);
+    if (session.phase === 'lobby') {
+      this.sendLobby(gameId, playerId, session, [socket]);
+    } else {
+      this.sendGame(gameId, playerId, session, [socket]);
+    }
   }
 
   disconnect(gameId: string, playerId: string, socket: GameSocket): void {
@@ -39,6 +43,20 @@ class GameHub {
     if (players?.size === 0) this.connections.delete(gameId);
   }
 
+  publishLobby(gameId: string): void {
+    const players = this.connections.get(gameId);
+    if (!players) return;
+    const session = gameStore.get(gameId);
+    if (session?.phase !== 'lobby') throw new Error('Cannot publish a lobby that is not open');
+
+    const message = JSON.stringify(
+      v.parse(LobbyUpdatedMessageSchema, { type: 'lobby-updated', view: toLobbyView(session) }),
+    );
+    for (const [playerId, sockets] of players) {
+      this.sendToSockets(gameId, playerId, message, sockets);
+    }
+  }
+
   publishGame(gameId: string): void {
     const players = this.connections.get(gameId);
     if (!players) return;
@@ -46,11 +64,23 @@ class GameHub {
     if (session?.phase !== 'playing') throw new Error('Cannot publish a game that is not playing');
 
     for (const [playerId, sockets] of players) {
-      this.sendSnapshot(gameId, playerId, session, sockets);
+      this.sendGame(gameId, playerId, session, sockets);
     }
   }
 
-  private sendSnapshot(
+  private sendLobby(
+    gameId: string,
+    playerId: string,
+    session: LobbySession,
+    sockets: Iterable<GameSocket>,
+  ): void {
+    const message = JSON.stringify(
+      v.parse(LobbyUpdatedMessageSchema, { type: 'lobby-updated', view: toLobbyView(session) }),
+    );
+    this.sendToSockets(gameId, playerId, message, sockets);
+  }
+
+  private sendGame(
     gameId: string,
     playerId: string,
     session: PlayingSession,
@@ -63,6 +93,15 @@ class GameHub {
         view: toGameView(session.state, playerId),
       }),
     );
+    this.sendToSockets(gameId, playerId, message, sockets);
+  }
+
+  private sendToSockets(
+    gameId: string,
+    playerId: string,
+    message: string,
+    sockets: Iterable<GameSocket>,
+  ): void {
     for (const socket of sockets) {
       if (socket.readyState !== 1) {
         this.disconnect(gameId, playerId, socket);

@@ -22,6 +22,9 @@ export type {
 export { GameUpdatedMessageSchema } from './game-updated.ts';
 export type { GameUpdatedMessage } from './game-updated.ts';
 
+export { LobbyUpdatedMessageSchema } from './lobby-updated.ts';
+export type { LobbyUpdatedMessage } from './lobby-updated.ts';
+
 export { LobbyViewSchema } from './lobby-view.ts';
 export type { LobbyView } from './lobby-view.ts';
 

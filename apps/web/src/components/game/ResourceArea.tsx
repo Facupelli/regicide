@@ -66,8 +66,11 @@ export function ResourceArea({
   view,
   hasOpponents,
   actionPending,
+  actionsDisabled,
   onAction,
-}: Pick<TableProps, 'view' | 'actionPending' | 'onAction'> & { hasOpponents: boolean }) {
+}: Pick<TableProps, 'view' | 'actionPending' | 'actionsDisabled' | 'onAction'> & {
+  hasOpponents: boolean;
+}) {
   const usable =
     view.status === 'active' &&
     (view.interaction.kind === 'turn' || view.interaction.kind === 'damage-discard') &&
@@ -101,7 +104,7 @@ export function ResourceArea({
             count={view.soloJestersRemaining}
             jester
             usable={usable}
-            actionPending={actionPending}
+            actionPending={actionPending || actionsDisabled}
             onUse={() => onAction({ kind: 'use-solo-jester' })}
             className="lg:col-start-3 lg:row-start-3"
           />

@@ -8,7 +8,7 @@ export default defineConfig({
     port: 3001,
     strictPort: true,
     proxy: {
-      '/games': 'http://localhost:3000',
+      '/games': { target: 'http://localhost:3000', ws: true },
     },
   },
 });

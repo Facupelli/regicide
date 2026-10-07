@@ -20,8 +20,12 @@ export function PlayerHand({
   selectedCardIds,
   onToggleCard,
   actionPending,
+  actionsDisabled,
   hasOpponents,
-}: Pick<TableProps, 'view' | 'selectedCardIds' | 'onToggleCard' | 'actionPending'> & {
+}: Pick<
+  TableProps,
+  'view' | 'selectedCardIds' | 'onToggleCard' | 'actionPending' | 'actionsDisabled'
+> & {
   hasOpponents: boolean;
 }) {
   const interaction = view.status === 'active' ? view.interaction : null;
@@ -75,7 +79,7 @@ export function PlayerHand({
                     variant="hand"
                     selected={isSelected}
                     unavailableReason={unavailableReason}
-                    disabled={actionPending}
+                    disabled={actionPending || actionsDisabled}
                     onToggle={canSelect ? () => onToggleCard(card.id) : undefined}
                   />
                 </div>
