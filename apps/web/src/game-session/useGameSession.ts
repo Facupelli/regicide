@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { GameView, LobbyView, PlayerCommand } from '@regicide/protocol';
-import { connectGameSocket } from '../api/game-socket.ts';
+import { connectGameSocket } from './game-socket.ts';
 import {
   ApiClientError,
   createGame,
@@ -9,8 +9,8 @@ import {
   resetScenario,
   startGame,
   submitAction,
-} from '../api/games.ts';
-import { useGamePresentation } from '../game-presentation/GamePresentationContext.ts';
+} from './games-api.ts';
+import { useGamePresentation } from '../game/presentation/GamePresentationContext.ts';
 import {
   disconnect,
   receiveSnapshot,

@@ -1,4 +1,4 @@
-import { evaluatePlaySelection, selectedDamageValue } from '../../game-interaction/selection.ts';
+import { evaluatePlaySelection, selectedDamageValue } from '../interaction/selection.ts';
 import { BattleArea } from './BattleArea.tsx';
 import { DecisionArea } from './DecisionArea.tsx';
 import { EnemyArea } from './EnemyArea.tsx';

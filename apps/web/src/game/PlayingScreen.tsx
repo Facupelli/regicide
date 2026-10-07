@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { GameView, PlayerCommand } from '@regicide/protocol';
-import { GameTable } from './GameTable.tsx';
+import { GameTable } from './table/GameTable.tsx';
 
 type Selection = { viewVersion: string; ids: string[] };
 

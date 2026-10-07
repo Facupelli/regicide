@@ -1,6 +1,6 @@
-import { EntryScreen } from './components/entry/EntryScreen.tsx';
-import { LobbyScreen } from './components/lobby/LobbyScreen.tsx';
-import { PlayingScreen } from './components/game/PlayingScreen.tsx';
+import { EntryScreen } from './entry/EntryScreen.tsx';
+import { LobbyScreen } from './lobby/LobbyScreen.tsx';
+import { PlayingScreen } from './game/PlayingScreen.tsx';
 import { useGameSession } from './game-session/useGameSession.ts';
 
 function App() {

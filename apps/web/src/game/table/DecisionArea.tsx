@@ -1,6 +1,6 @@
 import type { Interaction } from '@regicide/protocol';
-import type { PlaySelectionState } from '../../game-interaction/selection.ts';
-import { Button } from '../ui/Button.tsx';
+import type { PlaySelectionState } from '../interaction/selection.ts';
+import { Button } from '../../ui/Button.tsx';
 import type { TableProps } from './table.types.ts';
 
 type DecisionProps = Pick<

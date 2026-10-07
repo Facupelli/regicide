@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react';
-import { evaluatePlaySelection } from '../../game-interaction/selection.ts';
-import { useGamePresentation } from '../../game-presentation/GamePresentationContext.ts';
-import { gamePresentationAnchor } from '../../game-presentation/game-presentation.types.ts';
-import { PlayingCard } from '../ui/PlayingCard.tsx';
+import { evaluatePlaySelection } from '../interaction/selection.ts';
+import { useGamePresentation } from '../presentation/GamePresentationContext.ts';
+import { gamePresentationAnchor } from '../presentation/game-presentation.types.ts';
+import { PlayingCard } from '../cards/PlayingCard.tsx';
 import { PlayerSeat } from './PlayerArea.tsx';
 import type { TableProps } from './table.types.ts';
 

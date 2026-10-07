@@ -1,7 +1,7 @@
 import type { BattleView } from '@regicide/protocol';
-import { useGamePresentation } from '../../game-presentation/GamePresentationContext.ts';
-import { gamePresentationAnchor } from '../../game-presentation/game-presentation.types.ts';
-import { PlayingCard } from '../ui/PlayingCard.tsx';
+import { useGamePresentation } from '../presentation/GamePresentationContext.ts';
+import { gamePresentationAnchor } from '../presentation/game-presentation.types.ts';
+import { PlayingCard } from '../cards/PlayingCard.tsx';
 
 export function BattleArea({
   battle,

@@ -1,8 +1,8 @@
 import type { BattleView, Suit } from '@regicide/protocol';
-import { useGamePresentation } from '../../game-presentation/GamePresentationContext.ts';
-import { gamePresentationAnchor } from '../../game-presentation/game-presentation.types.ts';
-import { PlayingCard } from '../ui/PlayingCard.tsx';
-import { HeartIcon, ShieldIcon, SwordIcon } from '../ui/icons/GameStatIcons.tsx';
+import { useGamePresentation } from '../presentation/GamePresentationContext.ts';
+import { gamePresentationAnchor } from '../presentation/game-presentation.types.ts';
+import { PlayingCard } from '../cards/PlayingCard.tsx';
+import { HeartIcon, ShieldIcon, SwordIcon } from './GameStatIcons.tsx';
 
 const blockedSuitEffects: Record<Suit, string> = {
   clubs: 'no double damage',

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useAnimate, useReducedMotion, type AnimationSequence } from 'motion/react';
-import { PlayingCard } from '../components/ui/PlayingCard.tsx';
+import { PlayingCard } from '../cards/PlayingCard.tsx';
 import {
   gamePresentationAnchor,
   isVisibleRect,

@@ -1,6 +1,6 @@
 import type { GameView, PublicPlayer } from '@regicide/protocol';
-import { useGamePresentation } from '../../game-presentation/GamePresentationContext.ts';
-import { gamePresentationAnchor } from '../../game-presentation/game-presentation.types.ts';
+import { useGamePresentation } from '../presentation/GamePresentationContext.ts';
+import { gamePresentationAnchor } from '../presentation/game-presentation.types.ts';
 
 export function PlayerSeat({
   player,
