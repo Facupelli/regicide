@@ -104,7 +104,11 @@ export const gamesRoutes = new Hono()
   })
   .post('/:gameId/start', requirePlayerCredential, (c) => {
     const gameId = c.req.param('gameId');
-    const result = gameService.startGame({ gameId, playerId: c.get('playerId') });
+    const result = gameService.startGame({
+      gameId,
+      playerId: c.get('playerId'),
+      scenario: c.req.query('scenario'),
+    });
     if (!result.ok) {
       switch (result.reason) {
         case 'game-not-found':
@@ -115,6 +119,12 @@ export const gamesRoutes = new Hono()
           return c.json(apiError('player-not-in-game', 'Player is not in the game'), 403);
         case 'not-host':
           return c.json(apiError('not-host', 'Only the host can start the game'), 403);
+        case 'scenarios-disabled':
+          return c.json(apiError('scenarios-disabled', 'Dev scenarios are disabled'), 403);
+        case 'unknown-scenario':
+          return c.json(apiError('unknown-scenario', 'Unknown dev scenario'), 400);
+        case 'invalid-scenario':
+          return c.json(apiError('invalid-scenario', result.message), 400);
       }
     }
     return c.json({ gameId, view: result.view } satisfies StartGameResponse);

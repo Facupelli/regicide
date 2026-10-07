@@ -7,6 +7,11 @@ pnpm run dev
 
 The server listens on `http://localhost:3000`.
 
+To enable named development scenarios, start the server with `REGICIDE_DEV_SCENARIOS=1`.
+In the Vite development UI, select a scenario before starting a solo game. The flag is
+required on the server even when the selector is visible. Without the flag, a request
+with `?scenario=...` is rejected; normal starts are unaffected.
+
 ## Game lifecycle
 
 - `POST /games` creates a lobby and returns `{ gameId, playerId, playerToken, view }`. The returned player is the host.

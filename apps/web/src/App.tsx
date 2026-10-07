@@ -57,6 +57,7 @@ function App() {
     }
   }, [presentation, presentationSessionKey]);
   const [joinId, setJoinId] = useState('');
+  const [soloScenario, setSoloScenario] = useState('');
   const [lobbyPending, setLobbyPending] = useState(false);
   const [lobbyError, setLobbyError] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection>({ revision: -1, ids: [] });
@@ -189,7 +190,9 @@ function App() {
     setSelection({ revision: -1, ids: [] });
     setActionError(null);
     try {
-      const response = await createSoloGame();
+      const response = await createSoloGame(
+        import.meta.env.DEV && soloScenario ? soloScenario : undefined,
+      );
       setScreen(playing(response, response.view));
     } catch (error) {
       setScreen({ status: 'error', message: errorMessage(error, 'Could not start a game') });
@@ -198,7 +201,7 @@ function App() {
     }
   }
 
-  async function startCoop() {
+  async function startCoop(scenario?: string) {
     if (
       screen.status !== 'lobby' ||
       screen.view.hostPlayerId !== screen.playerId ||
@@ -210,7 +213,7 @@ function App() {
     setLobbyError(null);
     try {
       // The socket publishes the authoritative view to every player, including the host.
-      await startGame(screen.gameId, screen.playerToken);
+      await startGame(screen.gameId, screen.playerToken, scenario);
     } catch (error) {
       setLobbyError(errorMessage(error, 'Could not start the game'));
     } finally {
@@ -342,6 +345,25 @@ function App() {
           Take on the castle together, or play solo.
         </p>
         <div className="mt-8 flex flex-col gap-4">
+          {import.meta.env.DEV && (
+            <div className="flex flex-col gap-2">
+              <label htmlFor="solo-scenario" className="font-medium">
+                Scenario
+              </label>
+              <select
+                id="solo-scenario"
+                value={soloScenario}
+                onChange={(event) => setSoloScenario(event.target.value)}
+                disabled={screen.status === 'loading'}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-card-selected"
+              >
+                <option value="">Normal game</option>
+                <option value="enemy-defeat-exact-vs-overkill">
+                  Enemy defeat - exact vs overkill
+                </option>
+              </select>
+            </div>
+          )}
           <Button onClick={startSolo} disabled={screen.status === 'loading'}>
             Start Solo Game
           </Button>

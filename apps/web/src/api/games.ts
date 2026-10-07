@@ -30,17 +30,17 @@ export function joinGame(gameId: string) {
   return request(`${gamePath(gameId)}/join`, { method: 'POST' }, JoinGameResponseSchema);
 }
 
-export function startGame(gameId: string, playerToken: string) {
+export function startGame(gameId: string, playerToken: string, scenario?: string) {
   return request(
-    `${gamePath(gameId)}/start`,
+    `${gamePath(gameId)}/start${scenario === undefined ? '' : `?scenario=${encodeURIComponent(scenario)}`}`,
     { method: 'POST', playerToken },
     StartGameResponseSchema,
   );
 }
 
-export async function createSoloGame() {
+export async function createSoloGame(scenario?: string) {
   const lobby = await createGame();
-  const started = await startGame(lobby.gameId, lobby.playerToken);
+  const started = await startGame(lobby.gameId, lobby.playerToken, scenario);
   return { ...started, playerId: lobby.playerId, playerToken: lobby.playerToken };
 }
 

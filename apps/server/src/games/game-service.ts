@@ -8,6 +8,7 @@ import { toEngineAction } from '../adapters/player-command.ts';
 import { gameHub } from './game-hub.ts';
 import { gameStore } from './game-store.ts';
 import { createSessionPlayer } from './player-auth.ts';
+import { getDevScenario, InvalidDevScenarioError } from '../testing/scenarios.ts';
 
 const MAX_PLAYERS = 4;
 
@@ -19,8 +20,15 @@ type StartGameResult =
   | { ok: true; view: GameView }
   | {
       ok: false;
-      reason: 'game-not-found' | 'game-already-started' | 'player-not-in-game' | 'not-host';
-    };
+      reason:
+        | 'game-not-found'
+        | 'game-already-started'
+        | 'player-not-in-game'
+        | 'not-host'
+        | 'scenarios-disabled'
+        | 'unknown-scenario';
+    }
+  | { ok: false; reason: 'invalid-scenario'; message: string };
 
 type GetGameResult =
   | { ok: true; view: LobbyView | GameView }
@@ -56,7 +64,15 @@ export const gameService = {
     return { ok: true, playerId: player.id, playerToken, view: toLobbyView(session) };
   },
 
-  startGame({ gameId, playerId }: { gameId: string; playerId: string }): StartGameResult {
+  startGame({
+    gameId,
+    playerId,
+    scenario,
+  }: {
+    gameId: string;
+    playerId: string;
+    scenario?: string | undefined;
+  }): StartGameResult {
     const session = gameStore.get(gameId);
     if (!session) return { ok: false, reason: 'game-not-found' };
     if (session.phase !== 'lobby') return { ok: false, reason: 'game-already-started' };
@@ -65,8 +81,26 @@ export const gameService = {
     }
     if (session.hostPlayerId !== playerId) return { ok: false, reason: 'not-host' };
 
-    const rngState = randomBytes(4).readUInt32BE(0);
-    const state = setupGame({ playerIds: session.players.map((player) => player.id), rngState });
+    const playerIds = session.players.map((player) => player.id);
+    let state;
+    if (scenario !== undefined) {
+      if (process.env.REGICIDE_DEV_SCENARIOS !== '1') {
+        return { ok: false, reason: 'scenarios-disabled' };
+      }
+      const factory = getDevScenario(scenario);
+      if (!factory) return { ok: false, reason: 'unknown-scenario' };
+      try {
+        state = factory(playerIds);
+      } catch (error) {
+        if (error instanceof InvalidDevScenarioError) {
+          return { ok: false, reason: 'invalid-scenario', message: error.message };
+        }
+        throw error;
+      }
+    } else {
+      const rngState = randomBytes(4).readUInt32BE(0);
+      state = setupGame({ playerIds, rngState });
+    }
     gameStore.set(gameId, { ...session, phase: 'playing', revision: 0, nextEventId: 1, state });
     gameHub.publishGame(gameId);
     return { ok: true, view: toGameView(state, playerId) };

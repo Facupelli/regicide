@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { LobbyView } from '@regicide/protocol';
 import { Button } from '../ui/Button.tsx';
 
@@ -14,8 +15,9 @@ export function LobbyScreen({
   view: LobbyView;
   pending: boolean;
   error: string | null;
-  onStart: () => void;
+  onStart: (scenario?: string) => void;
 }) {
+  const [scenario, setScenario] = useState('');
   const isHost = view.hostPlayerId === playerId;
   return (
     <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10 font-sans text-foreground">
@@ -51,9 +53,34 @@ export function LobbyScreen({
         </ul>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           {isHost ? (
-            <Button disabled={pending} onClick={onStart}>
-              {pending ? 'Please wait...' : 'Start game'}
-            </Button>
+            <div className="flex w-full flex-col gap-3">
+              {import.meta.env.DEV && (
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="coop-scenario" className="font-medium">
+                    Scenario
+                  </label>
+                  <select
+                    id="coop-scenario"
+                    value={scenario}
+                    onChange={(event) => setScenario(event.target.value)}
+                    disabled={pending}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-card-selected"
+                  >
+                    <option value="">Normal game</option>
+                    <option value="enemy-defeat-exact-vs-overkill">
+                      Enemy defeat - exact vs overkill
+                    </option>
+                  </select>
+                </div>
+              )}
+              <Button
+                className="self-start"
+                disabled={pending}
+                onClick={() => onStart(import.meta.env.DEV && scenario ? scenario : undefined)}
+              >
+                {pending ? 'Please wait...' : 'Start game'}
+              </Button>
+            </div>
           ) : (
             <p className="text-sm text-muted-foreground">Waiting for the host to start.</p>
           )}
