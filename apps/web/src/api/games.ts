@@ -44,6 +44,14 @@ export async function createSoloGame(scenario?: string) {
   return { ...started, playerId: lobby.playerId, playerToken: lobby.playerToken };
 }
 
+export function resetScenario(gameId: string, playerToken: string) {
+  return request(
+    `${gamePath(gameId)}/reset-scenario`,
+    { method: 'POST', playerToken },
+    StartGameResponseSchema,
+  );
+}
+
 export function submitAction(gameId: string, playerToken: string, command: PlayerCommand) {
   return request(
     `${gamePath(gameId)}/actions`,

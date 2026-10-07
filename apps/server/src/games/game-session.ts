@@ -14,6 +14,7 @@ export type GameSession =
       phase: 'playing';
       revision: number;
       nextEventId: number;
+      devScenario?: string;
       hostPlayerId: string;
       players: SessionPlayer[];
       state: GameState;

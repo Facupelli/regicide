@@ -30,6 +30,21 @@ type StartGameResult =
     }
   | { ok: false; reason: 'invalid-scenario'; message: string };
 
+type ResetDevScenarioResult =
+  | { ok: true; view: GameView }
+  | {
+      ok: false;
+      reason:
+        | 'game-not-found'
+        | 'game-not-started'
+        | 'player-not-in-game'
+        | 'not-host'
+        | 'scenarios-disabled'
+        | 'not-scenario-game'
+        | 'unknown-scenario';
+    }
+  | { ok: false; reason: 'invalid-scenario'; message: string };
+
 type GetGameResult =
   | { ok: true; view: LobbyView | GameView }
   | { ok: false; reason: 'game-not-found' | 'player-id-required' | 'player-not-in-game' };
@@ -101,7 +116,51 @@ export const gameService = {
       const rngState = randomBytes(4).readUInt32BE(0);
       state = setupGame({ playerIds, rngState });
     }
-    gameStore.set(gameId, { ...session, phase: 'playing', revision: 0, nextEventId: 1, state });
+    gameStore.set(gameId, {
+      ...session,
+      phase: 'playing',
+      revision: 0,
+      nextEventId: 1,
+      state,
+      ...(scenario !== undefined ? { devScenario: scenario } : {}),
+    });
+    gameHub.publishGame(gameId);
+    return { ok: true, view: toGameView(state, playerId) };
+  },
+
+  resetDevScenario({
+    gameId,
+    playerId,
+  }: {
+    gameId: string;
+    playerId: string;
+  }): ResetDevScenarioResult {
+    const session = gameStore.get(gameId);
+    if (!session) return { ok: false, reason: 'game-not-found' };
+    if (session.phase !== 'playing') return { ok: false, reason: 'game-not-started' };
+    if (!session.players.some((player) => player.id === playerId)) {
+      return { ok: false, reason: 'player-not-in-game' };
+    }
+    if (session.hostPlayerId !== playerId) return { ok: false, reason: 'not-host' };
+    if (process.env.REGICIDE_DEV_SCENARIOS !== '1') {
+      return { ok: false, reason: 'scenarios-disabled' };
+    }
+    if (session.devScenario === undefined) return { ok: false, reason: 'not-scenario-game' };
+    const factory = getDevScenario(session.devScenario);
+    if (!factory) return { ok: false, reason: 'unknown-scenario' };
+
+    let state;
+    try {
+      state = factory(session.players.map((player) => player.id));
+    } catch (error) {
+      if (error instanceof InvalidDevScenarioError) {
+        return { ok: false, reason: 'invalid-scenario', message: error.message };
+      }
+      throw error;
+    }
+    session.state = state;
+    session.revision += 1;
+    // nextEventId counts domain events, not state updates. Reset publishes no events.
     gameHub.publishGame(gameId);
     return { ok: true, view: toGameView(state, playerId) };
   },

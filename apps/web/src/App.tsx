@@ -7,6 +7,7 @@ import {
   createGame,
   createSoloGame,
   joinGame,
+  resetScenario,
   startGame,
   submitAction,
 } from './api/games.ts';
@@ -26,6 +27,7 @@ type ScreenState =
       revision: number;
       connection: 'connecting' | 'live';
       awaitingUpdate: boolean;
+      devScenario?: string | undefined;
     } & Identity)
   | { status: 'error'; message: string };
 
@@ -67,6 +69,9 @@ function App() {
   const [actionPending, setActionPending] = useState(false);
   const operationInFlight = useRef(false);
   const actionInFlight = useRef(false);
+  const resetInFlight = useRef(false);
+  const [resetPending, setResetPending] = useState(false);
+  const pendingScenarioStart = useRef<{ gameId: string; scenario: string } | null>(null);
 
   const gameId =
     screen.status === 'lobby' || screen.status === 'playing' ? screen.gameId : undefined;
@@ -96,9 +101,14 @@ function App() {
           return;
         }
         if (current.status === 'lobby') {
+          const devScenario =
+            pendingScenarioStart.current?.gameId === gameId
+              ? pendingScenarioStart.current.scenario
+              : undefined;
+          pendingScenarioStart.current = null;
           flushSync(() => {
             setScreen({
-              ...playing(current, message.view),
+              ...playing(current, message.view, devScenario),
               revision: message.revision,
               connection: 'live',
             });
@@ -133,7 +143,7 @@ function App() {
     });
   }, [gameId, playerToken, presentation]);
 
-  function playing(identity: Identity, view: GameView): PlayingScreen {
+  function playing(identity: Identity, view: GameView, devScenario?: string): PlayingScreen {
     // The server starts at revision 0. The first socket snapshot establishes the client revision.
     return {
       status: 'playing',
@@ -144,12 +154,14 @@ function App() {
       revision: -1,
       connection: 'connecting',
       awaitingUpdate: false,
+      ...(devScenario !== undefined ? { devScenario } : {}),
     };
   }
 
   async function createCoop() {
     if (operationInFlight.current || actionInFlight.current) return;
     operationInFlight.current = true;
+    pendingScenarioStart.current = null;
     setScreen({ status: 'loading' });
     setLobbyError(null);
     try {
@@ -171,6 +183,7 @@ function App() {
       return;
     }
     operationInFlight.current = true;
+    pendingScenarioStart.current = null;
     setScreen({ status: 'loading' });
     setLobbyError(null);
     try {
@@ -184,16 +197,15 @@ function App() {
   }
 
   async function startSolo() {
-    if (operationInFlight.current || actionInFlight.current) return;
+    if (operationInFlight.current || actionInFlight.current || resetInFlight.current) return;
     operationInFlight.current = true;
     setScreen({ status: 'loading' });
     setSelection({ revision: -1, ids: [] });
     setActionError(null);
     try {
-      const response = await createSoloGame(
-        import.meta.env.DEV && soloScenario ? soloScenario : undefined,
-      );
-      setScreen(playing(response, response.view));
+      const devScenario = import.meta.env.DEV && soloScenario ? soloScenario : undefined;
+      const response = await createSoloGame(devScenario);
+      setScreen(playing(response, response.view, devScenario));
     } catch (error) {
       setScreen({ status: 'error', message: errorMessage(error, 'Could not start a game') });
     } finally {
@@ -211,10 +223,20 @@ function App() {
     operationInFlight.current = true;
     setLobbyPending(true);
     setLobbyError(null);
+    pendingScenarioStart.current = scenario ? { gameId: screen.gameId, scenario } : null;
     try {
-      // The socket publishes the authoritative view to every player, including the host.
+      // The socket may arrive before the HTTP response. Keep pending context game-scoped.
       await startGame(screen.gameId, screen.playerToken, scenario);
+      if (scenario) {
+        setScreen((current) =>
+          current.status === 'playing' && current.gameId === screen.gameId
+            ? { ...current, devScenario: scenario }
+            : current,
+        );
+      }
     } catch (error) {
+      // A game update may already have confirmed the start despite a lost HTTP response.
+      pendingScenarioStart.current = null;
       setLobbyError(errorMessage(error, 'Could not start the game'));
     } finally {
       operationInFlight.current = false;
@@ -230,7 +252,8 @@ function App() {
       screen.status !== 'playing' ||
       screen.connection !== 'live' ||
       screen.awaitingUpdate ||
-      actionInFlight.current
+      actionInFlight.current ||
+      resetInFlight.current
     )
       return;
     setSelection((current) => {
@@ -248,7 +271,8 @@ function App() {
       screen.view.status !== 'active' ||
       screen.connection !== 'live' ||
       screen.awaitingUpdate ||
-      actionInFlight.current
+      actionInFlight.current ||
+      resetInFlight.current
     )
       return;
     actionInFlight.current = true;
@@ -274,6 +298,42 @@ function App() {
     } finally {
       actionInFlight.current = false;
       setActionPending(false);
+    }
+  }
+
+  async function resetCurrentScenario() {
+    if (
+      screen.status !== 'playing' ||
+      !import.meta.env.DEV ||
+      !screen.devScenario ||
+      screen.connection !== 'live' ||
+      screen.awaitingUpdate ||
+      actionInFlight.current ||
+      resetInFlight.current
+    )
+      return;
+    resetInFlight.current = true;
+    setResetPending(true);
+    setActionError(null);
+    try {
+      await resetScenario(screen.gameId, screen.playerToken);
+      // The socket supplies the new revision and player-specific view.
+      setScreen((current) =>
+        current.status === 'playing' &&
+        current.gameId === screen.gameId &&
+        current.playerToken === screen.playerToken &&
+        current.revision <= screen.revision
+          ? { ...current, awaitingUpdate: true }
+          : current,
+      );
+    } catch (error) {
+      setActionError({
+        revision: screen.revision,
+        message: errorMessage(error, 'Could not reset scenario'),
+      });
+    } finally {
+      resetInFlight.current = false;
+      setResetPending(false);
     }
   }
 
@@ -316,8 +376,12 @@ function App() {
           onToggleCard={toggleCard}
           onAction={sendAction}
           onNewGame={startSolo}
+          onResetScenario={
+            import.meta.env.DEV && screen.devScenario ? resetCurrentScenario : undefined
+          }
+          resetPending={resetPending}
           actionPending={actionPending}
-          actionsDisabled={screen.connection !== 'live' || screen.awaitingUpdate}
+          actionsDisabled={screen.connection !== 'live' || screen.awaitingUpdate || resetPending}
           actionError={actionError?.revision === screen.revision ? actionError.message : null}
         />
       </main>
