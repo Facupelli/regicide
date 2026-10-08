@@ -1,6 +1,8 @@
 import type { GameState } from '@regicide/game-engine';
 
-export type SessionPlayer = { id: string; credentialHash: string };
+export type SessionPlayer =
+  | { id: string; controller: 'human'; credentialHash: string }
+  | { id: string; controller: 'agent' };
 
 export type LobbySession = {
   phase: 'lobby';

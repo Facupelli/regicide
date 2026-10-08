@@ -9,7 +9,11 @@ function hashCredential(playerToken: string): Buffer {
 export function createSessionPlayer(): { player: SessionPlayer; playerToken: string } {
   const playerToken = randomBytes(32).toString('base64url');
   return {
-    player: { id: randomUUID(), credentialHash: hashCredential(playerToken).toString('hex') },
+    player: {
+      id: randomUUID(),
+      controller: 'human',
+      credentialHash: hashCredential(playerToken).toString('hex'),
+    },
     playerToken,
   };
 }
@@ -37,7 +41,9 @@ export function authenticateSessionPlayer(
   playerToken: string,
 ): string | undefined {
   const credentialHash = hashCredential(playerToken);
-  return session.players.find((player) =>
-    timingSafeEqual(credentialHash, Buffer.from(player.credentialHash, 'hex')),
+  return session.players.find(
+    (player) =>
+      player.controller === 'human' &&
+      timingSafeEqual(credentialHash, Buffer.from(player.credentialHash, 'hex')),
   )?.id;
 }

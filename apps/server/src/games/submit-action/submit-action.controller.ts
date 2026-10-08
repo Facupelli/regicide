@@ -30,6 +30,8 @@ export function submitAction(
         return c.json(apiError('player-not-in-game', 'Player is not in the game'), 403);
       case 'invalid-action':
         return c.json(apiError('invalid-action', result.message), 409);
+      case 'stale-decision':
+        return c.json(apiError('stale-decision', 'The pending decision changed'), 409);
     }
   }
 

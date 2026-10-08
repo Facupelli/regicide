@@ -1,4 +1,5 @@
 import type { GameView } from '@regicide/protocol';
+import { scheduleAgentTurn } from '../../agents/agent-turn-runner.ts';
 import { gameHub } from '../game-hub.ts';
 import { gameStore } from '../game-store.ts';
 import { toGameView } from '../protocol/game-view.ts';
@@ -45,5 +46,6 @@ export function resetDevScenario({
   session.revision += 1;
   // nextEventId counts domain events, not state updates. Reset publishes no events.
   gameHub.publishGame(gameId, { state, revision: session.revision });
+  scheduleAgentTurn(gameId);
   return { ok: true, view: toGameView(state, playerId) };
 }

@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { scheduleAgentTurn } from '../../agents/agent-turn-runner.ts';
 import { setupGame } from '@regicide/game-engine';
 import type { GameView } from '@regicide/protocol';
 import { gameHub } from '../game-hub.ts';
@@ -57,5 +58,6 @@ export function startGame({
   };
   gameStore.set(gameId, playingSession);
   gameHub.publishGame(gameId, { state, revision: playingSession.revision });
+  scheduleAgentTurn(gameId);
   return { ok: true, view: toGameView(state, playerId) };
 }

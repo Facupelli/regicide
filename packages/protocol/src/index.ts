@@ -68,6 +68,10 @@ export type {
 } from './game-view.ts';
 
 export {
+  AddAgentResponseSchema,
+  AgentConfigRequestSchema,
+  AgentStatusResponseSchema,
+  AgentStatusSchema,
   ApiErrorSchema,
   CreateGameResponseSchema,
   GetGameResponseSchema,
@@ -78,6 +82,10 @@ export {
   SubmitActionResponseSchema,
 } from './api.ts';
 export type {
+  AddAgentResponse,
+  AgentConfigRequest,
+  AgentStatus,
+  AgentStatusResponse,
   ApiError,
   CreateGameResponse,
   GetGameResponse,
