@@ -1,5 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { GameView, LobbyView, PlayerCommand } from '@regicide/protocol';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import type {
+  GameUpdatedMessage,
+  GameView,
+  LobbyUpdatedMessage,
+  LobbyView,
+  PlayerCommand,
+} from '@regicide/protocol';
 import { connectGameSocket } from './game-socket.ts';
 import {
   ApiClientError,
@@ -107,104 +113,110 @@ function toScreen(state: SessionState): SessionScreen {
 
 export function useGameSession() {
   const [state, setState] = useState<SessionState>({ status: 'idle' });
-  const stateRef = useRef(state);
   const entryInFlight = useRef(false);
   const playingInFlight = useRef(false);
   const pendingScenarioStart = useRef<{ gameId: string; scenario: string } | null>(null);
   const presentation = useGamePresentation();
 
-  useLayoutEffect(() => {
-    stateRef.current = state;
-  }, [state]);
-
   const gameId = state.status === 'lobby' || state.status === 'playing' ? state.gameId : undefined;
   const playerToken =
     state.status === 'lobby' || state.status === 'playing' ? state.playerToken : undefined;
+
+  const onLobbyUpdated = useEffectEvent(
+    (gameId: string, playerToken: string, message: LobbyUpdatedMessage) => {
+      setState((current) =>
+        current.status === 'lobby' &&
+        current.gameId === gameId &&
+        current.playerToken === playerToken
+          ? { ...current, view: message.view }
+          : current,
+      );
+    },
+  );
+
+  const onGameUpdated = useEffectEvent(
+    (gameId: string, playerToken: string, message: GameUpdatedMessage) => {
+      const current = state;
+      if (
+        (current.status !== 'lobby' && current.status !== 'playing') ||
+        current.gameId !== gameId ||
+        current.playerToken !== playerToken
+      ) {
+        return;
+      }
+      if (current.status === 'lobby') {
+        const scenario =
+          pendingScenarioStart.current?.gameId === gameId
+            ? pendingScenarioStart.current.scenario
+            : undefined;
+        pendingScenarioStart.current = null;
+        presentation.switchSession(gameId);
+        presentation.presentUpdate([], current.playerId, () => {
+          setState({
+            ...playing(
+              current,
+              message.view,
+              scenario ? { name: scenario, origin: 'co-op' } : undefined,
+            ),
+            live: { revision: message.revision, sync: 'ready' },
+          });
+        });
+        return;
+      }
+      if (message.revision <= current.live.revision) {
+        setState((latest) => {
+          if (
+            latest.status !== 'playing' ||
+            latest.gameId !== gameId ||
+            latest.playerToken !== playerToken
+          )
+            return latest;
+          const live = receiveSnapshot(latest.live, message.revision);
+          return live === latest.live ? latest : { ...latest, live };
+        });
+        return;
+      }
+      presentation.presentUpdate(message.events, current.playerId, () => {
+        setState((latest) =>
+          latest.status === 'playing' &&
+          latest.gameId === gameId &&
+          latest.playerToken === playerToken &&
+          message.revision > latest.live.revision
+            ? {
+                ...latest,
+                live: receiveSnapshot(latest.live, message.revision),
+                view: message.view,
+                actionError: null,
+              }
+            : latest,
+        );
+      });
+    },
+  );
+
+  const onDisconnected = useEffectEvent((gameId: string, playerToken: string) => {
+    setState((current) => {
+      if (
+        current.status !== 'playing' ||
+        current.gameId !== gameId ||
+        current.playerToken !== playerToken
+      )
+        return current;
+      const live = disconnect(current.live);
+      return live === current.live ? current : { ...current, live };
+    });
+  });
+
   useEffect(() => {
     if (!gameId || !playerToken) return;
     return connectGameSocket({
       gameId,
       playerToken,
-      onLobbyUpdated(message) {
-        setState((current) =>
-          current.status === 'lobby' &&
-          current.gameId === gameId &&
-          current.playerToken === playerToken
-            ? { ...current, view: message.view }
-            : current,
-        );
-      },
-      onGameUpdated(message) {
-        const current = stateRef.current;
-        if (
-          (current.status !== 'lobby' && current.status !== 'playing') ||
-          current.gameId !== gameId ||
-          current.playerToken !== playerToken
-        ) {
-          return;
-        }
-        if (current.status === 'lobby') {
-          const scenario =
-            pendingScenarioStart.current?.gameId === gameId
-              ? pendingScenarioStart.current.scenario
-              : undefined;
-          pendingScenarioStart.current = null;
-          presentation.switchSession(gameId);
-          presentation.presentUpdate([], current.playerId, () => {
-            setState({
-              ...playing(
-                current,
-                message.view,
-                scenario ? { name: scenario, origin: 'co-op' } : undefined,
-              ),
-              live: { revision: message.revision, sync: 'ready' },
-            });
-          });
-          return;
-        }
-        if (message.revision <= current.live.revision) {
-          setState((latest) => {
-            if (
-              latest.status !== 'playing' ||
-              latest.gameId !== gameId ||
-              latest.playerToken !== playerToken
-            )
-              return latest;
-            const live = receiveSnapshot(latest.live, message.revision);
-            return live === latest.live ? latest : { ...latest, live };
-          });
-          return;
-        }
-        presentation.presentUpdate(message.events, current.playerId, () => {
-          setState((latest) =>
-            latest.status === 'playing' &&
-            latest.gameId === gameId &&
-            latest.playerToken === playerToken &&
-            message.revision > latest.live.revision
-              ? {
-                  ...latest,
-                  live: receiveSnapshot(latest.live, message.revision),
-                  view: message.view,
-                  actionError: null,
-                }
-              : latest,
-          );
-        });
-      },
-      onDisconnected() {
-        setState((current) => {
-          if (
-            current.status !== 'playing' ||
-            current.gameId !== gameId ||
-            current.playerToken !== playerToken
-          )
-            return current;
-          const live = disconnect(current.live);
-          return live === current.live ? current : { ...current, live };
-        });
-      },
+      onLobbyUpdated: (message) => onLobbyUpdated(gameId, playerToken, message),
+      onGameUpdated: (message) => onGameUpdated(gameId, playerToken, message),
+      onDisconnected: () => onDisconnected(gameId, playerToken),
     });
-  }, [gameId, playerToken, presentation]);
+  }, [gameId, playerToken]);
 
   async function createCoop() {
     if (entryInFlight.current || playingInFlight.current) return;
@@ -260,7 +272,7 @@ export function useGameSession() {
   }
 
   function startNewSoloGame() {
-    const current = stateRef.current;
+    const current = state;
     const scenario =
       current.status === 'playing' && current.devScenario?.origin === 'solo'
         ? current.devScenario.name
@@ -269,7 +281,7 @@ export function useGameSession() {
   }
 
   async function startCoop(scenario?: string) {
-    const current = stateRef.current;
+    const current = state;
     if (
       current.status !== 'lobby' ||
       current.view.hostPlayerId !== current.playerId ||
@@ -319,7 +331,7 @@ export function useGameSession() {
   }
 
   async function submit(command: PlayerCommand): Promise<'accepted' | 'not-accepted'> {
-    const current = stateRef.current;
+    const current = state;
     if (
       current.status !== 'playing' ||
       current.view.status !== 'active' ||
@@ -369,7 +381,7 @@ export function useGameSession() {
   }
 
   async function resetCurrentScenario() {
-    const current = stateRef.current;
+    const current = state;
     if (
       current.status !== 'playing' ||
       !import.meta.env.DEV ||
