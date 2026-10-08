@@ -1,15 +1,14 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import { setupGame, transition } from '@regicide/game-engine';
-import type { Card as EngineCard } from '@regicide/game-engine';
+import { IllegalActionError, setupGame, transition } from '@regicide/game-engine';
 import type { GameEvent, GameView, LobbyView, PlayerCommand } from '@regicide/protocol';
-import { toProtocolCard } from '../adapters/card.ts';
 import { toGameView } from '../adapters/game-view.ts';
 import { toLobbyView } from '../adapters/lobby-view.ts';
 import { toEngineAction } from '../adapters/player-command.ts';
+import { deriveAcceptedActionEvents } from './accepted-action-events.ts';
 import { gameHub } from './game-hub.ts';
 import { gameStore } from './game-store.ts';
-import { createSessionPlayer } from './player-auth.ts';
-import { getDevScenario, InvalidDevScenarioError } from '../testing/scenarios.ts';
+import { authenticateSessionPlayer, createSessionPlayer } from './player-auth.ts';
+import { buildDevScenario, devScenariosEnabled } from '../testing/scenarios.ts';
 
 const MAX_PLAYERS = 4;
 
@@ -48,13 +47,7 @@ type ResetDevScenarioResult =
 
 type GetGameResult =
   | { ok: true; view: LobbyView | GameView }
-  | { ok: false; reason: 'game-not-found' | 'player-id-required' | 'player-not-in-game' };
-
-type EventWithoutId = GameEvent extends infer Event
-  ? Event extends GameEvent
-    ? Omit<Event, 'id'>
-    : never
-  : never;
+  | { ok: false; reason: 'game-not-found' | 'invalid-credential' };
 
 type SubmitCommandResult =
   | { ok: true; view: GameView }
@@ -82,8 +75,9 @@ export const gameService = {
 
     const { player, playerToken } = createSessionPlayer();
     session.players.push(player);
-    gameHub.publishLobby(gameId);
-    return { ok: true, playerId: player.id, playerToken, view: toLobbyView(session) };
+    const view = toLobbyView(session);
+    gameHub.publishLobby(gameId, view);
+    return { ok: true, playerId: player.id, playerToken, view };
   },
 
   startGame({
@@ -106,32 +100,23 @@ export const gameService = {
     const playerIds = session.players.map((player) => player.id);
     let state;
     if (scenario !== undefined) {
-      if (process.env.REGICIDE_DEV_SCENARIOS !== '1') {
-        return { ok: false, reason: 'scenarios-disabled' };
-      }
-      const factory = getDevScenario(scenario);
-      if (!factory) return { ok: false, reason: 'unknown-scenario' };
-      try {
-        state = factory(playerIds);
-      } catch (error) {
-        if (error instanceof InvalidDevScenarioError) {
-          return { ok: false, reason: 'invalid-scenario', message: error.message };
-        }
-        throw error;
-      }
+      const result = buildDevScenario(scenario, playerIds);
+      if (!result.ok) return result;
+      state = result.state;
     } else {
       const rngState = randomBytes(4).readUInt32BE(0);
       state = setupGame({ playerIds, rngState });
     }
-    gameStore.set(gameId, {
+    const playingSession = {
       ...session,
-      phase: 'playing',
+      phase: 'playing' as const,
       revision: 0,
       nextEventId: 1,
       state,
       ...(scenario !== undefined ? { devScenario: scenario } : {}),
-    });
-    gameHub.publishGame(gameId);
+    };
+    gameStore.set(gameId, playingSession);
+    gameHub.publishGame(gameId, { state, revision: playingSession.revision });
     return { ok: true, view: toGameView(state, playerId) };
   },
 
@@ -149,37 +134,33 @@ export const gameService = {
       return { ok: false, reason: 'player-not-in-game' };
     }
     if (session.hostPlayerId !== playerId) return { ok: false, reason: 'not-host' };
-    if (process.env.REGICIDE_DEV_SCENARIOS !== '1') {
-      return { ok: false, reason: 'scenarios-disabled' };
-    }
+    if (!devScenariosEnabled()) return { ok: false, reason: 'scenarios-disabled' };
     if (session.devScenario === undefined) return { ok: false, reason: 'not-scenario-game' };
-    const factory = getDevScenario(session.devScenario);
-    if (!factory) return { ok: false, reason: 'unknown-scenario' };
-
-    let state;
-    try {
-      state = factory(session.players.map((player) => player.id));
-    } catch (error) {
-      if (error instanceof InvalidDevScenarioError) {
-        return { ok: false, reason: 'invalid-scenario', message: error.message };
-      }
-      throw error;
-    }
+    const result = buildDevScenario(
+      session.devScenario,
+      session.players.map((player) => player.id),
+    );
+    if (!result.ok) return result;
+    const state = result.state;
     session.state = state;
     session.revision += 1;
     // nextEventId counts domain events, not state updates. Reset publishes no events.
-    gameHub.publishGame(gameId);
+    gameHub.publishGame(gameId, { state, revision: session.revision });
     return { ok: true, view: toGameView(state, playerId) };
   },
 
-  getGame({ gameId, playerId }: { gameId: string; playerId: string | undefined }): GetGameResult {
+  getGame({
+    gameId,
+    playerToken,
+  }: {
+    gameId: string;
+    playerToken: string | undefined;
+  }): GetGameResult {
     const session = gameStore.get(gameId);
     if (!session) return { ok: false, reason: 'game-not-found' };
     if (session.phase === 'lobby') return { ok: true, view: toLobbyView(session) };
-    if (!playerId) return { ok: false, reason: 'player-id-required' };
-    if (!session.players.some((player) => player.id === playerId)) {
-      return { ok: false, reason: 'player-not-in-game' };
-    }
+    const playerId = playerToken && authenticateSessionPlayer(session, playerToken);
+    if (!playerId) return { ok: false, reason: 'invalid-credential' };
     return { ok: true, view: toGameView(session.state, playerId) };
   },
 
@@ -205,73 +186,21 @@ export const gameService = {
     try {
       nextState = transition(previousState, action);
     } catch (error) {
-      if (error instanceof Error)
+      if (error instanceof IllegalActionError)
         return { ok: false, reason: 'invalid-action', message: error.message };
       throw error;
     }
 
-    const events: GameEvent[] = [];
     // Reserve IDs in event order; commit the counter after all invariants pass.
-    const emit = (event: EventWithoutId) => {
+    const events: GameEvent[] = [];
+    for (const event of deriveAcceptedActionEvents(previousState, action, nextState)) {
       events.push({ ...event, id: session.nextEventId + events.length });
-    };
-    if (action.kind === 'play-cards') {
-      const player = previousState.world.players.find((candidate) => candidate.id === playerId);
-      if (!player) throw new Error('Accepted play has no authoritative player');
-      const played = action.cardIds.map((id) => {
-        const card = player.hand.find((candidate) => candidate.id === id);
-        if (!card) throw new Error(`Accepted play has no authoritative card: ${id}`);
-        return card;
-      });
-      if (!played.length) throw new Error('Accepted play has no cards');
-      emit({ type: 'cardsPlayed', playerId, cards: played.map(toProtocolCard) });
-
-      if (!('battle' in previousState.world)) {
-        throw new Error('Accepted play has no previous battle');
-      }
-      const previousBattle = previousState.world.battle;
-      const currentEnemy = 'battle' in nextState.world ? nextState.world.battle.enemy : null;
-      if (currentEnemy?.id !== previousBattle.enemy.id) {
-        const enemy = previousBattle.enemy;
-        let destination: 'discard' | 'tavern' | null = null;
-        if (nextState.world.tavern[0]?.id === enemy.id) destination = 'tavern';
-        else if (nextState.world.discard.some((card) => card.id === enemy.id)) {
-          destination = 'discard';
-        }
-        if (!destination) throw new Error('Defeated enemy has no authoritative destination');
-        const battleCards: EngineCard[] = [];
-        for (const play of previousBattle.plays) {
-          if (play.kind === 'attack') battleCards.push(...play.cards);
-          else battleCards.push(play.card);
-        }
-        const discardedCards = [...battleCards, ...played].map(toProtocolCard);
-        emit({
-          type: 'enemyDefeated',
-          playerId,
-          enemy: toProtocolCard(enemy),
-          destination,
-          discardedCards,
-        });
-      }
-    }
-    if (action.kind === 'discard-for-damage' && action.cardIds.length > 0) {
-      // The engine appends the selected cards in discard order. Use its result, not request data.
-      const discarded = nextState.world.discard.slice(previousState.world.discard.length);
-      if (discarded.length !== action.cardIds.length) {
-        throw new Error('Damage discard did not append the expected number of cards');
-      }
-      const cards = discarded.map(toProtocolCard);
-      emit({
-        type: 'cardsDiscardedForDamage',
-        playerId,
-        cards,
-      });
     }
 
     session.nextEventId += events.length;
     session.state = nextState;
     session.revision += 1;
-    gameHub.publishGame(gameId, events);
+    gameHub.publishGame(gameId, { state: nextState, revision: session.revision }, events);
     return { ok: true, view: toGameView(nextState, playerId) };
   },
 };

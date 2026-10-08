@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { gameStore } from './game-store.ts';
-import type { SessionPlayer } from './game-session.ts';
+import type { GameSession, SessionPlayer } from './game-session.ts';
 
 function hashCredential(playerToken: string): Buffer {
   return createHash('sha256').update(playerToken).digest();
@@ -28,11 +28,16 @@ export function authenticatePlayer({
   const session = gameStore.get(gameId);
   if (!session) return { ok: false, reason: 'game-not-found' };
 
+  const playerId = authenticateSessionPlayer(session, playerToken);
+  return playerId ? { ok: true, playerId } : { ok: false, reason: 'invalid-credential' };
+}
+
+export function authenticateSessionPlayer(
+  session: GameSession,
+  playerToken: string,
+): string | undefined {
   const credentialHash = hashCredential(playerToken);
-  const matchedPlayer = session.players.find((player) =>
+  return session.players.find((player) =>
     timingSafeEqual(credentialHash, Buffer.from(player.credentialHash, 'hex')),
-  );
-  return matchedPlayer
-    ? { ok: true, playerId: matchedPlayer.id }
-    : { ok: false, reason: 'invalid-credential' };
+  )?.id;
 }

@@ -30,6 +30,7 @@ Before modifying code in a package or app, read and follow its local `AGENTS.md`
 In particular:
 
 - `apps/web/AGENTS.md` — web architecture, design, source structure, and verification.
+- `apps/server/AGENTS.md` — server architecture, design, source structure, and verification.
 - `packages/game-engine/AGENTS.md` — game-engine design and implementation guidance.
 
 ## Package manager

@@ -24,18 +24,25 @@ import type {
 import { maxHandSize } from './player-count-rules.ts';
 import { shuffle } from './shuffle.ts';
 
+export class IllegalActionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'IllegalActionError';
+  }
+}
+
 export function transition(state: GameState, action: Action): GameState {
   if (state.kind === 'game-over') {
-    throw new Error('The game is over');
+    throw new IllegalActionError('The game is over');
   }
 
   const { world, decision } = state;
-  if (action.playerId !== world.currentPlayer) {
-    throw new Error('Only the current player can act');
-  }
   const player = world.players.find((candidate) => candidate.id === world.currentPlayer);
   if (!player) {
     throw new Error('The current player is not in the game');
+  }
+  if (action.playerId !== world.currentPlayer) {
+    throw new IllegalActionError('Only the current player can act');
   }
 
   switch (decision.kind) {
@@ -45,7 +52,9 @@ export function transition(state: GameState, action: Action): GameState {
         action.kind !== 'yield' &&
         action.kind !== 'use-solo-jester'
       )
-        throw new Error(`Action ${action.kind} is not valid while awaiting a turn action`);
+        throw new IllegalActionError(
+          `Action ${action.kind} is not valid while awaiting a turn action`,
+        );
       return handleTurnAction(world, player, action);
     case 'await-retaliation-action':
       if (
@@ -53,11 +62,13 @@ export function transition(state: GameState, action: Action): GameState {
         action.kind !== 'use-solo-jester' &&
         action.kind !== 'accept-defeat'
       )
-        throw new Error(`Action ${action.kind} is not valid during retaliation`);
+        throw new IllegalActionError(`Action ${action.kind} is not valid during retaliation`);
       return handleRetaliationAction(world, player, decision, action);
     case 'await-next-player-choice':
       if (action.kind !== 'choose-next-player')
-        throw new Error(`Action ${action.kind} is not valid while awaiting a next-player choice`);
+        throw new IllegalActionError(
+          `Action ${action.kind} is not valid while awaiting a next-player choice`,
+        );
       return handleNextPlayerChoice(world, action);
   }
 
@@ -75,7 +86,7 @@ function handleTurnAction(
 
   if (action.kind === 'yield') {
     if (!isYieldAllowedByStreak(world)) {
-      throw new Error('Every other player yielded on their previous turn');
+      throw new IllegalActionError('Every other player yielded on their previous turn');
     }
     return resolveRetaliation({ ...world, consecutiveYields: world.consecutiveYields + 1 });
   }
@@ -96,7 +107,7 @@ function handleTurnAction(
 }
 
 function replaceSoloHand(world: World, player: Player): World {
-  if (!hasSoloJester(world)) throw new Error('No solo Jester available');
+  if (!hasSoloJester(world)) throw new IllegalActionError('No solo Jester available');
   const drawCount = Math.min(maxHandSize(world.players.length), world.tavern.length);
   return {
     ...world,
@@ -117,7 +128,7 @@ function hasSoloJester(world: World): boolean {
 
 function handleNextPlayerChoice(world: World, action: ChooseNextPlayer): GameState {
   if (!world.players.some((player) => player.id === action.targetPlayerId)) {
-    throw new Error('The chosen player is not in the game');
+    throw new IllegalActionError('The chosen player is not in the game');
   }
   return enterTurn({ ...world, currentPlayer: action.targetPlayerId });
 }
@@ -131,20 +142,23 @@ function handleRetaliationAction(
   if (action.kind === 'use-solo-jester') return resolveRetaliation(replaceSoloHand(world, player));
   if (action.kind === 'accept-defeat') {
     if (!hasSoloJester(world) || canAbsorbDamage(player, decision.requiredDamage)) {
-      throw new Error('Defeat can only be accepted when a Jester is the only survival action');
+      throw new IllegalActionError(
+        'Defeat can only be accepted when a Jester is the only survival action',
+      );
     }
     return { kind: 'game-over', world, result: 'loss' };
   }
 
   if (decision.requiredDamage === 0) {
-    if (action.cardIds.length > 0) throw new Error('No cards need to be discarded for zero damage');
+    if (action.cardIds.length > 0)
+      throw new IllegalActionError('No cards need to be discarded for zero damage');
     return enterTurn({ ...world, currentPlayer: nextPlayer(world) });
   }
   const selected = selectedCardsFromHand(player.hand, action.cardIds);
   if (
     selected.reduce((total, card) => total + damageDiscardValue(card), 0) < decision.requiredDamage
   ) {
-    throw new Error('Selected cards do not absorb enough damage');
+    throw new IllegalActionError('Selected cards do not absorb enough damage');
   }
 
   const discardedIds = new Set(action.cardIds);
@@ -252,13 +266,13 @@ function validatePlay(player: Player, action: PlayCards): HistoricalPlay {
   if (result.kind === 'valid') return result.play;
   switch (result.reason) {
     case 'empty':
-      throw new Error('Select a card to play');
+      throw new IllegalActionError('Select a card to play');
     case 'duplicate':
-      throw new Error("Select distinct cards from the current player's hand");
+      throw new IllegalActionError("Select distinct cards from the current player's hand");
     case 'too-many':
-      throw new Error('At most four cards can be played together');
+      throw new IllegalActionError('At most four cards can be played together');
     default:
-      throw new Error(
+      throw new IllegalActionError(
         'Only Animal Companion pairs or same-rank numbered combos of value 10 or less are supported',
       );
   }
@@ -452,12 +466,12 @@ function resolveEnemyDefeat(world: World, defeatKind: DefeatKind): GameState {
 
 function selectedCardsFromHand(hand: readonly Card[], cardIds: readonly string[]): Card[] {
   if (cardIds.length === 0 || new Set(cardIds).size !== cardIds.length) {
-    throw new Error("Select distinct cards from the current player's hand");
+    throw new IllegalActionError("Select distinct cards from the current player's hand");
   }
 
   return cardIds.map((id) => {
     const card = hand.find((candidate) => candidate.id === id);
-    if (!card) throw new Error(`Card ${id} is not in the current player's hand`);
+    if (!card) throw new IllegalActionError(`Card ${id} is not in the current player's hand`);
     return card;
   });
 }

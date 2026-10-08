@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { apiError } from './http/api-error.ts';
-import { gamesRoutes } from './routes/games.ts';
+import { gamesRoutes } from './games/http/routes.ts';
 
 export const app = new Hono();
 

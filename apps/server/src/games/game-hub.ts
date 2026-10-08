@@ -1,6 +1,6 @@
 import type { WebSocketLike } from '@hono/node-server';
 import { GameUpdatedMessageSchema, LobbyUpdatedMessageSchema } from '@regicide/protocol';
-import type { GameEvent } from '@regicide/protocol';
+import type { GameEvent, LobbyView } from '@regicide/protocol';
 import type { WSContext } from 'hono/ws';
 import * as v from 'valibot';
 import { toGameView } from '../adapters/game-view.ts';
@@ -9,6 +9,7 @@ import type { GameSession, LobbySession } from './game-session.ts';
 import { gameStore } from './game-store.ts';
 
 type PlayingSession = Extract<GameSession, { phase: 'playing' }>;
+type GameSnapshot = Pick<PlayingSession, 'state' | 'revision'>;
 type GameSocket = WSContext<WebSocketLike>;
 
 class GameHub {
@@ -44,28 +45,24 @@ class GameHub {
     if (players?.size === 0) this.connections.delete(gameId);
   }
 
-  publishLobby(gameId: string): void {
+  publishLobby(gameId: string, view: LobbyView): void {
     const players = this.connections.get(gameId);
     if (!players) return;
-    const session = gameStore.get(gameId);
-    if (session?.phase !== 'lobby') throw new Error('Cannot publish a lobby that is not open');
 
     const message = JSON.stringify(
-      v.parse(LobbyUpdatedMessageSchema, { type: 'lobby-updated', view: toLobbyView(session) }),
+      v.parse(LobbyUpdatedMessageSchema, { type: 'lobby-updated', view }),
     );
     for (const [playerId, sockets] of players) {
       this.sendToSockets(gameId, playerId, message, sockets);
     }
   }
 
-  publishGame(gameId: string, events: readonly GameEvent[] = []): void {
+  publishGame(gameId: string, snapshot: GameSnapshot, events: readonly GameEvent[] = []): void {
     const players = this.connections.get(gameId);
     if (!players) return;
-    const session = gameStore.get(gameId);
-    if (session?.phase !== 'playing') throw new Error('Cannot publish a game that is not playing');
 
     for (const [playerId, sockets] of players) {
-      this.sendGame(gameId, playerId, session, sockets, events);
+      this.sendGame(gameId, playerId, snapshot, sockets, events);
     }
   }
 
@@ -84,15 +81,15 @@ class GameHub {
   private sendGame(
     gameId: string,
     playerId: string,
-    session: PlayingSession,
+    snapshot: GameSnapshot,
     sockets: Iterable<GameSocket>,
     events: readonly GameEvent[],
   ): void {
     const message = JSON.stringify(
       v.parse(GameUpdatedMessageSchema, {
         type: 'game-updated',
-        revision: session.revision,
-        view: toGameView(session.state, playerId),
+        revision: snapshot.revision,
+        view: toGameView(snapshot.state, playerId),
         events,
       }),
     );

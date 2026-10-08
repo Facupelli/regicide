@@ -1,5 +1,11 @@
 import { createHash } from 'node:crypto';
-import { setupGame, transition, type Action, type GameState } from '@regicide/game-engine';
+import {
+  IllegalActionError,
+  setupGame,
+  transition,
+  type Action,
+  type GameState,
+} from '@regicide/game-engine';
 
 export type Setup = { playerIds: string[]; rngState: number };
 export type Entry =
@@ -51,7 +57,7 @@ export function current(session: Session): GameState {
   return session.snapshots[session.snapshots.length - 1]!;
 }
 
-// This is the only function that advances a live session. Engine errors are evidence, not mutations.
+// This is the only function that advances a live session. Illegal actions are evidence, not mutations.
 export function attempt(session: Session, action: Action): Entry {
   const sequence = session.entries.length + 1;
   let entry: Entry;
@@ -61,12 +67,13 @@ export function attempt(session: Session, action: Action): Entry {
     session.snapshots.push(next);
     entry = { sequence, action, outcome: 'accepted', snapshotAfter: session.snapshots.length - 1 };
   } catch (error) {
-    // An engine exception is a rejected attempt; do not reinterpret the engine's message.
+    if (!(error instanceof IllegalActionError)) throw error;
+    // Preserve the engine's rejection message in the journal.
     entry = {
       sequence,
       action,
       outcome: 'rejected',
-      error: error instanceof Error ? error.message : String(error),
+      error: error.message,
     };
   }
   session.entries.push(entry);

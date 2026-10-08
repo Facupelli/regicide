@@ -1,4 +1,5 @@
 export {
+  IllegalActionError,
   battleStats,
   canAcceptDefeat,
   canUseSoloJester,
