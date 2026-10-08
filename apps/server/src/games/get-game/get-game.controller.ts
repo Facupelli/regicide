@@ -1,13 +1,13 @@
 import type { GetGameResponse } from '@regicide/protocol';
 import type { Context } from 'hono';
-import { gameService } from '../game-service.ts';
 import { apiError } from '../../http/api-error.ts';
 import { parseBearerPlayerToken } from '../../http/player-auth.ts';
+import { getGame as getGameOperation } from './get-game.ts';
 
 export function getGame(c: Context<{}, '/:gameId'>) {
   const gameId = c.req.param('gameId');
   const playerToken = parseBearerPlayerToken(c.req.header('Authorization'));
-  const result = gameService.getGame({ gameId, playerToken });
+  const result = getGameOperation({ gameId, playerToken });
   if (!result.ok) {
     switch (result.reason) {
       case 'game-not-found':

@@ -2,8 +2,8 @@ import { sValidator } from '@hono/standard-validator';
 import { SubmitActionRequestSchema } from '@regicide/protocol';
 import type { SubmitActionRequest, SubmitActionResponse } from '@regicide/protocol';
 import type { Context } from 'hono';
-import { gameService } from '../game-service.ts';
 import { apiError } from '../../http/api-error.ts';
+import { submitCommand } from './submit-command.ts';
 
 export const validateSubmitAction = sValidator('json', SubmitActionRequestSchema, (result, c) => {
   if (!result.success) return c.json(apiError('invalid-request', 'Invalid request body'), 400);
@@ -19,7 +19,7 @@ export function submitAction(
 ) {
   const command = c.req.valid('json');
   const gameId = c.req.param('gameId');
-  const result = gameService.submitCommand({ gameId, playerId: c.get('playerId'), command });
+  const result = submitCommand({ gameId, playerId: c.get('playerId'), command });
   if (!result.ok) {
     switch (result.reason) {
       case 'game-not-found':

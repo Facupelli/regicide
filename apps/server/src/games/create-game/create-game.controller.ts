@@ -1,9 +1,9 @@
 import type { CreateGameResponse } from '@regicide/protocol';
 import type { Context } from 'hono';
-import { gameService } from '../game-service.ts';
+import { createGame as createGameOperation } from './create-game.ts';
 
 export function createGame(c: Context) {
-  const result = gameService.createGame();
+  const result = createGameOperation();
   c.header('Location', `/games/${result.gameId}`);
   return c.json(result satisfies CreateGameResponse, 201);
 }

@@ -40,7 +40,17 @@ Do not duplicate game-engine rules in the server.
 
 ## Source Structure
 
-Organize server code by application capability and ownership of policy. Keep endpoint-specific HTTP code beside its endpoint. Keep shared capabilities top-level only when they genuinely serve multiple operations. Do not create symmetric controller/service/repository layers or one-file-per-role structures.
+Organize server code by application capability and ownership of policy.
+
+Use a directory for each endpoint-backed application capability. Keep its HTTP controller and application operation together in that slice.
+
+A slice may contain additional files when they own knowledge specific to that capability. Do not force identical internal structure across slices.
+
+Keep shared capabilities at the nearest common owner only when multiple operations genuinely depend on them.
+
+Prefer application concepts over generic technical buckets such as `controllers`, `services`, `repositories`, `adapters`, or `helpers`.
+
+Do not create layers or files merely for structural symmetry.
 
 ## Testing
 
@@ -55,7 +65,7 @@ Test important HTTP/WebSocket coordination through integration tests.
 - game rules implemented outside `packages/game-engine`;
 - controllers containing session or game behavior;
 - application code returning HTTP responses;
-- generic service objects that become dumping grounds for unrelated operations;
+- generic service objects or modules that collect otherwise independent application operations;
 - pass-through controller/service/repository layers;
 - repeated authentication, validation, or error-mapping logic when one trusted boundary can own it;
 - speculative ports, repositories, factories, or dependency injection without real variation;

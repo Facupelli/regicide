@@ -1,5 +1,5 @@
 import type { LobbyView } from '@regicide/protocol';
-import type { LobbySession } from '../games/game-session.ts';
+import type { LobbySession } from '../game-session.ts';
 
 export function toLobbyView(session: LobbySession): LobbyView {
   return {

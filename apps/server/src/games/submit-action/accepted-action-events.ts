@@ -1,6 +1,6 @@
 import type { Action, Card as EngineCard, GameState } from '@regicide/game-engine';
 import type { GameEvent } from '@regicide/protocol';
-import { toProtocolCard } from '../adapters/card.ts';
+import { toProtocolCard } from '../protocol/card.ts';
 
 type EventWithoutId = GameEvent extends infer Event
   ? Event extends GameEvent

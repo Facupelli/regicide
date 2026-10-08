@@ -1,11 +1,11 @@
 import type { JoinGameResponse } from '@regicide/protocol';
 import type { Context } from 'hono';
-import { gameService } from '../game-service.ts';
 import { apiError } from '../../http/api-error.ts';
+import { joinGame as joinGameOperation } from './join-game.ts';
 
 export function joinGame(c: Context<{}, '/:gameId/join'>) {
   const gameId = c.req.param('gameId');
-  const result = gameService.joinGame({ gameId });
+  const result = joinGameOperation({ gameId });
   if (!result.ok) {
     switch (result.reason) {
       case 'game-not-found':

@@ -1,11 +1,11 @@
 import type { StartGameResponse } from '@regicide/protocol';
 import type { Context } from 'hono';
-import { gameService } from '../game-service.ts';
 import { apiError } from '../../http/api-error.ts';
+import { startGame as startGameOperation } from './start-game.ts';
 
 export function startGame(c: Context<{ Variables: { playerId: string } }, '/:gameId/start'>) {
   const gameId = c.req.param('gameId');
-  const result = gameService.startGame({
+  const result = startGameOperation({
     gameId,
     playerId: c.get('playerId'),
     scenario: c.req.query('scenario'),

@@ -1,13 +1,13 @@
 import type { StartGameResponse } from '@regicide/protocol';
 import type { Context } from 'hono';
-import { gameService } from '../game-service.ts';
 import { apiError } from '../../http/api-error.ts';
+import { resetDevScenario } from './reset-scenario.ts';
 
 export function resetScenario(
   c: Context<{ Variables: { playerId: string } }, '/:gameId/reset-scenario'>,
 ) {
   const gameId = c.req.param('gameId');
-  const result = gameService.resetDevScenario({ gameId, playerId: c.get('playerId') });
+  const result = resetDevScenario({ gameId, playerId: c.get('playerId') });
   if (!result.ok) {
     switch (result.reason) {
       case 'game-not-found':

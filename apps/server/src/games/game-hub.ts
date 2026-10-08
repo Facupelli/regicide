@@ -3,8 +3,8 @@ import { GameUpdatedMessageSchema, LobbyUpdatedMessageSchema } from '@regicide/p
 import type { GameEvent, LobbyView } from '@regicide/protocol';
 import type { WSContext } from 'hono/ws';
 import * as v from 'valibot';
-import { toGameView } from '../adapters/game-view.ts';
-import { toLobbyView } from '../adapters/lobby-view.ts';
+import { toGameView } from './protocol/game-view.ts';
+import { toLobbyView } from './protocol/lobby-view.ts';
 import type { GameSession, LobbySession } from './game-session.ts';
 import { gameStore } from './game-store.ts';
 
