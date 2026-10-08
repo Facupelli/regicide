@@ -20,61 +20,6 @@ type QueueState = {
   pending: PreparedGamePresentation[];
 };
 
-type GetAnchorRect = (key: GamePresentationAnchorKey) => RectSnapshot | null;
-
-const GamePresentationOverlay = memo(function GamePresentationOverlay({
-  presentation,
-  getAnchorRect,
-  onComplete,
-}: {
-  presentation: PreparedGamePresentation;
-  getAnchorRect: GetAnchorRect;
-  onComplete: (presentation: PreparedGamePresentation) => void;
-}) {
-  const [mounted, setMounted] = useState(false);
-  const measure = useCallback((element: HTMLDivElement | null) => {
-    if (element) setMounted(true);
-  }, []);
-  const complete = () => onComplete(presentation);
-
-  return (
-    <div ref={measure} className="pointer-events-none fixed inset-0 z-100 overflow-visible">
-      {mounted &&
-        (() => {
-          switch (presentation.type) {
-            case 'cardsDiscardedForDamage':
-              return (
-                <CardsDiscardedForDamagePresentation
-                  presentation={presentation}
-                  destination={
-                    getAnchorRect(gamePresentationAnchor.discard) ??
-                    presentation.fallbackDestination
-                  }
-                  onComplete={complete}
-                />
-              );
-            case 'cardsPlayed':
-              return (
-                <CardsPlayedPresentation
-                  presentation={presentation}
-                  getAnchorRect={getAnchorRect}
-                  onComplete={complete}
-                />
-              );
-            case 'enemyDefeatSequence':
-              return (
-                <EnemyDefeatSequencePresentation
-                  presentation={presentation}
-                  getAnchorRect={getAnchorRect}
-                  onComplete={complete}
-                />
-              );
-          }
-        })()}
-    </div>
-  );
-});
-
 export function GamePresentationProvider({ children }: { children: ReactNode }) {
   const anchors = useRef(new Map<GamePresentationAnchorKey, HTMLElement>());
   // Scope only the animation queue, not game or connection state.
@@ -257,3 +202,58 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
     </GamePresentationContext>
   );
 }
+
+type GetAnchorRect = (key: GamePresentationAnchorKey) => RectSnapshot | null;
+
+const GamePresentationOverlay = memo(function GamePresentationOverlay({
+  presentation,
+  getAnchorRect,
+  onComplete,
+}: {
+  presentation: PreparedGamePresentation;
+  getAnchorRect: GetAnchorRect;
+  onComplete: (presentation: PreparedGamePresentation) => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  const measure = useCallback((element: HTMLDivElement | null) => {
+    if (element) setMounted(true);
+  }, []);
+  const complete = () => onComplete(presentation);
+
+  return (
+    <div ref={measure} className="pointer-events-none fixed inset-0 z-100 overflow-visible">
+      {mounted &&
+        (() => {
+          switch (presentation.type) {
+            case 'cardsDiscardedForDamage':
+              return (
+                <CardsDiscardedForDamagePresentation
+                  presentation={presentation}
+                  destination={
+                    getAnchorRect(gamePresentationAnchor.discard) ??
+                    presentation.fallbackDestination
+                  }
+                  onComplete={complete}
+                />
+              );
+            case 'cardsPlayed':
+              return (
+                <CardsPlayedPresentation
+                  presentation={presentation}
+                  getAnchorRect={getAnchorRect}
+                  onComplete={complete}
+                />
+              );
+            case 'enemyDefeatSequence':
+              return (
+                <EnemyDefeatSequencePresentation
+                  presentation={presentation}
+                  getAnchorRect={getAnchorRect}
+                  onComplete={complete}
+                />
+              );
+          }
+        })()}
+    </div>
+  );
+});

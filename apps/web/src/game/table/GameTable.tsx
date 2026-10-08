@@ -20,13 +20,34 @@ export function GameTable(props: TableProps) {
       <EnemyArea battle={battle} hasOpponents={hasOpponents} />
       <BattleArea battle={battle} hasOpponents={hasOpponents} />
       <DecisionArea
-        {...props}
+        view={view}
+        selectedCardIds={selectedCardIds}
+        actionPending={props.actionPending}
+        actionsDisabled={props.actionsDisabled}
+        actionError={props.actionError}
+        onAction={props.onAction}
+        onNewGame={props.onNewGame}
+        onResetScenario={props.onResetScenario}
+        resetPending={props.resetPending}
         hasOpponents={hasOpponents}
         playSelection={evaluatePlaySelection(view.viewer.hand, selectedCardIds)}
         selectedDamage={selectedDamageValue(view.viewer.hand, selectedCardIds)}
       />
-      <ResourceArea {...props} hasOpponents={hasOpponents} />
-      <PlayerHand {...props} hasOpponents={hasOpponents} />
+      <ResourceArea
+        view={view}
+        actionPending={props.actionPending}
+        actionsDisabled={props.actionsDisabled}
+        onAction={props.onAction}
+        hasOpponents={hasOpponents}
+      />
+      <PlayerHand
+        view={view}
+        selectedCardIds={selectedCardIds}
+        onToggleCard={props.onToggleCard}
+        actionPending={props.actionPending}
+        actionsDisabled={props.actionsDisabled}
+        hasOpponents={hasOpponents}
+      />
     </div>
   );
 }
