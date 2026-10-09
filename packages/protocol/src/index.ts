@@ -32,8 +32,16 @@ export type {
   GameEvent,
 } from './game-event.ts';
 
-export { GameUpdatedMessageSchema } from './game-updated.ts';
-export type { GameUpdatedMessage } from './game-updated.ts';
+export {
+  AgentPausedMessageSchema,
+  AgentResumedMessageSchema,
+  GameUpdatedMessageSchema,
+} from './game-updated.ts';
+export type {
+  AgentPausedMessage,
+  AgentResumedMessage,
+  GameUpdatedMessage,
+} from './game-updated.ts';
 
 export { LobbyUpdatedMessageSchema } from './lobby-updated.ts';
 export type { LobbyUpdatedMessage } from './lobby-updated.ts';
@@ -68,30 +76,43 @@ export type {
 } from './game-view.ts';
 
 export {
+  AddAgentRequestSchema,
   AddAgentResponseSchema,
-  AgentConfigRequestSchema,
   AgentStatusResponseSchema,
   AgentStatusSchema,
   ApiErrorSchema,
+  OpenRouterApiKeySchema,
   CreateGameResponseSchema,
+  CreateProfileResponseSchema,
   GetGameResponseSchema,
   JoinGameResponseSchema,
   PlayerIdentitySchema,
+  ProfileViewSchema,
+  RemoveAgentResponseSchema,
+  SUPPORTED_AGENT_MODELS,
   StartGameResponseSchema,
   SubmitActionRequestSchema,
   SubmitActionResponseSchema,
+  UpdateGameAgentSettingsRequestSchema,
+  UpdateProfileAiRequestSchema,
 } from './api.ts';
 export type {
+  AddAgentRequest,
   AddAgentResponse,
-  AgentConfigRequest,
+  AgentModelId,
   AgentStatus,
   AgentStatusResponse,
   ApiError,
   CreateGameResponse,
+  CreateProfileResponse,
   GetGameResponse,
   JoinGameResponse,
   PlayerIdentity,
+  ProfileView,
+  RemoveAgentResponse,
   StartGameResponse,
   SubmitActionRequest,
   SubmitActionResponse,
+  UpdateGameAgentSettingsRequest,
+  UpdateProfileAiRequest,
 } from './api.ts';

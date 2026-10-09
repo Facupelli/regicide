@@ -5,22 +5,22 @@ import { completeStructured, type StructuredCompletion } from './openrouter/comp
 import { REGICIDE_AGENT_PROMPT } from './regicide-prompt.ts';
 
 const TurnDecisionSchema = v.strictObject({
-  command: v.variant('kind', [
-    v.strictObject({ kind: v.literal('play-cards'), cardIds: v.array(v.string()) }),
-    v.strictObject({ kind: v.literal('yield') }),
-    v.strictObject({ kind: v.literal('use-solo-jester') }),
+  command: v.union([
+    v.strictObject({ kind: v.picklist(['play-cards']), cardIds: v.array(v.string()) }),
+    v.strictObject({ kind: v.picklist(['yield']) }),
+    v.strictObject({ kind: v.picklist(['use-solo-jester']) }),
   ]),
 });
 const RetaliationDecisionSchema = v.strictObject({
-  command: v.variant('kind', [
-    v.strictObject({ kind: v.literal('discard-for-damage'), cardIds: v.array(v.string()) }),
-    v.strictObject({ kind: v.literal('use-solo-jester') }),
-    v.strictObject({ kind: v.literal('accept-defeat') }),
+  command: v.union([
+    v.strictObject({ kind: v.picklist(['discard-for-damage']), cardIds: v.array(v.string()) }),
+    v.strictObject({ kind: v.picklist(['use-solo-jester']) }),
+    v.strictObject({ kind: v.picklist(['accept-defeat']) }),
   ]),
 });
 const NextPlayerDecisionSchema = v.strictObject({
   command: v.strictObject({
-    kind: v.literal('choose-next-player'),
+    kind: v.picklist(['choose-next-player']),
     targetPlayerId: v.string(),
   }),
 });
@@ -41,7 +41,8 @@ export type AgentDecisionResult =
       command: PlayerCommand;
       usage?: StructuredCompletion<unknown>['usage'];
     }>
-  | Readonly<{ ok: false; reason: 'not-acting' | 'invalid-action' }>;
+  | Readonly<{ ok: false; reason: 'not-acting' }>
+  | Readonly<{ ok: false; reason: 'invalid-action'; message: string; command: PlayerCommand }>;
 
 export async function decideAgentAction(input: AgentDecisionInput): Promise<AgentDecisionResult> {
   const { observation } = input;
@@ -81,8 +82,9 @@ export async function decideAgentAction(input: AgentDecisionInput): Promise<Agen
   });
 
   const command = completion.output.command;
-  if (!input.validateCommand(command)) {
-    return { ok: false, reason: 'invalid-action' };
+  const validation = input.validateCommand(command);
+  if (!validation.valid) {
+    return { ok: false, reason: 'invalid-action', message: validation.message, command };
   }
 
   return {

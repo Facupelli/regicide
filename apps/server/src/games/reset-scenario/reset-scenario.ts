@@ -45,7 +45,7 @@ export function resetDevScenario({
   session.state = state;
   session.revision += 1;
   // nextEventId counts domain events, not state updates. Reset publishes no events.
-  gameHub.publishGame(gameId, { state, revision: session.revision });
+  gameHub.publishGame(gameId, session);
   scheduleAgentTurn(gameId);
-  return { ok: true, view: toGameView(state, playerId) };
+  return { ok: true, view: toGameView(state, playerId, session.players) };
 }

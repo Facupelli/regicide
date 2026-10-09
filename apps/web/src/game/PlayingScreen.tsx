@@ -1,5 +1,12 @@
 import { useState } from 'react';
-import type { GameView, PlayerCommand } from '@regicide/protocol';
+import type {
+  AgentPausedMessage,
+  AgentStatus,
+  GameView,
+  PlayerCommand,
+  UpdateGameAgentSettingsRequest,
+} from '@regicide/protocol';
+import { AgentControls } from '../agents/AgentControls.tsx';
 import { GameTable } from './table/GameTable.tsx';
 
 type Selection = { viewVersion: string; ids: string[] };
@@ -13,6 +20,14 @@ export function PlayingScreen({
   onAction,
   onNewGame,
   onResetScenario,
+  isHost,
+  agentStatus,
+  agentPause,
+  agentStatusError,
+  onRefreshAgentStatus,
+  onUpdateAgentSettings,
+  onRetryAgent,
+  onOpenAiSettings,
 }: {
   view: GameView;
   viewVersion: string;
@@ -22,6 +37,14 @@ export function PlayingScreen({
   onAction: (command: PlayerCommand) => Promise<'accepted' | 'not-accepted'>;
   onNewGame: () => void;
   onResetScenario?: (() => void) | undefined;
+  isHost: boolean;
+  agentStatus: AgentStatus | null;
+  agentPause: AgentPausedMessage | null;
+  agentStatusError: string | null;
+  onRefreshAgentStatus: () => void;
+  onUpdateAgentSettings: (settings: UpdateGameAgentSettingsRequest) => Promise<void>;
+  onRetryAgent: () => Promise<void>;
+  onOpenAiSettings: () => void;
 }) {
   const [selection, setSelection] = useState<Selection>({ viewVersion: '', ids: [] });
   const actionPending = operation === 'submitting';
@@ -62,6 +85,35 @@ export function PlayingScreen({
           {syncMessage}
         </p>
       )}
+      {agentPause && (
+        <p role="status" className="bg-panel px-4 py-2 text-center text-sm text-foreground">
+          AI teammate paused. Waiting for the host to resolve the issue.
+        </p>
+      )}
+      {isHost && view.players.some((player) => player.controller === 'agent') && (
+        <details
+          className="mx-auto max-w-7xl bg-panel text-foreground"
+          onToggle={(event) => {
+            if (event.currentTarget.open) onRefreshAgentStatus();
+          }}
+        >
+          <summary className="cursor-pointer px-4 py-2 text-sm font-medium">
+            AI status &amp; controls
+            {getAgentStatusSuffix(agentPause)}
+          </summary>
+          <div className="px-4 pb-3">
+            <AgentControls
+              status={agentStatus}
+              agentPause={agentPause}
+              statusError={agentStatusError}
+              onRefresh={onRefreshAgentStatus}
+              onUpdate={onUpdateAgentSettings}
+              onRetry={onRetryAgent}
+              onOpenAiSettings={onOpenAiSettings}
+            />
+          </div>
+        </details>
+      )}
       <GameTable
         view={view}
         selectedCardIds={selectedCardIds}
@@ -76,6 +128,21 @@ export function PlayingScreen({
       />
     </main>
   );
+}
+
+function getAgentStatusSuffix(pause: AgentPausedMessage | null): string {
+  switch (pause?.reason) {
+    case 'failure':
+      return ' - Decision paused';
+    case 'budget-exhausted':
+      return ' - Budget exhausted';
+    case 'unconfigured':
+      return ' - Configuration needed';
+    case 'stopped':
+      return ' - Stopped';
+    default:
+      return '';
+  }
 }
 
 function getSyncMessage(sync: 'connecting' | 'ready' | 'awaiting-update'): string | null {

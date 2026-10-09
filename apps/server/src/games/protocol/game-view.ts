@@ -7,20 +7,36 @@ import {
   type GameState,
 } from '@regicide/game-engine';
 import type { BattleView, GameView, HistoricalPlayView, Interaction } from '@regicide/protocol';
+import type { SessionPlayer } from '../game-session.ts';
 import { toProtocolCard } from './card.ts';
 
 type ActiveState = Extract<GameState, { kind: 'active' }>;
 type BattleState = Exclude<GameState, { kind: 'game-over'; result: 'win' }>;
 type EnginePlay = ActiveState['world']['battle']['plays'][number];
 
-export function toGameView(state: GameState, viewerId: string): GameView {
+export function toGameView(
+  state: GameState,
+  viewerId: string,
+  sessionPlayers: readonly SessionPlayer[],
+): GameView {
   const { world } = state;
   const viewer = world.players.find((player) => player.id === viewerId);
   if (!viewer) throw new Error(`Viewer ${viewerId} is not in the game`);
 
   // Construct an allowlist, never spread the authoritative world into a response.
   const publicFields = {
-    players: world.players.map((player) => ({ id: player.id, handSize: player.hand.length })),
+    players: world.players.map((player) => {
+      const slot = sessionPlayers.find((entry) => entry.id === player.id);
+      if (!slot) throw new Error(`Player ${player.id} has no session slot`);
+      return slot.controller === 'agent'
+        ? {
+            id: player.id,
+            controller: 'agent' as const,
+            model: slot.model,
+            handSize: player.hand.length,
+          }
+        : { id: player.id, controller: 'human' as const, handSize: player.hand.length };
+    }),
     viewer: { id: viewer.id, hand: viewer.hand.map(toProtocolCard) },
     tavern: { remainingCards: world.tavern.length },
     discard: { cards: world.discard.map(toProtocolCard) },

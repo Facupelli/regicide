@@ -1,6 +1,10 @@
 import {
+  AgentPausedMessageSchema,
+  AgentResumedMessageSchema,
   GameUpdatedMessageSchema,
   LobbyUpdatedMessageSchema,
+  type AgentPausedMessage,
+  type AgentResumedMessage,
   type GameUpdatedMessage,
   type LobbyUpdatedMessage,
 } from '@regicide/protocol';
@@ -11,6 +15,8 @@ type GameSocketOptions = {
   playerToken: string;
   onLobbyUpdated: (message: LobbyUpdatedMessage) => void;
   onGameUpdated: (message: GameUpdatedMessage) => void;
+  onAgentPaused: (message: AgentPausedMessage) => void;
+  onAgentResumed: (message: AgentResumedMessage) => void;
   onDisconnected: () => void;
 };
 
@@ -19,6 +25,8 @@ export function connectGameSocket({
   playerToken,
   onLobbyUpdated,
   onGameUpdated,
+  onAgentPaused,
+  onAgentResumed,
   onDisconnected,
 }: GameSocketOptions): () => void {
   const url = new URL(`/games/${encodeURIComponent(gameId)}/ws`, window.location.href);
@@ -50,6 +58,16 @@ export function connectGameSocket({
       const game = v.safeParse(GameUpdatedMessageSchema, data);
       if (game.success) {
         onGameUpdated(game.output);
+        return;
+      }
+      const paused = v.safeParse(AgentPausedMessageSchema, data);
+      if (paused.success) {
+        onAgentPaused(paused.output);
+        return;
+      }
+      const resumed = v.safeParse(AgentResumedMessageSchema, data);
+      if (resumed.success) {
+        onAgentResumed(resumed.output);
         return;
       }
       connection.close();

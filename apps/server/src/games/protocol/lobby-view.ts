@@ -5,6 +5,10 @@ export function toLobbyView(session: LobbySession): LobbyView {
   return {
     status: 'lobby',
     hostPlayerId: session.hostPlayerId,
-    players: session.players.map((player) => ({ id: player.id, controller: player.controller })),
+    players: session.players.map((player) =>
+      player.controller === 'agent'
+        ? { id: player.id, controller: 'agent', model: player.model }
+        : { id: player.id, controller: 'human' },
+    ),
   };
 }

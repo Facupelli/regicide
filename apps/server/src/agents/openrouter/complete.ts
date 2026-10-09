@@ -23,7 +23,10 @@ const errorMessages: Record<ErrorCode, string> = {
 };
 
 export class OpenRouterError extends Error {
-  constructor(public readonly code: ErrorCode) {
+  constructor(
+    public readonly code: ErrorCode,
+    public readonly providerStatus?: number,
+  ) {
     super(errorMessages[code]);
     this.name = 'OpenRouterError';
   }
@@ -70,13 +73,13 @@ export type CompleteOptions<TSchema extends v.StrictObjectSchema<v.ObjectEntries
 };
 
 function statusError(status: number): OpenRouterError {
-  if (status === 401 || status === 403) return new OpenRouterError('authentication');
-  if (status === 402) return new OpenRouterError('insufficient-credits');
-  if (status === 429) return new OpenRouterError('rate-limit');
-  if (status === 408 || status === 504) return new OpenRouterError('timeout');
+  if (status === 401 || status === 403) return new OpenRouterError('authentication', status);
+  if (status === 402) return new OpenRouterError('insufficient-credits', status);
+  if (status === 429) return new OpenRouterError('rate-limit', status);
+  if (status === 408 || status === 504) return new OpenRouterError('timeout', status);
   if (status === 400 || status === 404 || status === 422)
-    return new OpenRouterError('invalid-request');
-  return new OpenRouterError('provider-error');
+    return new OpenRouterError('invalid-request', status);
+  return new OpenRouterError('provider-error', status);
 }
 
 export async function completeStructured<
@@ -108,7 +111,11 @@ export async function completeStructured<
   // Conversion must succeed before a billable request; unsupported Valibot features are rejected.
   let schema: ReturnType<typeof toJsonSchema>;
   try {
-    schema = toJsonSchema(responseSchema, { target: 'draft-07', errorMode: 'throw' });
+    const { $schema: _dialect, ...converted } = toJsonSchema(responseSchema, {
+      target: 'draft-07',
+      errorMode: 'throw',
+    });
+    schema = converted;
   } catch {
     throw new OpenRouterError('invalid-request');
   }
@@ -135,7 +142,11 @@ export async function completeStructured<
           { role: 'user', content: user },
         ],
         stream: false,
-        max_completion_tokens: maxCompletionTokens,
+        // DeepSeek V3.2's structured-output providers support max_tokens, not
+        // max_completion_tokens. Keep the latter for GPT-5 Mini providers.
+        ...(model === 'deepseek/deepseek-v3.2'
+          ? { max_tokens: maxCompletionTokens }
+          : { max_completion_tokens: maxCompletionTokens }),
         response_format: {
           type: 'json_schema',
           json_schema: { name: schemaName, strict: true, schema },

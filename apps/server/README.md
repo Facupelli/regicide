@@ -24,8 +24,13 @@ scenario game from the dev UI without recreating the lobby. Reset also requires 
 
 ## AI teammates
 
-There is no AI configuration UI yet. Hosts can add AI players and provide their own
-OpenRouter credentials through the HTTP API. Model requests can incur charges; see
-`packages/protocol/src/api.ts` for the configuration contract.
+AI setup through the UI is incomplete. Create a profile (`POST /profiles`), save its OpenRouter
+key and enabled models (`PUT /profiles/me/ai`), and create the game with the profile bearer token
+in the Authorization header. The game still issues its own player token. Hosts can add AI slots
+with individually selected enabled models (`POST /games/:gameId/agents`), configure the shared
+request budget and Stop/Resume execution (`PUT /games/:gameId/agent/settings`), read execution
+status (`GET /games/:gameId/agent`), and retry a blocked or failed decision
+(`POST /games/:gameId/agent/retry`). Model requests can incur charges. Profile credentials never
+belong to the game; see `packages/protocol/src/api.ts` for request contracts.
 
 Create and join issue a game-scoped secret `playerToken` once. Keep it private; player IDs in views are public and cannot authenticate requests. Send `Authorization: Bearer <playerToken>` for start, actions, and GET after the game starts. Lobby GET is public and needs no credential. Tokens are held in memory only. Browser WebSockets cannot set an Authorization header, so the WebSocket upgrade uses a `playerToken` query parameter; keep URL query strings out of access logs. The token remains required for reconnects during the lifetime of the server process.

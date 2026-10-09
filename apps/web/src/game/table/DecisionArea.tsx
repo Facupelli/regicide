@@ -43,7 +43,9 @@ export function DecisionArea({
               ? `Victory${view.soloVictoryRank ? ` - ${view.soloVictoryRank}` : ''}`
               : 'Defeat'}
           </p>
-          <Button onClick={onNewGame}>Start New Solo Game</Button>
+          <Button onClick={onNewGame}>
+            {view.players.length === 1 ? 'Start New Solo Game' : 'Return home'}
+          </Button>
         </div>
       ) : (
         <InteractionControls

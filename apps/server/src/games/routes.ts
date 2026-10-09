@@ -3,11 +3,12 @@ import { requireJsonContentType } from '../http/json-validation.ts';
 import { requirePlayerCredential } from '../http/player-auth.ts';
 import {
   addAgentSlot,
-  deleteAgentConfig,
   readAgentStatus,
+  removeAgentSlot,
   retryAgentDecision,
-  setAgentConfig,
-  validateAgentConfig,
+  setAgentSettings,
+  validateAddAgent,
+  validateAgentSettings,
 } from './agent-control/agent-control.controller.ts';
 import { connectWebSocket } from './connect-websocket/connect-websocket.controller.ts';
 import { createGame } from './create-game/create-game.controller.ts';
@@ -22,15 +23,21 @@ export const gamesRoutes = new Hono()
   .get('/:gameId/ws', connectWebSocket)
   .get('/:gameId', getGame)
   .post('/:gameId/join', joinGame)
-  .post('/:gameId/agents', requirePlayerCredential, addAgentSlot)
-  .put(
-    '/:gameId/agent/config',
+  .post(
+    '/:gameId/agents',
     requirePlayerCredential,
     requireJsonContentType,
-    validateAgentConfig,
-    setAgentConfig,
+    validateAddAgent,
+    addAgentSlot,
   )
-  .delete('/:gameId/agent/config', requirePlayerCredential, deleteAgentConfig)
+  .delete('/:gameId/agents/:agentId', requirePlayerCredential, removeAgentSlot)
+  .put(
+    '/:gameId/agent/settings',
+    requirePlayerCredential,
+    requireJsonContentType,
+    validateAgentSettings,
+    setAgentSettings,
+  )
   .get('/:gameId/agent', requirePlayerCredential, readAgentStatus)
   .post('/:gameId/agent/retry', requirePlayerCredential, retryAgentDecision)
   .post('/:gameId/start', requirePlayerCredential, startGame)

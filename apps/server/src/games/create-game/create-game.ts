@@ -4,7 +4,7 @@ import { gameStore } from '../game-store.ts';
 import { createSessionPlayer } from '../player-auth.ts';
 import { toLobbyView } from '../protocol/lobby-view.ts';
 
-export function createGame(): {
+export function createGame(hostProfileId?: string): {
   gameId: string;
   playerId: string;
   playerToken: string;
@@ -15,6 +15,7 @@ export function createGame(): {
   const session = {
     phase: 'lobby' as const,
     hostPlayerId: player.id,
+    ...(hostProfileId === undefined ? {} : { hostProfileId }),
     players: [player],
   };
   gameStore.set(gameId, session);

@@ -57,7 +57,7 @@ export function startGame({
     ...(scenario !== undefined ? { devScenario: scenario } : {}),
   };
   gameStore.set(gameId, playingSession);
-  gameHub.publishGame(gameId, { state, revision: playingSession.revision });
+  gameHub.publishGame(gameId, playingSession);
   scheduleAgentTurn(gameId);
-  return { ok: true, view: toGameView(state, playerId) };
+  return { ok: true, view: toGameView(state, playerId, playingSession.players) };
 }

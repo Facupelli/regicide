@@ -9,6 +9,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/games': { target: 'http://localhost:3000', ws: true },
+      '/profiles': { target: 'http://localhost:3000' },
     },
   },
 });

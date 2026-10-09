@@ -20,5 +20,5 @@ export function getGame({
   if (session.phase === 'lobby') return { ok: true, view: toLobbyView(session) };
   const playerId = playerToken && authenticateSessionPlayer(session, playerToken);
   if (!playerId) return { ok: false, reason: 'invalid-credential' };
-  return { ok: true, view: toGameView(session.state, playerId) };
+  return { ok: true, view: toGameView(session.state, playerId, session.players) };
 }

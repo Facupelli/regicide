@@ -1,4 +1,5 @@
 import * as v from 'valibot';
+import { AgentModelIdSchema } from './agent-model.ts';
 import { PlayerCommandSchema } from './commands.ts';
 import { GameViewSchema } from './game-view.ts';
 import { IdentifierSchema } from './identifier.ts';
@@ -41,31 +42,87 @@ export type SubmitActionRequest = v.InferOutput<typeof SubmitActionRequestSchema
 export const SubmitActionResponseSchema = StartGameResponseSchema;
 export type SubmitActionResponse = v.InferOutput<typeof SubmitActionResponseSchema>;
 
+export const AddAgentRequestSchema = v.strictObject({ model: AgentModelIdSchema });
+export type AddAgentRequest = v.InferOutput<typeof AddAgentRequestSchema>;
+
 export const AddAgentResponseSchema = v.strictObject({
   gameId: IdentifierSchema,
   view: LobbyViewSchema,
 });
 export type AddAgentResponse = v.InferOutput<typeof AddAgentResponseSchema>;
 
-export const AgentConfigRequestSchema = v.strictObject({
-  apiKey: v.pipe(v.string(), v.minLength(1), v.maxLength(4096), v.regex(/^\S+$/)),
-  model: v.pipe(
-    v.string(),
-    v.minLength(1),
-    v.maxLength(200),
-    v.regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/),
-  ),
-  timeoutMs: v.pipe(v.number(), v.integer(), v.minValue(1000), v.maxValue(120000)),
-  maxCompletionTokens: v.pipe(v.number(), v.integer(), v.minValue(64), v.maxValue(8192)),
-  maxRequests: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(500)),
-});
-export type AgentConfigRequest = v.InferOutput<typeof AgentConfigRequestSchema>;
+export const RemoveAgentResponseSchema = AddAgentResponseSchema;
+export type RemoveAgentResponse = v.InferOutput<typeof RemoveAgentResponseSchema>;
 
-export const AgentStatusSchema = v.union([
+export { SUPPORTED_AGENT_MODELS } from './agent-model.ts';
+export type { AgentModelId } from './agent-model.ts';
+
+export const OpenRouterApiKeySchema = v.pipe(
+  v.string(),
+  v.minLength(1),
+  v.maxLength(4096),
+  v.regex(/^\S+$/),
+);
+
+const RequestBudgetSchema = v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(500));
+export const UpdateGameAgentSettingsRequestSchema = v.pipe(
   v.strictObject({
-    state: v.picklist(['unconfigured', 'ready', 'running', 'budget-exhausted']),
-    requestsUsed: v.number(),
-    maxRequests: v.nullable(v.number()),
+    maxRequests: v.optional(RequestBudgetSchema),
+    enabled: v.optional(v.boolean()),
+  }),
+  v.check((settings) => settings.maxRequests !== undefined || settings.enabled !== undefined),
+);
+export type UpdateGameAgentSettingsRequest = v.InferOutput<
+  typeof UpdateGameAgentSettingsRequestSchema
+>;
+
+export const ProfileViewSchema = v.strictObject({
+  id: IdentifierSchema,
+  hasOpenRouterKey: v.boolean(),
+  enabledModels: v.array(AgentModelIdSchema),
+});
+export type ProfileView = v.InferOutput<typeof ProfileViewSchema>;
+
+export const CreateProfileResponseSchema = v.strictObject({
+  profileToken: v.pipe(v.string(), v.minLength(1)),
+  profile: ProfileViewSchema,
+});
+export type CreateProfileResponse = v.InferOutput<typeof CreateProfileResponseSchema>;
+
+export const UpdateProfileAiRequestSchema = v.pipe(
+  v.strictObject({
+    apiKey: v.optional(OpenRouterApiKeySchema),
+    enabledModels: v.optional(
+      v.pipe(
+        v.array(AgentModelIdSchema),
+        v.check((models) => new Set(models).size === models.length),
+      ),
+    ),
+  }),
+  v.check((settings) => settings.apiKey !== undefined || settings.enabledModels !== undefined),
+);
+export type UpdateProfileAiRequest = v.InferOutput<typeof UpdateProfileAiRequestSchema>;
+
+const AgentStatusFields = {
+  enabled: v.boolean(),
+  requestsUsed: v.number(),
+  maxRequests: RequestBudgetSchema,
+};
+
+export const AgentStatusSchema = v.variant('state', [
+  v.strictObject({ state: v.literal('idle'), ...AgentStatusFields }),
+  v.strictObject({ state: v.literal('ready'), ...AgentStatusFields }),
+  v.strictObject({ state: v.literal('running'), ...AgentStatusFields }),
+  v.strictObject({
+    state: v.literal('blocked'),
+    reason: v.picklist([
+      'stopped',
+      'missing-profile',
+      'missing-key',
+      'model-disabled',
+      'budget-exhausted',
+    ]),
+    ...AgentStatusFields,
   }),
   v.strictObject({
     state: v.literal('failed'),
@@ -81,8 +138,7 @@ export const AgentStatusSchema = v.union([
       'invalid-action',
       'internal-error',
     ]),
-    requestsUsed: v.number(),
-    maxRequests: v.nullable(v.number()),
+    ...AgentStatusFields,
   }),
 ]);
 export type AgentStatus = v.InferOutput<typeof AgentStatusSchema>;

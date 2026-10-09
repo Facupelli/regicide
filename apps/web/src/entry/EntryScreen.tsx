@@ -7,12 +7,18 @@ export function EntryScreen({
   onCreateCoop,
   onJoinCoop,
   onStartSolo,
+  onOpenAiSettings,
+  aiSummary,
+  aiConfigured,
 }: {
   loading: boolean;
   error: string | null;
   onCreateCoop: () => void;
   onJoinCoop: (gameId: string) => void;
   onStartSolo: (scenario?: string) => void;
+  onOpenAiSettings: () => void;
+  aiSummary: string | null;
+  aiConfigured: boolean;
 }) {
   const [joinId, setJoinId] = useState('');
   const [soloScenario, setSoloScenario] = useState('');
@@ -30,12 +36,9 @@ export function EntryScreen({
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10 font-sans text-foreground">
-      <div className="w-full max-w-md rounded-xl border border-border bg-panel p-6 shadow-xl sm:p-8">
+    <main className="flex min-h-dvh items-center justify-center bg-background p-4 font-sans text-foreground">
+      <div className="w-full max-w-md rounded-xl border border-border bg-panel p-4 shadow-xl sm:p-8">
         <h1 className="text-3xl font-bold">Regicide</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Take on the castle together, or play solo.
-        </p>
         <div className="mt-8 flex flex-col gap-4">
           {import.meta.env.DEV && (
             <div className="flex flex-col gap-2">
@@ -62,6 +65,7 @@ export function EntryScreen({
               onStartSolo(import.meta.env.DEV && soloScenario ? soloScenario : undefined);
             }}
             disabled={loading}
+            className="min-h-11 w-full"
           >
             Start Solo Game
           </Button>
@@ -71,6 +75,7 @@ export function EntryScreen({
               onCreateCoop();
             }}
             disabled={loading}
+            className="min-h-11 w-full"
           >
             Create Co-op Game
           </Button>
@@ -86,13 +91,22 @@ export function EntryScreen({
               value={joinId}
               onChange={(event) => setJoinId(event.target.value)}
               placeholder="Paste game ID"
-              className="w-full min-w-0 rounded-lg border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-card-selected"
+              className="min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-card-selected"
             />
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" className="min-h-11 w-full" disabled={loading}>
               Join Game
             </Button>
           </form>
         </div>
+        <section className="mt-8 border-t border-border pt-6" aria-label="AI Settings">
+          <h2 className="text-lg font-semibold">AI Settings</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {aiSummary ?? 'Configure AI teammates before creating a co-op game.'}
+          </p>
+          <Button className="mt-4 min-h-11 w-full" onClick={onOpenAiSettings} disabled={loading}>
+            {aiConfigured ? 'AI Settings' : 'Configure AI'}
+          </Button>
+        </section>
         {loading && (
           <p role="status" className="mt-5 text-sm">
             Loading game...

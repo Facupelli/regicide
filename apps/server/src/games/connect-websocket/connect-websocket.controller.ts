@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { upgradeWebSocket } from '@hono/node-server';
 import type { Context } from 'hono';
 import { gameHub } from '../game-hub.ts';
+import { logFailure } from '../../diagnostics.ts';
 import { authenticatePlayer } from '../player-auth.ts';
 import { apiError } from '../../http/api-error.ts';
 
@@ -18,12 +20,51 @@ export async function connectWebSocket(c: Context<{}, '/:gameId/ws'>) {
   }
 
   const playerId = identity.playerId;
-  return await upgradeWebSocket(c, {
-    onOpen(_event, socket) {
-      gameHub.connect(gameId, playerId, socket);
+  const connectionId = randomUUID();
+  let failureLogged = false;
+  const reportFailure = (stage: 'open' | 'close' | 'socket' | 'send'): void => {
+    if (failureLogged) return;
+    failureLogged = true;
+    logFailure('error', {
+      event: 'websocket.connection.failed',
+      connectionId,
+      gameId,
+      playerId,
+      stage,
+    });
+  };
+  return await upgradeWebSocket(
+    c,
+    {
+      onOpen(_event, socket) {
+        try {
+          gameHub.connect(gameId, playerId, socket, () => reportFailure('send'));
+        } catch {
+          reportFailure('open');
+          try {
+            gameHub.disconnect(gameId, playerId, socket);
+            socket.close();
+          } catch {
+            // The open failure is already logged. Cleanup is best-effort.
+          }
+        }
+      },
+      onClose(_event, socket) {
+        try {
+          gameHub.disconnect(gameId, playerId, socket);
+        } catch {
+          reportFailure('close');
+        }
+      },
+      onError() {
+        reportFailure('socket');
+      },
     },
-    onClose(_event, socket) {
-      gameHub.disconnect(gameId, playerId, socket);
+    {
+      onError() {
+        // Fallback for exceptions thrown inside the WebSocket helper's callbacks.
+        reportFailure('socket');
+      },
     },
-  });
+  );
 }

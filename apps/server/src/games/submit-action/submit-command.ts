@@ -70,7 +70,7 @@ export function submitCommand({
   session.nextEventId += events.length;
   session.state = nextState;
   session.revision += 1;
-  gameHub.publishGame(gameId, { state: nextState, revision: session.revision }, events);
+  gameHub.publishGame(gameId, session, events);
   scheduleAgentTurn(gameId);
-  return { ok: true, view: toGameView(nextState, playerId) };
+  return { ok: true, view: toGameView(nextState, playerId, session.players) };
 }
