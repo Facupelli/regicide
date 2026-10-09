@@ -82,6 +82,36 @@ export function DecisionArea({
   );
 }
 
+function selectionMessage(selection: PlaySelectionState, compact: boolean) {
+  switch (selection.kind) {
+    case 'empty':
+      return compact ? 'Select cards' : 'Select cards from your hand.';
+    case 'valid':
+      return compact ? 'Ready to play' : 'Legal play selected.';
+    case 'invalid':
+      return `Invalid play: ${selection.reason}`;
+  }
+}
+
+function damagePrompt(interaction: Extract<Interaction, { kind: 'damage-discard' }>) {
+  if (interaction.requiredDamage === 0) {
+    return (
+      <p data-verify="decision">
+        <span data-verify="zero-damage">No cards need to be discarded.</span>
+      </p>
+    );
+  }
+  if (interaction.canAcceptDefeat) {
+    return (
+      <p data-verify="decision">
+        Your hand cannot absorb {interaction.requiredDamage} damage. Use a Solo Jester or accept
+        defeat.
+      </p>
+    );
+  }
+  return <p data-verify="decision">Select cards to discard.</p>;
+}
+
 function InteractionControls({
   interaction,
   viewerId,
@@ -104,20 +134,8 @@ function InteractionControls({
       return (
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <p data-verify="decision">
-            <span className="lg:hidden">
-              {playSelection.kind === 'empty'
-                ? 'Select cards'
-                : playSelection.kind === 'valid'
-                  ? 'Ready to play'
-                  : `Invalid play: ${playSelection.reason}`}
-            </span>
-            <span className="hidden lg:inline">
-              {playSelection.kind === 'empty'
-                ? 'Select cards from your hand.'
-                : playSelection.kind === 'valid'
-                  ? 'Legal play selected.'
-                  : `Invalid play: ${playSelection.reason}`}
-            </span>
+            <span className="lg:hidden">{selectionMessage(playSelection, true)}</span>
+            <span className="hidden lg:inline">{selectionMessage(playSelection, false)}</span>
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -139,18 +157,7 @@ function InteractionControls({
       return (
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div>
-            {interaction.requiredDamage === 0 ? (
-              <p data-verify="decision">
-                <span data-verify="zero-damage">No cards need to be discarded.</span>
-              </p>
-            ) : interaction.canAcceptDefeat ? (
-              <p data-verify="decision">
-                Your hand cannot absorb {interaction.requiredDamage} damage. Use a Solo Jester or
-                accept defeat.
-              </p>
-            ) : (
-              <p data-verify="decision">Select cards to discard.</p>
-            )}
+            {damagePrompt(interaction)}
             {interaction.requiredDamage > 0 && (
               <p>
                 Selected damage: <span data-verify="selected-damage">{selectedDamage}</span> /{' '}

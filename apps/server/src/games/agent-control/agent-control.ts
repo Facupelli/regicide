@@ -6,18 +6,17 @@ import type {
   UpdateGameAgentSettingsRequest,
 } from '@regicide/protocol';
 import {
-  agentRuntime,
+  getOrCreateAgentRuntime,
   invalidateAgentExecution,
   resolveAgentReadiness,
-  type AgentBlockReason,
-  type AgentRuntime,
-} from '../../agents/agent-runtime.ts';
+} from '../../agents/agent-runtime/agent-runtime.ts';
 import { scheduleAgentTurn } from '../../agents/agent-turn-runner.ts';
 import { getProfile } from '../../profiles/profile-store.ts';
 import { gameHub } from '../game-hub.ts';
 import type { GameSession } from '../game-session.ts';
 import { gameStore } from '../game-store.ts';
 import { toLobbyView } from '../protocol/lobby-view.ts';
+import type { AgentBlockReason, AgentRuntime } from '../../agents/agent-runtime/agent-runtime.types.ts';
 
 type HostFailure = { ok: false; reason: 'game-not-found' | 'not-host' };
 type OperationFailure =
@@ -29,8 +28,12 @@ type OperationFailure =
 
 function hostSession(gameId: string, playerId: string) {
   const session = gameStore.get(gameId);
-  if (!session) return { ok: false as const, reason: 'game-not-found' as const };
-  if (session.hostPlayerId !== playerId) return { ok: false as const, reason: 'not-host' as const };
+  if (!session) {
+    return { ok: false as const, reason: 'game-not-found' as const };
+  }
+  if (session.hostPlayerId !== playerId) {
+    return { ok: false as const, reason: 'not-host' as const };
+  }
   return { ok: true as const, session };
 }
 
@@ -40,14 +43,26 @@ export function addAgent(
   model: AgentModelId,
 ): { ok: true; view: LobbyView } | OperationFailure {
   const host = hostSession(gameId, playerId);
-  if (!host.ok) return host;
+  if (!host.ok) {
+    return host;
+  }
   const { session } = host;
-  if (session.phase !== 'lobby') return { ok: false, reason: 'game-already-started' };
-  if (session.players.length >= 4) return { ok: false, reason: 'lobby-full' };
-  if (!session.hostProfileId) return { ok: false, reason: 'profile-required' };
+  if (session.phase !== 'lobby') {
+    return { ok: false, reason: 'game-already-started' };
+  }
+  if (session.players.length >= 4) {
+    return { ok: false, reason: 'lobby-full' };
+  }
+  if (!session.hostProfileId) {
+    return { ok: false, reason: 'profile-required' };
+  }
   const profile = getProfile(session.hostProfileId);
-  if (!profile) throw new Error('Host profile missing');
-  if (!profile.enabledModels.includes(model)) return { ok: false, reason: 'model-not-enabled' };
+  if (!profile) {
+    throw new Error('Host profile missing');
+  }
+  if (!profile.enabledModels.includes(model)) {
+    return { ok: false, reason: 'model-not-enabled' };
+  }
   session.players.push({ id: randomUUID(), controller: 'agent', model });
   const view = toLobbyView(session);
   gameHub.publishLobby(gameId, view);
@@ -63,12 +78,20 @@ export function removeAgent(
   | HostFailure
   | { ok: false; reason: 'game-already-started' | 'agent-not-found' | 'not-agent' } {
   const host = hostSession(gameId, playerId);
-  if (!host.ok) return host;
+  if (!host.ok) {
+    return host;
+  }
   const { session } = host;
-  if (session.phase !== 'lobby') return { ok: false, reason: 'game-already-started' };
+  if (session.phase !== 'lobby') {
+    return { ok: false, reason: 'game-already-started' };
+  }
   const index = session.players.findIndex((player) => player.id === agentId);
-  if (index === -1) return { ok: false, reason: 'agent-not-found' };
-  if (session.players[index]?.controller !== 'agent') return { ok: false, reason: 'not-agent' };
+  if (index === -1) {
+    return { ok: false, reason: 'agent-not-found' };
+  }
+  if (session.players[index]?.controller !== 'agent') {
+    return { ok: false, reason: 'not-agent' };
+  }
   session.players.splice(index, 1);
   const view = toLobbyView(session);
   gameHub.publishLobby(gameId, view);
@@ -81,11 +104,17 @@ export function updateAgentSettings(
   settings: UpdateGameAgentSettingsRequest,
 ): { ok: true } | HostFailure {
   const host = hostSession(gameId, playerId);
-  if (!host.ok) return host;
-  const runtime = agentRuntime(gameId);
-  if (settings.maxRequests !== undefined) runtime.maxRequests = settings.maxRequests;
+  if (!host.ok) {
+    return host;
+  }
+  const runtime = getOrCreateAgentRuntime(gameId);
+  if (settings.maxRequests !== undefined) {
+    runtime.maxRequests = settings.maxRequests;
+  }
   if (settings.enabled !== undefined) {
-    if (runtime.enabled && !settings.enabled) invalidateAgentExecution(runtime);
+    if (runtime.enabled && !settings.enabled) {
+      invalidateAgentExecution(runtime);
+    }
     runtime.enabled = settings.enabled;
   }
   scheduleAgentTurn(gameId);
@@ -98,11 +127,14 @@ function statusFor(session: GameSession, runtime: AgentRuntime): AgentStatus {
     requestsUsed: runtime.requestsUsed,
     maxRequests: runtime.maxRequests,
   };
-  if (session.phase !== 'playing' || session.state.kind !== 'active')
+  if (session.phase !== 'playing' || session.state.kind !== 'active') {
     return { ...base, state: 'idle' };
+  }
   const playerId = session.state.world.currentPlayer;
   const player = session.players.find((entry) => entry.id === playerId);
-  if (player?.controller !== 'agent') return { ...base, state: 'idle' };
+  if (player?.controller !== 'agent') {
+    return { ...base, state: 'idle' };
+  }
   if (
     runtime.failure?.session === session &&
     runtime.failure.revision === session.revision &&
@@ -110,10 +142,11 @@ function statusFor(session: GameSession, runtime: AgentRuntime): AgentStatus {
   ) {
     return { ...base, state: 'failed', reason: runtime.failure.reason };
   }
-  if (runtime.inFlight)
+  if (runtime.inFlight) {
     return runtime.inFlight.signal.aborted
       ? { ...base, state: 'blocked', reason: 'stopped' }
       : { ...base, state: 'running' };
+  }
   const readiness = resolveAgentReadiness(session, player, runtime);
   return readiness.ok
     ? { ...base, state: 'ready' }
@@ -125,8 +158,10 @@ export function getAgentStatus(
   playerId: string,
 ): { ok: true; status: AgentStatus } | HostFailure {
   const host = hostSession(gameId, playerId);
-  if (!host.ok) return host;
-  return { ok: true, status: statusFor(host.session, agentRuntime(gameId)) };
+  if (!host.ok) {
+    return host;
+  }
+  return { ok: true, status: statusFor(host.session, getOrCreateAgentRuntime(gameId)) };
 }
 
 export function retryAgent(
@@ -140,16 +175,25 @@ export function retryAgent(
       reason: 'no-pending-agent' | 'already-running' | AgentBlockReason;
     } {
   const host = hostSession(gameId, playerId);
-  if (!host.ok) return host;
+  if (!host.ok) {
+    return host;
+  }
   const { session } = host;
-  if (session.phase !== 'playing' || session.state.kind !== 'active')
+  if (session.phase !== 'playing' || session.state.kind !== 'active') {
     return { ok: false, reason: 'no-pending-agent' };
+  }
   const player = session.players.find((entry) => entry.id === session.state.world.currentPlayer);
-  if (player?.controller !== 'agent') return { ok: false, reason: 'no-pending-agent' };
-  const runtime = agentRuntime(gameId);
-  if (runtime.inFlight) return { ok: false, reason: 'already-running' };
+  if (player?.controller !== 'agent') {
+    return { ok: false, reason: 'no-pending-agent' };
+  }
+  const runtime = getOrCreateAgentRuntime(gameId);
+  if (runtime.inFlight) {
+    return { ok: false, reason: 'already-running' };
+  }
   const readiness = resolveAgentReadiness(session, player, runtime);
-  if (!readiness.ok) return readiness;
+  if (!readiness.ok) {
+    return readiness;
+  }
   runtime.failure = undefined;
   scheduleAgentTurn(gameId);
   return { ok: true, status: statusFor(session, runtime) };

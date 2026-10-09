@@ -1,6 +1,6 @@
 import type { GameState } from '@regicide/game-engine';
 import type { ActiveGameView, AgentModelId, PlayerCommand } from '@regicide/protocol';
-import type { AgentFailure } from './agents/agent-runtime.ts';
+import type { AgentFailure } from './agents/agent-runtime/agent-runtime.types.ts';
 
 export type InvalidActionDetails = {
   message: string;
@@ -38,7 +38,6 @@ type LogEvent =
     };
 
 export function logFailure(level: 'warn' | 'error', event: LogEvent): void {
-  // Serialize only explicitly selected fields, never an entire event or caught error.
   let line: string;
   switch (event.event) {
     case 'http.request.failed':
@@ -86,6 +85,9 @@ export function logFailure(level: 'warn' | 'error', event: LogEvent): void {
       });
       break;
   }
-  if (level === 'warn') console.warn(line);
-  else console.error(line);
+  if (level === 'warn') {
+    console.warn(line);
+  } else {
+    console.error(line);
+  }
 }

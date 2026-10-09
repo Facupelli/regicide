@@ -8,8 +8,9 @@ export const requireProfileCredential = createMiddleware<{ Variables: { profileI
       c.req.header('Authorization') ?? '',
     )?.[1];
     const profileId = profileToken ? authenticateProfile(profileToken) : undefined;
-    if (!profileId)
+    if (!profileId) {
       return c.json(apiError('invalid-credential', 'Valid profile credential required'), 401);
+    }
     c.set('profileId', profileId);
     return next();
   },

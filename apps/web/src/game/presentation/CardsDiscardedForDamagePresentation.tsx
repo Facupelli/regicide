@@ -45,9 +45,13 @@ export function CardsDiscardedForDamagePresentation({
     const sequence: AnimationSequence = [];
     let lastArrival = 0;
     for (const { source, position, index, moves } of flights) {
-      if (!position) continue;
+      if (!position) {
+        continue;
+      }
       const element = scope.current.children[index] as HTMLElement | undefined;
-      if (!element) continue;
+      if (!element) {
+        continue;
+      }
       const start = index * CARD_STAGGER_SECONDS;
       sequence.push([element, { opacity: [0, 1] }, { at: start, duration: CARD_FADE_SECONDS }]);
       if (moves && source && landing) {
@@ -68,7 +72,9 @@ export function CardsDiscardedForDamagePresentation({
       return;
     }
     for (const { index, position } of flights) {
-      if (!position) continue;
+      if (!position) {
+        continue;
+      }
       const element = scope.current.children[index] as HTMLElement;
       sequence.push([
         element,
@@ -80,7 +86,9 @@ export function CardsDiscardedForDamagePresentation({
     const controls = animate(sequence);
     void controls.then(
       () => {
-        if (mounted) onComplete();
+        if (mounted) {
+          onComplete();
+        }
       },
       () => {
         // A reset may stop the animation before it finishes.

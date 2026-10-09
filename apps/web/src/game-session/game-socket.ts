@@ -38,11 +38,15 @@ export function connectGameSocket({
   let retry: ReturnType<typeof setTimeout> | undefined;
 
   function connect() {
-    if (stopped) return;
+    if (stopped) {
+      return;
+    }
     const connection = new WebSocket(url);
     socket = connection;
     connection.onmessage = (event) => {
-      if (stopped) return;
+      if (stopped) {
+        return;
+      }
       let data: unknown;
       try {
         data = JSON.parse(event.data);
@@ -73,7 +77,9 @@ export function connectGameSocket({
       connection.close();
     };
     connection.onclose = () => {
-      if (stopped) return;
+      if (stopped) {
+        return;
+      }
       onDisconnected();
       retry = setTimeout(connect, 1500);
     };

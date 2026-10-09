@@ -14,6 +14,13 @@ function modelName(model: AgentModelId) {
   return agentModels.find(({ id }) => id === model)?.label ?? model;
 }
 
+function playerName(player: LobbyView['players'][number], playerId: string) {
+  if (player.controller === 'agent') {
+    return 'AI teammate';
+  }
+  return player.id === playerId ? 'You' : `Player ${player.id.slice(0, 8)}`;
+}
+
 export function LobbyScreen({
   gameId,
   playerId,
@@ -61,9 +68,19 @@ export function LobbyScreen({
   const model = enabled.find(({ id }) => id === selectedModel)?.id ?? enabled[0]?.id;
   const canAdd =
     profileBacked && profile?.hasOpenRouterKey && model !== undefined && view.players.length < 4;
+  let agentSetup: 'unavailable' | 'configure' | 'full' | 'ready' = 'ready';
+  if (!profileBacked) {
+    agentSetup = 'unavailable';
+  } else if (!profile?.hasOpenRouterKey || enabled.length === 0) {
+    agentSetup = 'configure';
+  } else if (view.players.length >= 4) {
+    agentSetup = 'full';
+  }
 
   async function updateSlot(action: () => Promise<void>) {
-    if (slotPending || pending) return;
+    if (slotPending || pending) {
+      return;
+    }
     setSlotPending(true);
     setSlotError(null);
     try {
@@ -77,7 +94,9 @@ export function LobbyScreen({
 
   async function saveBudget(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (budgetPending || pending) return;
+    if (budgetPending || pending) {
+      return;
+    }
     const maxRequests = Number(budgetDraft ?? agentStatus?.maxRequests ?? 50);
     if (!Number.isInteger(maxRequests) || maxRequests < 1 || maxRequests > 500) {
       setBudgetError('Enter a request budget from 1 to 500.');
@@ -121,11 +140,7 @@ export function LobbyScreen({
               className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-sm"
             >
               <span className="min-w-0 break-words font-medium" title={player.id}>
-                {player.controller === 'agent'
-                  ? 'AI teammate'
-                  : player.id === playerId
-                    ? 'You'
-                    : `Player ${player.id.slice(0, 8)}`}
+                {playerName(player, playerId)}
               </span>
               <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                 {player.controller === 'agent' && (
@@ -155,12 +170,13 @@ export function LobbyScreen({
           <>
             <section className="mt-5 border-t border-border pt-5" aria-label="Add AI teammate">
               <h2 className="text-lg font-semibold">Add AI teammate</h2>
-              {!profileBacked ? (
+              {agentSetup === 'unavailable' && (
                 <p className="mt-2 text-sm text-muted-foreground">
                   AI must be configured before creating a new profile-backed game. This human-only
                   lobby cannot be upgraded.
                 </p>
-              ) : !profile?.hasOpenRouterKey || enabled.length === 0 ? (
+              )}
+              {agentSetup === 'configure' && (
                 <div className="mt-2 text-sm text-muted-foreground">
                   <p>Configure an OpenRouter key and enable a model to add AI teammates.</p>
                   <button
@@ -171,9 +187,11 @@ export function LobbyScreen({
                     Open AI Settings
                   </button>
                 </div>
-              ) : view.players.length >= 4 ? (
+              )}
+              {agentSetup === 'full' && (
                 <p className="mt-2 text-sm text-muted-foreground">The lobby is full (4/4).</p>
-              ) : (
+              )}
+              {agentSetup === 'ready' && (
                 <div className="mt-3 space-y-3">
                   {enabled.length === 1 ? (
                     <p className="text-sm text-muted-foreground">Model: {enabled[0]?.label}</p>

@@ -41,7 +41,10 @@ export function EnemyDefeatSequencePresentation({
   const enemyGhost = useRef<HTMLDivElement | null>(null);
   const visible = (key: GamePresentationAnchorKey, fallback: RectSnapshot | null) => {
     const current = getAnchorRect(key);
-    return isVisibleRect(current) ? current : isVisibleRect(fallback) ? fallback : null;
+    if (isVisibleRect(current)) {
+      return current;
+    }
+    return isVisibleRect(fallback) ? fallback : null;
   };
   const battleTarget = visible(
     gamePresentationAnchor.battleTarget,
@@ -70,12 +73,18 @@ export function EnemyDefeatSequencePresentation({
         }))
     : [];
   const setCard = (id: string, element: HTMLElement | null) => {
-    if (element) cardElements.current.set(id, element);
-    else cardElements.current.delete(id);
+    if (element) {
+      cardElements.current.set(id, element);
+    } else {
+      cardElements.current.delete(id);
+    }
   };
   const setGhost = (id: string, element: HTMLElement | null) => {
-    if (element) ghostElements.current.set(id, element);
-    else ghostElements.current.delete(id);
+    if (element) {
+      ghostElements.current.set(id, element);
+    } else {
+      ghostElements.current.delete(id);
+    }
   };
 
   useEffect(() => {
@@ -86,11 +95,15 @@ export function EnemyDefeatSequencePresentation({
       start: number,
       duration: number,
     ) => {
-      if (element) sequence.push([element, { opacity }, { at: start, duration }]);
+      if (element) {
+        sequence.push([element, { opacity }, { at: start, duration }]);
+      }
     };
     const cardRect = (id: string) => {
       const element = cardElements.current.get(id);
-      if (!element) return null;
+      if (!element) {
+        return null;
+      }
       const { left, top, width, height } = element.getBoundingClientRect();
       const rect = { left, top, width, height };
       return isVisibleRect(rect) ? rect : null;
@@ -99,7 +112,9 @@ export function EnemyDefeatSequencePresentation({
     presentation.playedCards.forEach(({ card, source }, index) => {
       const element = cardElements.current.get(card.id);
       const target = cardRect(card.id);
-      if (!element || !target) return;
+      if (!element || !target) {
+        return;
+      }
       const start = index * PLAY_STAGGER_SECONDS;
       if (!reduced && source && battleTarget) {
         sequence.push([
@@ -155,7 +170,9 @@ export function EnemyDefeatSequencePresentation({
       const start = cleanupStart + index * CLEANUP_STAGGER_SECONDS;
       if (reduced) {
         // Keep the old battle legible until its turn, then show its arrival at Discard.
-        if (source && element) at(element, [1, 0], start, CLEANUP_FADE_SECONDS);
+        if (source && element) {
+          at(element, [1, 0], start, CLEANUP_FADE_SECONDS);
+        }
         if (discard) {
           const arrival = start + CLEANUP_FADE_SECONDS;
           at(ghostElements.current.get(card.id), [0, 1], arrival, CLEANUP_FADE_SECONDS);
@@ -208,7 +225,9 @@ export function EnemyDefeatSequencePresentation({
     const controls = animate(sequence);
     void controls.then(
       () => {
-        if (mounted) onComplete();
+        if (mounted) {
+          onComplete();
+        }
       },
       () => {},
     );

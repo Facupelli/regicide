@@ -16,9 +16,15 @@ export function getGame({
   playerToken: string | undefined;
 }): GetGameResult {
   const session = gameStore.get(gameId);
-  if (!session) return { ok: false, reason: 'game-not-found' };
-  if (session.phase === 'lobby') return { ok: true, view: toLobbyView(session) };
+  if (!session) {
+    return { ok: false, reason: 'game-not-found' };
+  }
+  if (session.phase === 'lobby') {
+    return { ok: true, view: toLobbyView(session) };
+  }
   const playerId = playerToken && authenticateSessionPlayer(session, playerToken);
-  if (!playerId) return { ok: false, reason: 'invalid-credential' };
+  if (!playerId) {
+    return { ok: false, reason: 'invalid-credential' };
+  }
   return { ok: true, view: toGameView(session.state, playerId, session.players) };
 }

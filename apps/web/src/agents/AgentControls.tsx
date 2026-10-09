@@ -53,7 +53,9 @@ export function AgentControls({
   const maxRequests = budgetDraft ?? status?.maxRequests ?? 50;
 
   async function run(action: () => Promise<void>, success: string) {
-    if (pending) return;
+    if (pending) {
+      return;
+    }
     setPending(true);
     setError(null);
     setNotice(null);
@@ -176,8 +178,12 @@ export function AgentControls({
 }
 
 function getAgentStatusMessage(status: AgentStatus | null): string {
-  if (status === null) return 'Loading AI status...';
-  if (status.state === 'failed') return `Decision paused: ${failureMessages[status.reason]}`;
+  if (status === null) {
+    return 'Loading AI status...';
+  }
+  if (status.state === 'failed') {
+    return `Decision paused: ${failureMessages[status.reason]}`;
+  }
   if (status.state === 'blocked') {
     switch (status.reason) {
       case 'stopped':
@@ -192,7 +198,11 @@ function getAgentStatusMessage(status: AgentStatus | null): string {
         return 'The acting AI teammate’s model is disabled in the host profile.';
     }
   }
-  if (status.state === 'running') return 'AI decision in progress.';
-  if (status.state === 'ready') return 'Ready for the next AI decision.';
+  if (status.state === 'running') {
+    return 'AI decision in progress.';
+  }
+  if (status.state === 'ready') {
+    return 'Ready for the next AI decision.';
+  }
   return status.enabled ? 'No AI decision is pending.' : 'AI execution is stopped for this game.';
 }

@@ -31,18 +31,26 @@ export function startGame({
   scenario?: string | undefined;
 }): StartGameResult {
   const session = gameStore.get(gameId);
-  if (!session) return { ok: false, reason: 'game-not-found' };
-  if (session.phase !== 'lobby') return { ok: false, reason: 'game-already-started' };
+  if (!session) {
+    return { ok: false, reason: 'game-not-found' };
+  }
+  if (session.phase !== 'lobby') {
+    return { ok: false, reason: 'game-already-started' };
+  }
   if (!session.players.some((player) => player.id === playerId)) {
     return { ok: false, reason: 'player-not-in-game' };
   }
-  if (session.hostPlayerId !== playerId) return { ok: false, reason: 'not-host' };
+  if (session.hostPlayerId !== playerId) {
+    return { ok: false, reason: 'not-host' };
+  }
 
   const playerIds = session.players.map((player) => player.id);
   let state;
   if (scenario !== undefined) {
     const result = buildDevScenario(scenario, playerIds);
-    if (!result.ok) return result;
+    if (!result.ok) {
+      return result;
+    }
     state = result.state;
   } else {
     const rngState = randomBytes(4).readUInt32BE(0);

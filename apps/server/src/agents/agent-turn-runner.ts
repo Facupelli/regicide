@@ -1,19 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import { logFailure, type InvalidActionDetails } from '../diagnostics.ts';
-import { decideAgentAction } from './decide-agent-action.ts';
+import { decideAgentCommand } from './decide-agent-command/decide-agent-command.ts';
 import { createAgentDecisionSnapshot } from './decision-snapshot.ts';
-import { OpenRouterError } from './openrouter/complete.ts';
 import {
-  agentRuntime,
-  currentAgentRuntime,
+  getOrCreateAgentRuntime,
+  isCurrentAgentRuntime,
   resolveAgentReadiness,
-  type AgentFailure,
-  type AgentRuntime,
-} from './agent-runtime.ts';
+} from './agent-runtime/agent-runtime.ts';
 import type { GameSession } from '../games/game-session.ts';
 import { gameHub } from '../games/game-hub.ts';
 import { gameStore } from '../games/game-store.ts';
 import { submitCommand } from '../games/submit-action/submit-command.ts';
+import { OpenRouterError } from './openrouter/openrouter.error.ts';
+import type { AgentFailure, AgentRuntime } from './agent-runtime/agent-runtime.types.ts';
 
 const AGENT_TIMEOUT_MS = 90_000;
 const AGENT_MAX_COMPLETION_TOKENS = 4_096;
@@ -32,7 +31,7 @@ export function scheduleAgentTurn(gameId: string): void {
     return;
   }
 
-  const runtime = agentRuntime(gameId);
+  const runtime = getOrCreateAgentRuntime(gameId);
   if (runtime.inFlight) {
     gameHub.publishAgentState(gameId);
     return;
@@ -62,6 +61,7 @@ export function scheduleAgentTurn(gameId: string): void {
   const generation = runtime.generation;
   const revision = session.revision;
   const decisionKind = state.decision.kind;
+
   let failureRecorded = false;
   const failDecision = (
     reason: AgentFailure,
@@ -70,7 +70,9 @@ export function scheduleAgentTurn(gameId: string): void {
   ): void => {
     failureRecorded = true;
     fail(runtime, session, revision, playerId, reason);
-    if (reason === 'cancelled') return;
+    if (reason === 'cancelled') {
+      return;
+    }
     logFailure(reason === 'invalid-action' ? 'warn' : 'error', {
       event: 'agent.decision.failed',
       executionId,
@@ -90,7 +92,7 @@ export function scheduleAgentTurn(gameId: string): void {
     try {
       const snapshot = createAgentDecisionSnapshot(state, session.players);
       runtime.requestsUsed += 1;
-      const result = await decideAgentAction({
+      const result = await decideAgentCommand({
         ...snapshot,
         model: readiness.model,
         apiKey: readiness.apiKey,
@@ -98,9 +100,10 @@ export function scheduleAgentTurn(gameId: string): void {
         maxCompletionTokens: AGENT_MAX_COMPLETION_TOKENS,
         signal: controller.signal,
       });
-      if (!currentAgentRuntime(gameId, runtime) || runtime.generation !== generation) {
+      if (!isCurrentAgentRuntime(gameId, runtime) || runtime.generation !== generation) {
         return;
       }
+
       if (!result.ok) {
         if (result.reason === 'invalid-action') {
           failDecision('invalid-action', undefined, {
@@ -113,6 +116,7 @@ export function scheduleAgentTurn(gameId: string): void {
         }
         return;
       }
+      
       const submitted = submitCommand({
         gameId,
         playerId,
@@ -123,15 +127,17 @@ export function scheduleAgentTurn(gameId: string): void {
         failDecision('internal-error');
       }
     } catch (error) {
-      if (currentAgentRuntime(gameId, runtime) && runtime.generation === generation) {
+      if (isCurrentAgentRuntime(gameId, runtime) && runtime.generation === generation) {
         failDecision(
           error instanceof OpenRouterError ? error.code : 'internal-error',
           error instanceof OpenRouterError ? error.providerStatus : undefined,
         );
       }
     } finally {
-      if (runtime.inFlight === controller) runtime.inFlight = undefined;
-      if (currentAgentRuntime(gameId, runtime)) {
+      if (runtime.inFlight === controller) {
+        runtime.inFlight = undefined;
+      }
+      if (isCurrentAgentRuntime(gameId, runtime)) {
         try {
           scheduleAgentTurn(gameId);
         } catch {

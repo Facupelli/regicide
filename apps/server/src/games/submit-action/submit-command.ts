@@ -33,8 +33,12 @@ export function submitCommand({
   };
 }): SubmitCommandResult {
   const session = gameStore.get(gameId);
-  if (!session) return { ok: false, reason: 'game-not-found' };
-  if (session.phase !== 'playing') return { ok: false, reason: 'game-not-started' };
+  if (!session) {
+    return { ok: false, reason: 'game-not-found' };
+  }
+  if (session.phase !== 'playing') {
+    return { ok: false, reason: 'game-not-started' };
+  }
   if (!session.players.some((player) => player.id === playerId)) {
     return { ok: false, reason: 'player-not-in-game' };
   }
@@ -56,8 +60,9 @@ export function submitCommand({
   try {
     nextState = transition(previousState, action);
   } catch (error) {
-    if (error instanceof IllegalActionError)
+    if (error instanceof IllegalActionError) {
       return { ok: false, reason: 'invalid-action', message: error.message };
+    }
     throw error;
   }
 

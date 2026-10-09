@@ -88,32 +88,44 @@ export function useGameSession() {
     const requestId = ++agentStatusRequest.current;
     try {
       const response = await agentStatus(id, token);
-      if (requestId !== agentStatusRequest.current) return;
+      if (requestId !== agentStatusRequest.current) {
+        return;
+      }
       setAgentInfo({ gameId: id, status: response.status });
       setAgentStatusError(null);
     } catch (error) {
-      if (requestId !== agentStatusRequest.current) return;
+      if (requestId !== agentStatusRequest.current) {
+        return;
+      }
       setAgentStatusError({ gameId: id, message: errorMessage(error, 'Could not load AI status') });
     }
   }, []);
 
   const inLobby = state.status === 'lobby';
   useEffect(() => {
-    if (!inLobby || !gameId || !playerToken || !isHost) return;
+    if (!inLobby || !gameId || !playerToken || !isHost) {
+      return;
+    }
     const requestId = ++agentStatusRequest.current;
     void agentStatus(gameId, playerToken).then(
       (response) => {
-        if (requestId !== agentStatusRequest.current) return;
+        if (requestId !== agentStatusRequest.current) {
+          return;
+        }
         setAgentInfo({ gameId, status: response.status });
         setAgentStatusError(null);
       },
       (error: unknown) => {
-        if (requestId !== agentStatusRequest.current) return;
+        if (requestId !== agentStatusRequest.current) {
+          return;
+        }
         setAgentStatusError({ gameId, message: errorMessage(error, 'Could not load AI status') });
       },
     );
     return () => {
-      if (requestId === agentStatusRequest.current) agentStatusRequest.current += 1;
+      if (requestId === agentStatusRequest.current) {
+        agentStatusRequest.current += 1;
+      }
     };
   }, [inLobby, gameId, playerToken, isHost]);
 
@@ -216,7 +228,9 @@ export function useGameSession() {
   });
 
   useEffect(() => {
-    if (!gameId || !playerToken) return;
+    if (!gameId || !playerToken) {
+      return;
+    }
     return connectGameSocket({
       gameId,
       playerToken,
@@ -229,7 +243,9 @@ export function useGameSession() {
   }, [gameId, playerToken]);
 
   async function createCoop(profileToken?: string) {
-    if (entryInFlight.current || playingInFlight.current) return;
+    if (entryInFlight.current || playingInFlight.current) {
+      return;
+    }
     entryInFlight.current = true;
     pendingScenarioStart.current = null;
     dispatch({ type: 'session-load-started' });
@@ -252,7 +268,9 @@ export function useGameSession() {
   }
 
   async function joinCoop(id: string) {
-    if (entryInFlight.current || playingInFlight.current) return;
+    if (entryInFlight.current || playingInFlight.current) {
+      return;
+    }
     entryInFlight.current = true;
     pendingScenarioStart.current = null;
     dispatch({ type: 'session-load-started' });
@@ -275,7 +293,9 @@ export function useGameSession() {
   }
 
   async function startSolo(scenario?: string) {
-    if (entryInFlight.current || playingInFlight.current) return;
+    if (entryInFlight.current || playingInFlight.current) {
+      return;
+    }
     entryInFlight.current = true;
     presentation.switchSession(null);
     dispatch({ type: 'session-load-started' });
@@ -300,15 +320,21 @@ export function useGameSession() {
   }
 
   function returnHome() {
-    if (state.status !== 'playing' || state.view.status !== 'game-over') return;
+    if (state.status !== 'playing' || state.view.status !== 'game-over') {
+      return;
+    }
     presentation.switchSession(null);
     dispatch({ type: 'return-home' });
   }
 
   async function addAiTeammate(model: AgentModelId) {
     const current = state;
-    if (current.status !== 'lobby' || current.view.hostPlayerId !== current.playerId) return;
-    if (!current.profileBacked) return;
+    if (current.status !== 'lobby' || current.view.hostPlayerId !== current.playerId) {
+      return;
+    }
+    if (!current.profileBacked) {
+      return;
+    }
     const response = await addAgent(current.gameId, current.playerToken, model);
     dispatch({
       type: 'lobby-updated',
@@ -320,7 +346,9 @@ export function useGameSession() {
 
   async function removeAiTeammate(agentId: string) {
     const current = state;
-    if (current.status !== 'lobby' || current.view.hostPlayerId !== current.playerId) return;
+    if (current.status !== 'lobby' || current.view.hostPlayerId !== current.playerId) {
+      return;
+    }
     const response = await removeAgent(current.gameId, current.playerToken, agentId);
     dispatch({
       type: 'lobby-updated',
@@ -332,7 +360,9 @@ export function useGameSession() {
 
   async function saveAiSettings(settings: UpdateGameAgentSettingsRequest) {
     const current = state;
-    if ((current.status !== 'lobby' && current.status !== 'playing') || !isHost) return;
+    if ((current.status !== 'lobby' && current.status !== 'playing') || !isHost) {
+      return;
+    }
     agentStatusRequest.current += 1;
     await updateAgentSettings(current.gameId, current.playerToken, settings);
     await refreshAgentStatus(current.gameId, current.playerToken);
@@ -340,10 +370,14 @@ export function useGameSession() {
 
   async function retryAi() {
     const current = state;
-    if (current.status !== 'playing' || !current.isHost) return;
+    if (current.status !== 'playing' || !current.isHost) {
+      return;
+    }
     const requestId = ++agentStatusRequest.current;
     const response = await retryAgent(current.gameId, current.playerToken);
-    if (requestId !== agentStatusRequest.current) return;
+    if (requestId !== agentStatusRequest.current) {
+      return;
+    }
     setAgentInfo({ gameId: current.gameId, status: response.status });
     setAgentStatusError(null);
   }
@@ -503,8 +537,9 @@ export function useGameSession() {
     saveAiSettings,
     retryAi,
     refreshAiStatus: () => {
-      if (gameId && playerToken && isHost && (hasAgents || inLobby))
+      if (gameId && playerToken && isHost && (hasAgents || inLobby)) {
         void refreshAgentStatus(gameId, playerToken);
+      }
     },
     agentStatus:
       isHost && (hasAgents || inLobby) && agentInfo && agentInfo.gameId === gameId

@@ -7,8 +7,9 @@ function isUpgradeServer(server: WebSocketServer): server is WebSocketServer & W
 }
 
 const websocketServer = new WebSocketServer({ noServer: true });
-if (!isUpgradeServer(websocketServer))
+if (!isUpgradeServer(websocketServer)) {
   throw new Error('WebSocket upgrades must be handled by Hono');
+}
 
 serve(
   {

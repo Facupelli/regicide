@@ -53,7 +53,9 @@ export function PlayingScreen({
   const selectedCardIds = selection.viewVersion === viewVersion ? selection.ids : [];
 
   function toggleCard(cardId: string) {
-    if (actionsDisabled || actionPending) return;
+    if (actionsDisabled || actionPending) {
+      return;
+    }
     setSelection((current) => {
       const ids = current.viewVersion === viewVersion ? current.ids : [];
       return {
@@ -94,7 +96,9 @@ export function PlayingScreen({
         <details
           className="mx-auto max-w-7xl bg-panel text-foreground"
           onToggle={(event) => {
-            if (event.currentTarget.open) onRefreshAgentStatus();
+            if (event.currentTarget.open) {
+              onRefreshAgentStatus();
+            }
           }}
         >
           <summary className="cursor-pointer px-4 py-2 text-sm font-medium">
@@ -146,19 +150,31 @@ function getAgentStatusSuffix(pause: AgentPausedMessage | null): string {
 }
 
 function getSyncMessage(sync: 'connecting' | 'ready' | 'awaiting-update'): string | null {
-  if (sync === 'connecting') return 'Connecting to live game...';
-  if (sync === 'awaiting-update') return 'Waiting for game update...';
+  if (sync === 'connecting') {
+    return 'Connecting to live game...';
+  }
+  if (sync === 'awaiting-update') {
+    return 'Waiting for game update...';
+  }
   return null;
 }
 
 function getPhase(view: GameView): string {
-  if (view.status === 'game-over') return view.result === 'win' ? 'victory' : 'defeat';
-  if (view.interaction.kind === 'damage-discard') return 'discard';
-  if (view.interaction.kind === 'turn') return 'play';
+  if (view.status === 'game-over') {
+    return view.result === 'win' ? 'victory' : 'defeat';
+  }
+  if (view.interaction.kind === 'damage-discard') {
+    return 'discard';
+  }
+  if (view.interaction.kind === 'turn') {
+    return 'play';
+  }
   return view.interaction.kind;
 }
 
 function getTurn(view: GameView): 'you' | 'other' | undefined {
-  if (view.status !== 'active') return undefined;
+  if (view.status !== 'active') {
+    return undefined;
+  }
   return view.currentPlayerId === view.viewer.id ? 'you' : 'other';
 }

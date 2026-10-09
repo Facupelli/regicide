@@ -20,11 +20,14 @@ function App() {
     setSettings('loading');
     void profile.ensureProfile().then(
       () => {
-        if (requestId === settingsRequest.current) setSettings('ready');
+        if (requestId === settingsRequest.current) {
+          setSettings('ready');
+        }
       },
       () => {
-        if (requestId === settingsRequest.current)
+        if (requestId === settingsRequest.current) {
           setSettings({ error: 'Could not create your profile. Please try again.' });
+        }
       },
     );
   }

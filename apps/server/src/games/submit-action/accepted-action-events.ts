@@ -18,13 +18,19 @@ export function deriveAcceptedActionEvents(
     const player = previousState.world.players.find(
       (candidate) => candidate.id === action.playerId,
     );
-    if (!player) throw new Error('Accepted play has no authoritative player');
+    if (!player) {
+      throw new Error('Accepted play has no authoritative player');
+    }
     const played = action.cardIds.map((id) => {
       const card = player.hand.find((candidate) => candidate.id === id);
-      if (!card) throw new Error(`Accepted play has no authoritative card: ${id}`);
+      if (!card) {
+        throw new Error(`Accepted play has no authoritative card: ${id}`);
+      }
       return card;
     });
-    if (!played.length) throw new Error('Accepted play has no cards');
+    if (!played.length) {
+      throw new Error('Accepted play has no cards');
+    }
     events.push({
       type: 'cardsPlayed',
       playerId: action.playerId,
@@ -39,15 +45,21 @@ export function deriveAcceptedActionEvents(
     if (currentEnemy?.id !== previousBattle.enemy.id) {
       const enemy = previousBattle.enemy;
       let destination: 'discard' | 'tavern' | null = null;
-      if (nextState.world.tavern[0]?.id === enemy.id) destination = 'tavern';
-      else if (nextState.world.discard.some((card) => card.id === enemy.id)) {
+      if (nextState.world.tavern[0]?.id === enemy.id) {
+        destination = 'tavern';
+      } else if (nextState.world.discard.some((card) => card.id === enemy.id)) {
         destination = 'discard';
       }
-      if (!destination) throw new Error('Defeated enemy has no authoritative destination');
+      if (!destination) {
+        throw new Error('Defeated enemy has no authoritative destination');
+      }
       const battleCards: EngineCard[] = [];
       for (const play of previousBattle.plays) {
-        if (play.kind === 'attack') battleCards.push(...play.cards);
-        else battleCards.push(play.card);
+        if (play.kind === 'attack') {
+          battleCards.push(...play.cards);
+        } else {
+          battleCards.push(play.card);
+        }
       }
       const discardedCards = [...battleCards, ...played].map(toProtocolCard);
       events.push({

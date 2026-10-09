@@ -46,13 +46,15 @@ export function PlayerSeat({
 export function PlayerArea({ view }: { view: GameView }) {
   const { registerAnchor } = useGamePresentation();
   const opponents = view.players.filter((player) => player.id !== view.viewer.id);
-  if (!opponents.length) return null;
+  if (!opponents.length) {
+    return null;
+  }
   const positions =
-    opponents.length === 1
-      ? ['lg:col-start-2']
-      : opponents.length === 2
-        ? ['lg:col-start-1', 'lg:col-start-3']
-        : ['lg:col-start-1', 'lg:col-start-2', 'lg:col-start-3'];
+    {
+      1: ['lg:col-start-2'],
+      2: ['lg:col-start-1', 'lg:col-start-3'],
+      3: ['lg:col-start-1', 'lg:col-start-2', 'lg:col-start-3'],
+    }[opponents.length] ?? [];
   return (
     <section
       className="col-span-3 row-start-1 flex flex-wrap gap-2 lg:contents"

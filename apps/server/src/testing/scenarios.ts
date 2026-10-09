@@ -43,9 +43,13 @@ export function buildDevScenario(
   name: string,
   playerIds: readonly string[],
 ): BuildDevScenarioResult {
-  if (!devScenariosEnabled()) return { ok: false, reason: 'scenarios-disabled' };
+  if (!devScenariosEnabled()) {
+    return { ok: false, reason: 'scenarios-disabled' };
+  }
   const factory = Object.hasOwn(devScenarios, name) ? devScenarios[name] : undefined;
-  if (!factory) return { ok: false, reason: 'unknown-scenario' };
+  if (!factory) {
+    return { ok: false, reason: 'unknown-scenario' };
+  }
   try {
     return { ok: true, state: factory(playerIds) };
   } catch (error) {

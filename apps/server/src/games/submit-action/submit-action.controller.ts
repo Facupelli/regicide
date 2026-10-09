@@ -6,7 +6,9 @@ import { apiError } from '../../http/api-error.ts';
 import { submitCommand } from './submit-command.ts';
 
 export const validateSubmitAction = sValidator('json', SubmitActionRequestSchema, (result, c) => {
-  if (!result.success) return c.json(apiError('invalid-request', 'Invalid request body'), 400);
+  if (!result.success) {
+    return c.json(apiError('invalid-request', 'Invalid request body'), 400);
+  }
   return undefined;
 });
 

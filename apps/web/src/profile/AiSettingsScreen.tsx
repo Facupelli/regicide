@@ -78,9 +78,13 @@ function SettingsForm({
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending) return;
+    if (pending) {
+      return;
+    }
     const apiKey = keyInput.trim();
-    if (!apiKey && !modelsChanged) return;
+    if (!apiKey && !modelsChanged) {
+      return;
+    }
     setPending(true);
     setError(null);
     setNotice(null);
@@ -96,7 +100,9 @@ function SettingsForm({
   }
 
   async function revoke() {
-    if (pending) return;
+    if (pending) {
+      return;
+    }
     setPending(true);
     setError(null);
     setNotice(null);

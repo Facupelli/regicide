@@ -28,8 +28,11 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
 
   const registerAnchor = useCallback(
     (key: GamePresentationAnchorKey, element: HTMLElement | null) => {
-      if (element) anchors.current.set(key, element);
-      else anchors.current.delete(key);
+      if (element) {
+        anchors.current.set(key, element);
+      } else {
+        anchors.current.delete(key);
+      }
     },
     [],
   );
@@ -57,6 +60,7 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
                 height: fallbackBattleTarget.height,
               }
             : null;
+        const remoteCardSource = isVisibleRect(remoteSource) ? remoteSource : null;
         return {
           type: 'cardsPlayed',
           eventId: event.id,
@@ -66,16 +70,16 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
             source:
               event.playerId === localPlayerId
                 ? visible(gamePresentationAnchor.card(card.id))
-                : isVisibleRect(remoteSource)
-                  ? remoteSource
-                  : null,
+                : remoteCardSource,
           })),
           fallbackBattleTarget,
         };
       };
       for (let index = 0; index < events.length; index++) {
         const event = events[index];
-        if (!event) continue;
+        if (!event) {
+          continue;
+        }
         switch (event.type) {
           case 'cardsDiscardedForDamage': {
             const fallbackDestination = visible(gamePresentationAnchor.discard);
@@ -148,7 +152,9 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
   );
 
   const enqueue = useCallback((presentations: readonly PreparedGamePresentation[]) => {
-    if (!presentations.length) return;
+    if (!presentations.length) {
+      return;
+    }
     setQueue((current) => {
       if (current.active) {
         return { active: current.active, pending: [...current.pending, ...presentations] };
@@ -159,7 +165,9 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
   }, []);
 
   const switchSession = useCallback((key: string | null) => {
-    if (sessionKey.current === key) return;
+    if (sessionKey.current === key) {
+      return;
+    }
     sessionKey.current = key;
     setQueue({ active: null, pending: [] });
   }, []);
@@ -175,7 +183,9 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
 
   const onComplete = useCallback((completed: PreparedGamePresentation) => {
     setQueue((current) => {
-      if (current.active !== completed) return current;
+      if (current.active !== completed) {
+        return current;
+      }
       const [active, ...pending] = current.pending;
       return { active: active ?? null, pending };
     });
@@ -216,7 +226,9 @@ const GamePresentationOverlay = memo(function GamePresentationOverlay({
 }) {
   const [mounted, setMounted] = useState(false);
   const measure = useCallback((element: HTMLDivElement | null) => {
-    if (element) setMounted(true);
+    if (element) {
+      setMounted(true);
+    }
   }, []);
   const complete = () => onComplete(presentation);
 

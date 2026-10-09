@@ -1,4 +1,4 @@
-import { destroyAgentRuntime } from '../agents/agent-runtime.ts';
+import { destroyAgentRuntime } from '../agents/agent-runtime/agent-runtime.ts';
 import type { GameSession } from './game-session.ts';
 
 class GameStore extends Map<string, GameSession> {
@@ -8,7 +8,9 @@ class GameStore extends Map<string, GameSession> {
   }
 
   override clear(): void {
-    for (const gameId of this.keys()) this.delete(gameId);
+    for (const gameId of this.keys()) {
+      this.delete(gameId);
+    }
   }
 }
 

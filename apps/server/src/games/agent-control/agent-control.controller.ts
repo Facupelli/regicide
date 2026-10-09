@@ -26,7 +26,9 @@ function hostError(reason: 'game-not-found' | 'not-host') {
 }
 
 export const validateAddAgent = sValidator('json', AddAgentRequestSchema, (result, c) => {
-  if (!result.success) return c.json(apiError('invalid-request', 'Invalid request body'), 400);
+  if (!result.success) {
+    return c.json(apiError('invalid-request', 'Invalid request body'), 400);
+  }
   return undefined;
 });
 
@@ -40,13 +42,18 @@ export function addAgentSlot(
   const gameId = c.req.param('gameId');
   const result = addAgent(gameId, c.get('playerId'), c.req.valid('json').model);
   if (!result.ok) {
-    if (result.reason === 'lobby-full') return c.json(apiError('lobby-full', 'Lobby is full'), 409);
-    if (result.reason === 'game-already-started')
+    if (result.reason === 'lobby-full') {
+      return c.json(apiError('lobby-full', 'Lobby is full'), 409);
+    }
+    if (result.reason === 'game-already-started') {
       return c.json(apiError('game-already-started', 'Game has already started'), 409);
-    if (result.reason === 'profile-required')
+    }
+    if (result.reason === 'profile-required') {
       return c.json(apiError('profile-required', 'Host profile required to add AI players'), 409);
-    if (result.reason === 'model-not-enabled')
+    }
+    if (result.reason === 'model-not-enabled') {
       return c.json(apiError('model-not-enabled', 'Model is not enabled in the host profile'), 409);
+    }
     const { status, code, message } = hostError(result.reason);
     return c.json(apiError(code, message), status);
   }
@@ -57,12 +64,15 @@ export function removeAgentSlot(c: AuthorizedContext<'/:gameId/agents/:agentId'>
   const gameId = c.req.param('gameId');
   const result = removeAgent(gameId, c.get('playerId'), c.req.param('agentId'));
   if (!result.ok) {
-    if (result.reason === 'game-already-started')
+    if (result.reason === 'game-already-started') {
       return c.json(apiError('game-already-started', 'Game has already started'), 409);
-    if (result.reason === 'agent-not-found')
+    }
+    if (result.reason === 'agent-not-found') {
       return c.json(apiError('agent-not-found', 'Player slot not found'), 404);
-    if (result.reason === 'not-agent')
+    }
+    if (result.reason === 'not-agent') {
       return c.json(apiError('not-agent', 'Cannot remove a human player'), 409);
+    }
     const { status, code, message } = hostError(result.reason);
     return c.json(apiError(code, message), status);
   }
@@ -73,7 +83,9 @@ export const validateAgentSettings = sValidator(
   'json',
   UpdateGameAgentSettingsRequestSchema,
   (result, c) => {
-    if (!result.success) return c.json(apiError('invalid-request', 'Invalid request body'), 400);
+    if (!result.success) {
+      return c.json(apiError('invalid-request', 'Invalid request body'), 400);
+    }
     return undefined;
   },
 );

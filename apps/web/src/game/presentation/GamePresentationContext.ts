@@ -16,6 +16,8 @@ export const GamePresentationContext = createContext<GamePresentationContextValu
 
 export function useGamePresentation(): GamePresentationContextValue {
   const presentation = useContext(GamePresentationContext);
-  if (!presentation) throw new Error('GamePresentationProvider is required');
+  if (!presentation) {
+    throw new Error('GamePresentationProvider is required');
+  }
   return presentation;
 }

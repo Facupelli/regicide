@@ -1,59 +1,7 @@
 import { toJsonSchema } from '@valibot/to-json-schema';
 import * as v from 'valibot';
-
-type ErrorCode =
-  | 'authentication'
-  | 'insufficient-credits'
-  | 'rate-limit'
-  | 'provider-error'
-  | 'invalid-request'
-  | 'timeout'
-  | 'cancelled'
-  | 'invalid-response';
-
-const errorMessages: Record<ErrorCode, string> = {
-  authentication: 'OpenRouter authentication failed',
-  'insufficient-credits': 'OpenRouter account has insufficient credits',
-  'rate-limit': 'OpenRouter rate limit exceeded',
-  'provider-error': 'OpenRouter request failed',
-  'invalid-request': 'OpenRouter request is invalid',
-  timeout: 'OpenRouter request timed out',
-  cancelled: 'OpenRouter request was cancelled',
-  'invalid-response': 'OpenRouter returned an invalid or incomplete response',
-};
-
-export class OpenRouterError extends Error {
-  constructor(
-    public readonly code: ErrorCode,
-    public readonly providerStatus?: number,
-  ) {
-    super(errorMessages[code]);
-    this.name = 'OpenRouterError';
-  }
-}
-
-const TokenCountSchema = v.pipe(v.number(), v.integer(), v.minValue(0));
-const CompletionSchema = v.object({
-  choices: v.array(
-    v.object({
-      finish_reason: v.string(),
-      message: v.object({
-        role: v.literal('assistant'),
-        content: v.string(),
-        refusal: v.optional(v.nullable(v.string())),
-      }),
-    }),
-  ),
-  usage: v.optional(
-    v.nullable(
-      v.object({
-        prompt_tokens: TokenCountSchema,
-        completion_tokens: TokenCountSchema,
-        total_tokens: TokenCountSchema,
-      }),
-    ),
-  ),
-});
+import { CompletionSchema } from './complete.schema.ts';
+import { OpenRouterError, statusError } from './openrouter.error.ts';
 
 export type StructuredCompletion<TOutput> = {
   output: TOutput;
@@ -71,16 +19,6 @@ export type CompleteOptions<TSchema extends v.StrictObjectSchema<v.ObjectEntries
   timeoutMs: number;
   signal?: AbortSignal;
 };
-
-function statusError(status: number): OpenRouterError {
-  if (status === 401 || status === 403) return new OpenRouterError('authentication', status);
-  if (status === 402) return new OpenRouterError('insufficient-credits', status);
-  if (status === 429) return new OpenRouterError('rate-limit', status);
-  if (status === 408 || status === 504) return new OpenRouterError('timeout', status);
-  if (status === 400 || status === 404 || status === 422)
-    return new OpenRouterError('invalid-request', status);
-  return new OpenRouterError('provider-error', status);
-}
 
 export async function completeStructured<
   const TSchema extends v.StrictObjectSchema<v.ObjectEntries, undefined>,
@@ -156,21 +94,31 @@ export async function completeStructured<
       signal: requestSignal,
     });
   } catch {
-    if (requestSignal.aborted) throw abortError();
+    if (requestSignal.aborted) {
+      throw abortError();
+    }
     throw new OpenRouterError('provider-error');
   }
 
-  if (requestSignal.aborted) throw abortError();
-  if (!response.ok) throw statusError(response.status);
+  if (requestSignal.aborted) {
+    throw abortError();
+  }
+  if (!response.ok) {
+    throw statusError(response.status);
+  }
 
   let body: unknown;
   try {
     body = await response.json();
   } catch {
-    if (requestSignal.aborted) throw abortError();
+    if (requestSignal.aborted) {
+      throw abortError();
+    }
     throw new OpenRouterError('invalid-response');
   }
-  if (requestSignal.aborted) throw abortError();
+  if (requestSignal.aborted) {
+    throw abortError();
+  }
 
   const parsed = v.safeParse(CompletionSchema, body);
   if (!parsed.success || parsed.output.choices.length !== 1) {

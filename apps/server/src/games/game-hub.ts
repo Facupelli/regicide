@@ -8,7 +8,11 @@ import {
 import type { GameEvent, LobbyView } from '@regicide/protocol';
 import type { WSContext } from 'hono/ws';
 import * as v from 'valibot';
-import { agentRuntime, currentAgentPause, existingAgentRuntime } from '../agents/agent-runtime.ts';
+import {
+  currentAgentPause,
+  getAgentRuntime,
+  getOrCreateAgentRuntime,
+} from '../agents/agent-runtime/agent-runtime.ts';
 import { toGameView } from './protocol/game-view.ts';
 import { toLobbyView } from './protocol/lobby-view.ts';
 import type { GameSession, LobbySession } from './game-session.ts';
@@ -25,7 +29,9 @@ class GameHub {
   connect(gameId: string, playerId: string, socket: GameSocket, onSendFailure: () => void): void {
     this.reportSendFailure.set(socket, onSendFailure);
     const session = gameStore.get(gameId);
-    if (!session) throw new Error('Cannot connect to a game that does not exist');
+    if (!session) {
+      throw new Error('Cannot connect to a game that does not exist');
+    }
 
     let players = this.connections.get(gameId);
     if (!players) {
@@ -42,7 +48,7 @@ class GameHub {
       this.sendLobby(gameId, playerId, session, [socket]);
     } else {
       this.sendGame(gameId, playerId, session, [socket], []);
-      const pause = currentAgentPause(session, existingAgentRuntime(gameId));
+      const pause = currentAgentPause(session, getAgentRuntime(gameId));
       if (pause) {
         this.sendToSockets(
           gameId,
@@ -59,13 +65,19 @@ class GameHub {
     const players = this.connections.get(gameId);
     const sockets = players?.get(playerId);
     sockets?.delete(socket);
-    if (sockets?.size === 0) players?.delete(playerId);
-    if (players?.size === 0) this.connections.delete(gameId);
+    if (sockets?.size === 0) {
+      players?.delete(playerId);
+    }
+    if (players?.size === 0) {
+      this.connections.delete(gameId);
+    }
   }
 
   publishLobby(gameId: string, view: LobbyView): void {
     const players = this.connections.get(gameId);
-    if (!players) return;
+    if (!players) {
+      return;
+    }
 
     const message = JSON.stringify(
       v.parse(LobbyUpdatedMessageSchema, { type: 'lobby-updated', view }),
@@ -77,7 +89,9 @@ class GameHub {
 
   publishGame(gameId: string, snapshot: GameSnapshot, events: readonly GameEvent[] = []): void {
     const players = this.connections.get(gameId);
-    if (!players) return;
+    if (!players) {
+      return;
+    }
 
     for (const [playerId, sockets] of players) {
       this.sendGame(gameId, playerId, snapshot, sockets, events);
@@ -86,10 +100,15 @@ class GameHub {
 
   publishAgentState(gameId: string): void {
     const session = gameStore.get(gameId);
-    if (!session) return;
-    const pause = currentAgentPause(session, existingAgentRuntime(gameId));
-    const runtime = existingAgentRuntime(gameId) ?? (pause ? agentRuntime(gameId) : undefined);
-    if (!runtime) return;
+    if (!session) {
+      return;
+    }
+    const pause = currentAgentPause(session, getAgentRuntime(gameId));
+    const runtime =
+      getAgentRuntime(gameId) ?? (pause ? getOrCreateAgentRuntime(gameId) : undefined);
+    if (!runtime) {
+      return;
+    }
     const previous = runtime.lastPublishedPause;
     if (
       previous?.revision === pause?.revision &&
@@ -101,7 +120,9 @@ class GameHub {
     runtime.lastPublishedPause = pause;
 
     const players = this.connections.get(gameId);
-    if (!players) return;
+    if (!players) {
+      return;
+    }
     let message: string;
     if (pause) {
       message = JSON.stringify(v.parse(AgentPausedMessageSchema, pause));

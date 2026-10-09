@@ -21,13 +21,17 @@ export function toGameView(
 ): GameView {
   const { world } = state;
   const viewer = world.players.find((player) => player.id === viewerId);
-  if (!viewer) throw new Error(`Viewer ${viewerId} is not in the game`);
+  if (!viewer) {
+    throw new Error(`Viewer ${viewerId} is not in the game`);
+  }
 
   // Construct an allowlist, never spread the authoritative world into a response.
   const publicFields = {
     players: world.players.map((player) => {
       const slot = sessionPlayers.find((entry) => entry.id === player.id);
-      if (!slot) throw new Error(`Player ${player.id} has no session slot`);
+      if (!slot) {
+        throw new Error(`Player ${player.id} has no session slot`);
+      }
       return slot.controller === 'agent'
         ? {
             id: player.id,
@@ -85,7 +89,9 @@ function toHistoricalPlayView(play: EnginePlay): HistoricalPlayView {
 }
 
 function toInteraction(state: ActiveState, viewerId: string): Interaction {
-  if (viewerId !== state.world.currentPlayer) return { kind: 'waiting' };
+  if (viewerId !== state.world.currentPlayer) {
+    return { kind: 'waiting' };
+  }
 
   switch (state.decision.kind) {
     case 'await-turn-action':

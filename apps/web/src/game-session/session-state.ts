@@ -110,7 +110,9 @@ export function sessionReducer(state: SessionState, event: SessionEvent): Sessio
     case 'start-requested':
       return state.status === 'lobby' ? { ...state, start: { status: 'pending' } } : state;
     case 'start-accepted':
-      if (state.status === 'lobby') return { ...state, start: { status: 'accepted' } };
+      if (state.status === 'lobby') {
+        return { ...state, start: { status: 'accepted' } };
+      }
       return state.status === 'playing' && event.devScenario
         ? { ...state, devScenario: event.devScenario }
         : state;
@@ -133,7 +135,9 @@ export function sessionReducer(state: SessionState, event: SessionEvent): Sessio
 
     // Playing
     case 'snapshot-observed': {
-      if (state.status !== 'playing') return state;
+      if (state.status !== 'playing') {
+        return state;
+      }
       const live = receiveSnapshot(state.live, event.revision);
       return live === state.live ? state : { ...state, live };
     }
@@ -172,7 +176,9 @@ export function sessionReducer(state: SessionState, event: SessionEvent): Sessio
         ? { ...state, agentPause: null }
         : state;
     case 'disconnected': {
-      if (state.status !== 'playing') return state;
+      if (state.status !== 'playing') {
+        return state;
+      }
       const live = disconnect(state.live);
       return live === state.live && state.agentPause === null
         ? state

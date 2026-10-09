@@ -8,8 +8,9 @@ export function createGame(c: Context) {
   const authorization = c.req.header('Authorization');
   const profileToken = authorization && /^Bearer ([A-Za-z0-9_-]+)$/i.exec(authorization)?.[1];
   const profileId = profileToken ? authenticateProfile(profileToken) : undefined;
-  if (authorization !== undefined && !profileId)
+  if (authorization !== undefined && !profileId) {
     return c.json(apiError('invalid-credential', 'Valid profile credential required'), 401);
+  }
 
   const result = createGameOperation(profileId);
   c.header('Location', `/games/${result.gameId}`);

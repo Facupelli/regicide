@@ -23,7 +23,9 @@ export async function connectWebSocket(c: Context<{}, '/:gameId/ws'>) {
   const connectionId = randomUUID();
   let failureLogged = false;
   const reportFailure = (stage: 'open' | 'close' | 'socket' | 'send'): void => {
-    if (failureLogged) return;
+    if (failureLogged) {
+      return;
+    }
     failureLogged = true;
     logFailure('error', {
       event: 'websocket.connection.failed',

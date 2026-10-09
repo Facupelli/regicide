@@ -23,7 +23,9 @@ export function evaluatePlaySelection(
   hand: readonly Card[],
   selectedCardIds: readonly string[],
 ): PlaySelectionState {
-  if (selectedCardIds.length === 0) return { kind: 'empty' };
+  if (selectedCardIds.length === 0) {
+    return { kind: 'empty' };
+  }
   const cards = selectedCardIds.map((id) => hand.find((card) => card.id === id));
   if (!cards.every((card): card is Card => card !== undefined)) {
     return { kind: 'invalid', reason: 'A selected card is no longer in your hand.' };

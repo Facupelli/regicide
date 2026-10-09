@@ -31,6 +31,12 @@
       }
     },
     {
+      "files": ["apps/server/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"],
+      "rules": {
+        "curly": "error"
+      }
+    },
+    {
       "files": ["apps/server/**/*.ts", "apps/web/vite.config.ts", "tools/game-cli/**/*.ts"],
       "plugins": ["eslint", "typescript", "oxc", "unicorn", "import", "promise", "node"],
       "env": {

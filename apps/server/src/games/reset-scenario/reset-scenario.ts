@@ -28,19 +28,31 @@ export function resetDevScenario({
   playerId: string;
 }): ResetDevScenarioResult {
   const session = gameStore.get(gameId);
-  if (!session) return { ok: false, reason: 'game-not-found' };
-  if (session.phase !== 'playing') return { ok: false, reason: 'game-not-started' };
+  if (!session) {
+    return { ok: false, reason: 'game-not-found' };
+  }
+  if (session.phase !== 'playing') {
+    return { ok: false, reason: 'game-not-started' };
+  }
   if (!session.players.some((player) => player.id === playerId)) {
     return { ok: false, reason: 'player-not-in-game' };
   }
-  if (session.hostPlayerId !== playerId) return { ok: false, reason: 'not-host' };
-  if (!devScenariosEnabled()) return { ok: false, reason: 'scenarios-disabled' };
-  if (session.devScenario === undefined) return { ok: false, reason: 'not-scenario-game' };
+  if (session.hostPlayerId !== playerId) {
+    return { ok: false, reason: 'not-host' };
+  }
+  if (!devScenariosEnabled()) {
+    return { ok: false, reason: 'scenarios-disabled' };
+  }
+  if (session.devScenario === undefined) {
+    return { ok: false, reason: 'not-scenario-game' };
+  }
   const result = buildDevScenario(
     session.devScenario,
     session.players.map((player) => player.id),
   );
-  if (!result.ok) return result;
+  if (!result.ok) {
+    return result;
+  }
   const state = result.state;
   session.state = state;
   session.revision += 1;

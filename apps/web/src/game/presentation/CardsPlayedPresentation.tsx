@@ -30,11 +30,12 @@ export function CardsPlayedPresentation({
       presentation.cards.map(({ card, source }) => {
         const target = getAnchorRect(gamePresentationAnchor.battleCard(card.id));
         const fallback = getAnchorRect(gamePresentationAnchor.battleTarget);
-        const destination = isVisibleRect(target)
-          ? target
-          : isVisibleRect(fallback)
-            ? fallback
-            : presentation.fallbackBattleTarget;
+        let destination = presentation.fallbackBattleTarget;
+        if (isVisibleRect(target)) {
+          destination = target;
+        } else if (isVisibleRect(fallback)) {
+          destination = fallback;
+        }
         const landing = isVisibleRect(destination) ? destination : null;
         return { card, source, landing, position: landing ?? source };
       }),
@@ -45,9 +46,13 @@ export function CardsPlayedPresentation({
     const sequence: AnimationSequence = [];
     let lastArrival = 0;
     flights.forEach(({ source, landing, position }, index) => {
-      if (!position) return;
+      if (!position) {
+        return;
+      }
       const element = scope.current.children[index] as HTMLElement | undefined;
-      if (!element) return;
+      if (!element) {
+        return;
+      }
       const start = index * PLAY_STAGGER_SECONDS;
       if (!reduced && source && landing) {
         sequence.push([
@@ -72,18 +77,21 @@ export function CardsPlayedPresentation({
       return;
     }
     flights.forEach(({ position }, index) => {
-      if (position)
+      if (position) {
         sequence.push([
           scope.current.children[index] as HTMLElement,
           { opacity: [1, 0] },
           { at: lastArrival + PLAY_HOLD_SECONDS, duration: PLAY_FADE_SECONDS },
         ]);
+      }
     });
     let mounted = true;
     const controls = animate(sequence);
     void controls.then(
       () => {
-        if (mounted) onComplete();
+        if (mounted) {
+          onComplete();
+        }
       },
       () => {},
     );

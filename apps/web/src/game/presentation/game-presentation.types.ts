@@ -65,7 +65,9 @@ export type PreparedGamePresentation =
   | PreparedEnemyDefeatSequence;
 
 export function snapshotRect(element: HTMLElement | undefined): RectSnapshot | null {
-  if (!element) return null;
+  if (!element) {
+    return null;
+  }
   const { left, top, width, height } = element.getBoundingClientRect();
   return { left, top, width, height };
 }

@@ -15,7 +15,8 @@ export function authenticateProfile(profileToken: string): string | undefined {
   if (
     !profile ||
     !timingSafeEqual(Buffer.from(profile.credentialHash, 'hex'), Buffer.from(credentialHash, 'hex'))
-  )
+  ) {
     return undefined;
+  }
   return profile.id;
 }

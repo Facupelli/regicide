@@ -26,16 +26,21 @@ export async function request<T extends v.GenericSchema>(
 ): Promise<v.InferOutput<T>> {
   const response = await fetchApi(url, options);
   const body = await readJson(response);
-  if (!response.ok) throw apiFailure(response, body);
+  if (!response.ok) {
+    throw apiFailure(response, body);
+  }
   const result = v.safeParse(schema, body);
-  if (!result.success)
+  if (!result.success) {
     throw new ApiClientError(response.status, 'invalid-response', 'Invalid API response');
+  }
   return result.output;
 }
 
 export async function requestNoContent(url: string, options: RequestOptions): Promise<void> {
   const response = await fetchApi(url, options);
-  if (response.status === 204) return;
+  if (response.status === 204) {
+    return;
+  }
   throw apiFailure(response, await readJson(response));
 }
 

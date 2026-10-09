@@ -14,7 +14,9 @@ export function authenticateBearerPlayer({
   authorization: string | undefined;
 }): AuthenticatePlayerResult {
   const playerToken = parseBearerPlayerToken(authorization);
-  if (!playerToken) return { ok: false, reason: 'invalid-credential' };
+  if (!playerToken) {
+    return { ok: false, reason: 'invalid-credential' };
+  }
   return authenticatePlayer({ gameId, playerToken });
 }
 

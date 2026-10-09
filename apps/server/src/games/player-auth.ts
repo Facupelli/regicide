@@ -30,7 +30,9 @@ export function authenticatePlayer({
   playerToken: string;
 }): AuthenticatePlayerResult {
   const session = gameStore.get(gameId);
-  if (!session) return { ok: false, reason: 'game-not-found' };
+  if (!session) {
+    return { ok: false, reason: 'game-not-found' };
+  }
 
   const playerId = authenticateSessionPlayer(session, playerToken);
   return playerId ? { ok: true, playerId } : { ok: false, reason: 'invalid-credential' };

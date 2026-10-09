@@ -17,6 +17,44 @@ const sizes: Record<CardVariant, string> = {
   pile: 'w-[var(--pile-card-width,2.5rem)] sm:w-[var(--pile-card-width,3rem)]',
 };
 
+const suitSizes: Record<CardVariant, string> = {
+  enemy: 'text-6xl',
+  hand: 'text-4xl',
+  played: 'text-2xl',
+  pile: 'text-2xl',
+};
+
+function rankMark(card: Card | undefined) {
+  switch (card?.kind) {
+    case 'number':
+      return String(card.rank);
+    case 'royal':
+      return card.rank.charAt(0).toUpperCase();
+    case 'animal':
+      return 'A';
+    default:
+      return '★';
+  }
+}
+
+function cardTextColor(card: Card) {
+  if (card.kind === 'jester') {
+    return 'text-card-foreground';
+  }
+  return card.suit === 'hearts' || card.suit === 'diamonds' ? 'text-suit-red' : 'text-suit-black';
+}
+
+function cardKindLabel(card: Card) {
+  switch (card.kind) {
+    case 'animal':
+      return 'Animal';
+    case 'jester':
+      return 'Jester';
+    default:
+      return card.rank;
+  }
+}
+
 const cardStates = {
   normal: 'border-card-border',
   selected:
@@ -44,28 +82,21 @@ export function PlayingCard({
   onToggle?: (() => void) | undefined;
   elementRef?: (element: HTMLElement | null) => void;
 }) {
-  const rank =
-    card?.kind === 'number'
-      ? String(card.rank)
-      : card?.kind === 'royal'
-        ? card.rank.charAt(0).toUpperCase()
-        : card?.kind === 'animal'
-          ? 'A'
-          : '★';
+  const rank = rankMark(card);
   const suit = card && card.kind !== 'jester' ? suitMarks[card.suit] : '✦';
   const name = card ? cardLabel(card) : (label ?? 'Card back');
-  const state = selected ? 'selected' : unavailableReason ? 'unavailable' : 'normal';
+  let state: keyof typeof cardStates = 'normal';
+  if (selected) {
+    state = 'selected';
+  } else if (unavailableReason) {
+    state = 'unavailable';
+  }
   const classes = [
     'relative flex aspect-[5/7] flex-col items-center justify-center overflow-hidden rounded-lg border-2 shadow-md',
     sizes[variant],
     cardStates[state],
     card ? 'bg-card' : 'bg-muted text-muted-foreground',
-    card &&
-      (card.kind === 'jester'
-        ? 'text-card-foreground'
-        : card.suit === 'hearts' || card.suit === 'diamonds'
-          ? 'text-suit-red'
-          : 'text-suit-black'),
+    card && cardTextColor(card),
     variant === 'hand' &&
       'transition-[transform,box-shadow,opacity] duration-150 motion-reduce:transition-none',
     onToggle &&
@@ -85,10 +116,7 @@ export function PlayingCard({
         {rank}
         <span>{suit}</span>
       </span>
-      <span
-        className={variant === 'enemy' ? 'text-6xl' : variant === 'hand' ? 'text-4xl' : 'text-2xl'}
-        aria-hidden="true"
-      >
+      <span className={suitSizes[variant]} aria-hidden="true">
         {suit}
       </span>
       {variant !== 'pile' &&
@@ -97,7 +125,7 @@ export function PlayingCard({
             className="absolute bottom-1 w-full truncate px-1 text-center text-[0.55rem] font-semibold uppercase sm:bottom-2 sm:text-xs"
             aria-hidden="true"
           >
-            {card.kind === 'animal' ? 'Animal' : card.kind === 'jester' ? 'Jester' : card.rank}
+            {cardKindLabel(card)}
           </span>
         )}
     </>
@@ -119,7 +147,9 @@ export function PlayingCard({
         aria-disabled={Boolean(unavailableReason) || disabled}
         disabled={disabled}
         onClick={() => {
-          if (!unavailableReason && !disabled) onToggle();
+          if (!unavailableReason && !disabled) {
+            onToggle();
+          }
         }}
       >
         {face}

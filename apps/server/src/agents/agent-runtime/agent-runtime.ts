@@ -1,47 +1,12 @@
 import type { AgentPausedMessage } from '@regicide/protocol';
-import type { GameSession, SessionPlayer } from '../games/game-session.ts';
-import { getProfile } from '../profiles/profile-store.ts';
+import type { GameSession, SessionPlayer } from '../../games/game-session.ts';
+import { getProfile } from '../../profiles/profile-store.ts';
+import type { AgentBlockReason, AgentRuntime } from './agent-runtime.types.ts';
 
-export type AgentFailure =
-  | 'authentication'
-  | 'insufficient-credits'
-  | 'rate-limit'
-  | 'provider-error'
-  | 'invalid-request'
-  | 'timeout'
-  | 'cancelled'
-  | 'invalid-response'
-  | 'invalid-action'
-  | 'internal-error';
-
-export type PendingFailure = {
-  session: GameSession;
-  revision: number;
-  playerId: string;
-  reason: AgentFailure;
-};
-
-export type AgentRuntime = {
-  enabled: boolean;
-  maxRequests: number;
-  requestsUsed: number;
-  generation: number;
-  inFlight: AbortController | undefined;
-  failure: PendingFailure | undefined;
-  lastPublishedPause: AgentPausedMessage | null;
-};
-
-export type AgentBlockReason =
-  | 'stopped'
-  | 'missing-profile'
-  | 'missing-key'
-  | 'model-disabled'
-  | 'budget-exhausted';
-
-export const DEFAULT_AGENT_REQUEST_BUDGET = 50;
+const DEFAULT_AGENT_REQUEST_BUDGET = 50;
 const runtimes = new Map<string, AgentRuntime>();
 
-export function agentRuntime(gameId: string): AgentRuntime {
+export function getOrCreateAgentRuntime(gameId: string): AgentRuntime {
   let runtime = runtimes.get(gameId);
   if (!runtime) {
     runtime = {
@@ -58,7 +23,7 @@ export function agentRuntime(gameId: string): AgentRuntime {
   return runtime;
 }
 
-export function existingAgentRuntime(gameId: string): AgentRuntime | undefined {
+export function getAgentRuntime(gameId: string): AgentRuntime | undefined {
   return runtimes.get(gameId);
 }
 
@@ -69,13 +34,22 @@ export function resolveAgentReadiness(
 ):
   | { ok: true; apiKey: string; model: typeof player.model }
   | { ok: false; reason: AgentBlockReason } {
-  if (runtime?.enabled === false) return { ok: false, reason: 'stopped' };
+  if (runtime?.enabled === false) {
+    return { ok: false, reason: 'stopped' };
+  }
   const profile = session.hostProfileId && getProfile(session.hostProfileId);
-  if (!profile) return { ok: false, reason: 'missing-profile' };
-  if (!profile.enabledModels.includes(player.model)) return { ok: false, reason: 'model-disabled' };
-  if (!profile.openRouterApiKey) return { ok: false, reason: 'missing-key' };
-  if ((runtime?.requestsUsed ?? 0) >= (runtime?.maxRequests ?? DEFAULT_AGENT_REQUEST_BUDGET))
+  if (!profile) {
+    return { ok: false, reason: 'missing-profile' };
+  }
+  if (!profile.enabledModels.includes(player.model)) {
+    return { ok: false, reason: 'model-disabled' };
+  }
+  if (!profile.openRouterApiKey) {
+    return { ok: false, reason: 'missing-key' };
+  }
+  if ((runtime?.requestsUsed ?? 0) >= (runtime?.maxRequests ?? DEFAULT_AGENT_REQUEST_BUDGET)) {
     return { ok: false, reason: 'budget-exhausted' };
+  }
   return { ok: true, apiKey: profile.openRouterApiKey, model: player.model };
 }
 
@@ -83,10 +57,14 @@ export function currentAgentPause(
   session: GameSession,
   runtime: AgentRuntime | undefined,
 ): AgentPausedMessage | null {
-  if (session.phase !== 'playing' || session.state.kind !== 'active') return null;
+  if (session.phase !== 'playing' || session.state.kind !== 'active') {
+    return null;
+  }
   const playerId = session.state.world.currentPlayer;
   const player = session.players.find((entry) => entry.id === playerId);
-  if (player?.controller !== 'agent') return null;
+  if (player?.controller !== 'agent') {
+    return null;
+  }
 
   let reason: AgentPausedMessage['reason'] | null = null;
   if (
@@ -107,9 +85,13 @@ export function currentAgentPause(
   } else {
     const readiness = resolveAgentReadiness(session, player, runtime);
     if (!readiness.ok) {
-      if (readiness.reason === 'budget-exhausted') reason = 'budget-exhausted';
-      else if (readiness.reason === 'stopped') reason = 'stopped';
-      else reason = 'unconfigured';
+      if (readiness.reason === 'budget-exhausted') {
+        reason = 'budget-exhausted';
+      } else if (readiness.reason === 'stopped') {
+        reason = 'stopped';
+      } else {
+        reason = 'unconfigured';
+      }
     }
   }
   return reason === null
@@ -117,7 +99,7 @@ export function currentAgentPause(
     : { type: 'agent-paused', revision: session.revision, playerId, reason };
 }
 
-export function currentAgentRuntime(gameId: string, runtime: AgentRuntime): boolean {
+export function isCurrentAgentRuntime(gameId: string, runtime: AgentRuntime): boolean {
   return runtimes.get(gameId) === runtime;
 }
 
@@ -128,7 +110,9 @@ export function invalidateAgentExecution(runtime: AgentRuntime): void {
 
 export function destroyAgentRuntime(gameId: string): void {
   const runtime = runtimes.get(gameId);
-  if (!runtime) return;
+  if (!runtime) {
+    return;
+  }
   invalidateAgentExecution(runtime);
   runtimes.delete(gameId);
 }
