@@ -33,4 +33,8 @@ status (`GET /games/:gameId/agent`), and retry a blocked or failed decision
 (`POST /games/:gameId/agent/retry`). Model requests can incur charges. Profile credentials never
 belong to the game; see `packages/protocol/src/api.ts` for request contracts.
 
+AI logs are concise by default. Set `AI_DEBUG=true` in the server environment for detailed
+coordinator, game-state, observation, and provider diagnostics. Both modes redact credentials;
+verbose logs can include hidden game information and model-generated text, so handle them securely.
+
 Create and join issue a game-scoped secret `playerToken` once. Keep it private; player IDs in views are public and cannot authenticate requests. Send `Authorization: Bearer <playerToken>` for start, actions, and GET after the game starts. Lobby GET is public and needs no credential. Tokens are held in memory only. Browser WebSockets cannot set an Authorization header, so the WebSocket upgrade uses a `playerToken` query parameter; keep URL query strings out of access logs. The token remains required for reconnects during the lifetime of the server process.

@@ -1,5 +1,6 @@
 import { toJsonSchema } from '@valibot/to-json-schema';
 import * as v from 'valibot';
+import { isAiDebugEnabled, logAgentDiagnostic } from '../../diagnostics.ts';
 import { CompletionSchema } from './complete.schema.ts';
 import { OpenRouterError, statusError } from './openrouter.error.ts';
 
@@ -18,6 +19,7 @@ export type CompleteOptions<TSchema extends v.StrictObjectSchema<v.ObjectEntries
   maxCompletionTokens: number;
   timeoutMs: number;
   signal?: AbortSignal;
+  diagnostic?: { executionId: string; gameId: string; revision: number };
 };
 
 export async function completeStructured<
@@ -32,6 +34,7 @@ export async function completeStructured<
   maxCompletionTokens,
   timeoutMs,
   signal,
+  diagnostic,
 }: CompleteOptions<TSchema>): Promise<StructuredCompletion<v.InferOutput<TSchema>>> {
   if (
     !apiKey ||
@@ -68,48 +71,73 @@ export async function completeStructured<
       signal?.aborted && requestSignal.reason === signal.reason ? 'cancelled' : 'timeout',
     );
 
+  const request = {
+    model,
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ],
+    stream: false,
+    // DeepSeek V3.2's structured-output providers support max_tokens, not
+    // max_completion_tokens. Keep the latter for GPT-5 Mini providers.
+    ...(model === 'deepseek/deepseek-v3.2'
+      ? { max_tokens: maxCompletionTokens }
+      : { max_completion_tokens: maxCompletionTokens }),
+    response_format: {
+      type: 'json_schema',
+      json_schema: { name: schemaName, strict: true, schema },
+    },
+    provider: { require_parameters: true, allow_fallbacks: false },
+  };
+  const record = (
+    event: 'agent.provider.request' | 'agent.provider.response' | 'agent.provider.error',
+    details: Record<string, unknown>,
+  ) => {
+    if (diagnostic) {
+      logAgentDiagnostic({ event, ...diagnostic, ...details }, apiKey);
+    }
+  };
+  record('agent.provider.request', { request, timeoutMs });
+
   let response: Response;
   try {
     response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-        stream: false,
-        // DeepSeek V3.2's structured-output providers support max_tokens, not
-        // max_completion_tokens. Keep the latter for GPT-5 Mini providers.
-        ...(model === 'deepseek/deepseek-v3.2'
-          ? { max_tokens: maxCompletionTokens }
-          : { max_completion_tokens: maxCompletionTokens }),
-        response_format: {
-          type: 'json_schema',
-          json_schema: { name: schemaName, strict: true, schema },
-        },
-        provider: { require_parameters: true, allow_fallbacks: false },
-      }),
+      body: JSON.stringify(request),
       signal: requestSignal,
     });
   } catch {
-    if (requestSignal.aborted) {
-      throw abortError();
-    }
-    throw new OpenRouterError('provider-error');
+    const error = requestSignal.aborted ? abortError() : new OpenRouterError('provider-error');
+    record('agent.provider.error', { reason: error.code });
+    throw error;
   }
 
+  record('agent.provider.response', { providerStatus: response.status });
   if (requestSignal.aborted) {
     throw abortError();
   }
   if (!response.ok) {
+    // Read error content only for diagnostics. Do not delay or change status classification.
+    if (diagnostic && isAiDebugEnabled()) {
+      try {
+        void response.text().then(
+          (rawBody) =>
+            record('agent.provider.response', { providerStatus: response.status, rawBody }),
+          () => {},
+        );
+      } catch {
+        // A diagnostic read must not affect the provider error.
+      }
+    }
     throw statusError(response.status);
   }
 
   let body: unknown;
   try {
-    body = await response.json();
+    const rawBody = await response.text();
+    record('agent.provider.response', { providerStatus: response.status, rawBody });
+    body = JSON.parse(rawBody);
   } catch {
     if (requestSignal.aborted) {
       throw abortError();
@@ -141,6 +169,11 @@ export async function completeStructured<
   }
 
   const usage = parsed.output.usage;
+  record('agent.provider.response', {
+    providerStatus: response.status,
+    output: validated.output,
+    ...(usage && { usage }),
+  });
   return {
     output: validated.output,
     ...(usage && {

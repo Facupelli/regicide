@@ -1,5 +1,5 @@
-import type { AgentPausedMessage } from "@regicide/protocol";
-import type { GameSession } from "../../games/game-session.ts";
+import type { AgentPausedMessage } from '@regicide/protocol';
+import type { GameSession } from '../../games/game-session.ts';
 
 export type AgentFailure =
   | 'authentication'
@@ -26,6 +26,7 @@ export type AgentRuntime = {
   requestsUsed: number;
   generation: number;
   inFlight: AbortController | undefined;
+  pendingWake: boolean;
   failure: PendingFailure | undefined;
   lastPublishedPause: AgentPausedMessage | null;
 };

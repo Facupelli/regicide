@@ -28,18 +28,13 @@ export async function decideAgentCommand(input: AgentDecisionInput): Promise<Age
     responseSchema,
     maxCompletionTokens: input.maxCompletionTokens,
     timeoutMs: input.timeoutMs,
+    diagnostic: input.diagnostic,
     ...(input.signal && { signal: input.signal }),
   });
 
-  const command = completion.output.command;
-  const validation = input.validateCommand(command);
-  if (!validation.valid) {
-    return { ok: false, reason: 'invalid-action', message: validation.message, command };
-  }
-
   return {
     ok: true,
-    command,
+    command: completion.output.command,
     ...(completion.usage && { usage: completion.usage }),
   };
 }

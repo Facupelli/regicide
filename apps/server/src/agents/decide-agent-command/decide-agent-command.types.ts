@@ -8,6 +8,7 @@ export type AgentDecisionInput = Readonly<
     model: string;
     maxCompletionTokens: number;
     timeoutMs: number;
+    diagnostic: { executionId: string; gameId: string; revision: number };
     signal?: AbortSignal;
   }
 >;
@@ -18,5 +19,4 @@ export type AgentDecisionResult =
       command: PlayerCommand;
       usage?: StructuredCompletion<unknown>['usage'];
     }>
-  | Readonly<{ ok: false; reason: 'not-acting' }>
-  | Readonly<{ ok: false; reason: 'invalid-action'; message: string; command: PlayerCommand }>;
+  | Readonly<{ ok: false; reason: 'not-acting' }>;

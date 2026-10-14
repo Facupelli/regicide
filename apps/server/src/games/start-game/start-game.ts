@@ -1,9 +1,8 @@
 import { randomBytes } from 'node:crypto';
-import { scheduleAgentTurn } from '../../agents/agent-turn-runner.ts';
 import { setupGame } from '@regicide/game-engine';
 import type { GameView } from '@regicide/protocol';
-import { gameHub } from '../game-hub.ts';
 import { gameStore } from '../game-store.ts';
+import { publishCommittedGame } from '../publish-committed-game.ts';
 import { toGameView } from '../protocol/game-view.ts';
 import { buildDevScenario } from '../../testing/scenarios.ts';
 
@@ -65,7 +64,6 @@ export function startGame({
     ...(scenario !== undefined ? { devScenario: scenario } : {}),
   };
   gameStore.set(gameId, playingSession);
-  gameHub.publishGame(gameId, playingSession);
-  scheduleAgentTurn(gameId);
+  publishCommittedGame(gameId, playingSession);
   return { ok: true, view: toGameView(state, playerId, playingSession.players) };
 }

@@ -1,9 +1,8 @@
 import { IllegalActionError, transition, type GameState } from '@regicide/game-engine';
-import { scheduleAgentTurn } from '../../agents/agent-turn-runner.ts';
 import type { GameEvent, GameView, PlayerCommand } from '@regicide/protocol';
-import { gameHub } from '../game-hub.ts';
 import type { GameSession } from '../game-session.ts';
 import { gameStore } from '../game-store.ts';
+import { publishCommittedGame } from '../publish-committed-game.ts';
 import { toGameView } from '../protocol/game-view.ts';
 import { toEngineAction } from '../protocol/player-command.ts';
 import { deriveAcceptedActionEvents } from './accepted-action-events.ts';
@@ -75,7 +74,6 @@ export function submitCommand({
   session.nextEventId += events.length;
   session.state = nextState;
   session.revision += 1;
-  gameHub.publishGame(gameId, session, events);
-  scheduleAgentTurn(gameId);
+  publishCommittedGame(gameId, session, events);
   return { ok: true, view: toGameView(nextState, playerId, session.players) };
 }

@@ -6,13 +6,13 @@ These are the agent-building patterns and principles we'll use for Agents module
 
 3\. Phase-specific decisions The LLM proposes a `PlayerCommand` appropriate for the pending decision. Do not enumerate card combinations or send temporary action IDs.
 
-4\. Structured outputs Use a phase-specific schema for the proposed command. Dry-run it through the game engine against the captured state and explicitly reject illegal commands.
+4\. Structured outputs Use a phase-specific schema for the proposed command. The shared application command service validates game-rule legality through the game engine.
 
-5\. Separation of reasoning and execution Dry-run validation discards the resulting state; it does not modify the live session. A future session runner must check freshness and submit the validated command through the authoritative handler.
+5\. Separation of reasoning and execution The decision handler returns one proposed command. The coordinator checks freshness and submits it through the authoritative application command service, pausing AI execution if the engine rejects an illegal proposal.
 
 6\. Provider-independent decision logic Keep Regicide's prompt, observation, and validation logic separate from OpenRouter communication. Defer a `GameAgent` interface until it has a real use.
 
-7\. Future event-driven orchestration Invoke the agent when the game reaches a decision assigned to it. Prevent duplicate invocations, reject stale decisions, and handle timeouts or failures explicitly. Session integration is not part of the current decision layer.
+7\. Event-driven orchestration Invoke the agent when the game reaches a decision assigned to it. Prevent duplicate invocations, discard stale decisions, and handle timeouts or failures explicitly.
 
 8\. Human-equivalent information boundaries Agents receive only information available to their player. They cannot inspect hidden hands or deck order, even though they execute on the authoritative server.
 
@@ -24,9 +24,9 @@ The current decision flow is:
 Player-specific GameView
   -> LLM reasoning
   -> structured PlayerCommand
-  -> dry-run engine validation
-  -> validated command
-  -> future session runner
+  -> proposed command
+  -> coordinator freshness check
+  -> shared submitCommand (engine legality validation)
 ```
 
 Regicide controls the workflow; the LLM provides the strategic reasoning.

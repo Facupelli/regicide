@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { logAgentDiagnostic } from '../../diagnostics.ts';
 import type {
   AgentModelId,
   AgentStatus,
@@ -7,16 +8,18 @@ import type {
 } from '@regicide/protocol';
 import {
   getOrCreateAgentRuntime,
-  invalidateAgentExecution,
   resolveAgentReadiness,
 } from '../../agents/agent-runtime/agent-runtime.ts';
-import { scheduleAgentTurn } from '../../agents/agent-turn-runner.ts';
+import { cancelAgentExecution, notifyAgentGameChanged } from '../../agents/agent-coordinator.ts';
 import { getProfile } from '../../profiles/profile-store.ts';
 import { gameHub } from '../game-hub.ts';
 import type { GameSession } from '../game-session.ts';
 import { gameStore } from '../game-store.ts';
 import { toLobbyView } from '../protocol/lobby-view.ts';
-import type { AgentBlockReason, AgentRuntime } from '../../agents/agent-runtime/agent-runtime.types.ts';
+import type {
+  AgentBlockReason,
+  AgentRuntime,
+} from '../../agents/agent-runtime/agent-runtime.types.ts';
 
 type HostFailure = { ok: false; reason: 'game-not-found' | 'not-host' };
 type OperationFailure =
@@ -113,11 +116,20 @@ export function updateAgentSettings(
   }
   if (settings.enabled !== undefined) {
     if (runtime.enabled && !settings.enabled) {
-      invalidateAgentExecution(runtime);
+      cancelAgentExecution(gameId, 'stopped');
     }
     runtime.enabled = settings.enabled;
   }
-  scheduleAgentTurn(gameId);
+  logAgentDiagnostic({
+    event: 'agent.coordinator.recovery',
+    gameId,
+    ...(host.session.phase === 'playing' ? { revision: host.session.revision } : {}),
+    operation: 'settings',
+    enabled: runtime.enabled,
+    requestsUsed: runtime.requestsUsed,
+    maxRequests: runtime.maxRequests,
+  });
+  notifyAgentGameChanged(gameId);
   return { ok: true };
 }
 
@@ -195,6 +207,13 @@ export function retryAgent(
     return readiness;
   }
   runtime.failure = undefined;
-  scheduleAgentTurn(gameId);
+  logAgentDiagnostic({
+    event: 'agent.coordinator.recovery',
+    gameId,
+    revision: session.revision,
+    operation: 'retry',
+    playerId: player.id,
+  });
+  notifyAgentGameChanged(gameId);
   return { ok: true, status: statusFor(session, runtime) };
 }

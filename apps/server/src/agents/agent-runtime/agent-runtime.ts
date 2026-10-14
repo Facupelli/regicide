@@ -15,6 +15,7 @@ export function getOrCreateAgentRuntime(gameId: string): AgentRuntime {
       requestsUsed: 0,
       generation: 0,
       inFlight: undefined,
+      pendingWake: false,
       failure: undefined,
       lastPublishedPause: null,
     };
@@ -114,5 +115,6 @@ export function destroyAgentRuntime(gameId: string): void {
     return;
   }
   invalidateAgentExecution(runtime);
+  runtime.pendingWake = false;
   runtimes.delete(gameId);
 }
