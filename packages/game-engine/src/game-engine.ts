@@ -31,26 +31,33 @@ export class IllegalActionError extends Error {
   }
 }
 
-export type TransitionOutcome = Readonly<{
-  state: GameState;
-  diamondDrawRecipientIds: readonly string[];
-}>;
+export type DomainOutcome =
+  | Readonly<{
+      kind: 'cards-played';
+      playerId: string;
+      cards: readonly (AttackCard | JesterCard)[];
+    }>
+  | Readonly<{ kind: 'hearts-recovered'; count: number }>
+  | Readonly<{ kind: 'diamonds-drawn'; recipientIds: readonly string[] }>
+  | Readonly<{ kind: 'damage-discarded'; playerId: string; cards: readonly Card[] }>
+  | Readonly<{
+      kind: 'enemy-defeated';
+      enemy: RoyalCard;
+      destination: 'discard' | 'tavern';
+      discardedCards: readonly (AttackCard | JesterCard)[];
+    }>;
+
+export type TransitionResult = Readonly<{ state: GameState; outcomes: readonly DomainOutcome[] }>;
 
 export function transition(state: GameState, action: Action): GameState {
-  return transitionWithOutcome(state, action).state;
+  return transitionWithOutcomes(state, action).state;
 }
 
-export function transitionWithOutcome(state: GameState, action: Action): TransitionOutcome {
-  const diamondDrawRecipientIds: string[] = [];
-  const nextState = transitionCore(state, action, diamondDrawRecipientIds);
-  return { state: nextState, diamondDrawRecipientIds };
+export function transitionWithOutcomes(state: GameState, action: Action): TransitionResult {
+  return transitionCore(state, action);
 }
 
-function transitionCore(
-  state: GameState,
-  action: Action,
-  diamondDrawRecipientIds: string[],
-): GameState {
+function transitionCore(state: GameState, action: Action): TransitionResult {
   if (state.kind === 'game-over') {
     throw new IllegalActionError('The game is over');
   }
@@ -74,7 +81,7 @@ function transitionCore(
         throw new IllegalActionError(
           `Action ${action.kind} is not valid while awaiting a turn action`,
         );
-      return handleTurnAction(world, player, action, diamondDrawRecipientIds);
+      return handleTurnAction(world, player, action);
     case 'await-retaliation-action':
       if (
         action.kind !== 'discard-for-damage' &&
@@ -88,7 +95,7 @@ function transitionCore(
         throw new IllegalActionError(
           `Action ${action.kind} is not valid while awaiting a next-player choice`,
         );
-      return handleNextPlayerChoice(world, action);
+      return { state: handleNextPlayerChoice(world, action), outcomes: [] };
   }
 
   return assertNever(decision);
@@ -98,33 +105,46 @@ function handleTurnAction(
   world: World,
   player: Player,
   action: PlayCards | YieldTurn | UseSoloJester,
-  diamondDrawRecipientIds: string[],
-): GameState {
+): TransitionResult {
   if (action.kind === 'use-solo-jester') {
-    return enterTurn(replaceSoloHand(world, player));
+    return { state: enterTurn(replaceSoloHand(world, player)), outcomes: [] };
   }
 
   if (action.kind === 'yield') {
     if (!isYieldAllowedByStreak(world)) {
       throw new IllegalActionError('Every other player yielded on their previous turn');
     }
-    return resolveRetaliation({ ...world, consecutiveYields: world.consecutiveYields + 1 });
+    return {
+      state: resolveRetaliation({ ...world, consecutiveYields: world.consecutiveYields + 1 }),
+      outcomes: [],
+    };
   }
 
   const play = validatePlay(player, action);
   const worldAfterPlay = applyPlay(world, player, play);
+  const played: DomainOutcome = {
+    kind: 'cards-played',
+    playerId: player.id,
+    cards: cardsInPlay(play),
+  };
   switch (play.kind) {
     case 'jester':
       return {
-        kind: 'active',
-        world: worldAfterPlay,
-        decision: { kind: 'await-next-player-choice' },
+        state: {
+          kind: 'active',
+          world: worldAfterPlay,
+          decision: { kind: 'await-next-player-choice' },
+        },
+        outcomes: [played],
       };
-    case 'attack':
-      return resolveAfterPlay(
-        resolveImmediateSuitPower(worldAfterPlay, play, diamondDrawRecipientIds),
-        play,
-      );
+    case 'attack': {
+      const immediate = resolveImmediateSuitPower(worldAfterPlay, play);
+      const resolved = resolveAfterPlay(immediate.world, play);
+      return {
+        state: resolved.state,
+        outcomes: [played, ...immediate.outcomes, ...resolved.outcomes],
+      };
+    }
   }
   return assertNever(play);
 }
@@ -161,21 +181,23 @@ function handleRetaliationAction(
   player: Player,
   decision: Extract<Decision, { kind: 'await-retaliation-action' }>,
   action: DiscardForDamage | UseSoloJester | AcceptDefeat,
-): GameState {
-  if (action.kind === 'use-solo-jester') return resolveRetaliation(replaceSoloHand(world, player));
+): TransitionResult {
+  if (action.kind === 'use-solo-jester') {
+    return { state: resolveRetaliation(replaceSoloHand(world, player)), outcomes: [] };
+  }
   if (action.kind === 'accept-defeat') {
     if (!canAcceptDefeatForPlayer(world, player, decision.requiredDamage)) {
       throw new IllegalActionError(
         'Defeat can only be accepted when a Jester is the only survival action',
       );
     }
-    return { kind: 'game-over', world, result: 'loss' };
+    return { state: { kind: 'game-over', world, result: 'loss' }, outcomes: [] };
   }
 
   if (decision.requiredDamage === 0) {
     if (action.cardIds.length > 0)
       throw new IllegalActionError('No cards need to be discarded for zero damage');
-    return enterTurn({ ...world, currentPlayer: nextPlayer(world) });
+    return { state: enterTurn({ ...world, currentPlayer: nextPlayer(world) }), outcomes: [] };
   }
   const selected = selectedCardsFromHand(player.hand, action.cardIds);
   if (
@@ -185,16 +207,19 @@ function handleRetaliationAction(
   }
 
   const discardedIds = new Set(action.cardIds);
-  return enterTurn({
-    ...world,
-    players: world.players.map((candidate) =>
-      candidate.id === player.id
-        ? { ...candidate, hand: candidate.hand.filter((card) => !discardedIds.has(card.id)) }
-        : candidate,
-    ),
-    currentPlayer: nextPlayer(world),
-    discard: [...world.discard, ...selected],
-  });
+  return {
+    state: enterTurn({
+      ...world,
+      players: world.players.map((candidate) =>
+        candidate.id === player.id
+          ? { ...candidate, hand: candidate.hand.filter((card) => !discardedIds.has(card.id)) }
+          : candidate,
+      ),
+      currentPlayer: nextPlayer(world),
+      discard: [...world.discard, ...selected],
+    }),
+    outcomes: [{ kind: 'damage-discarded', playerId: player.id, cards: selected }],
+  };
 }
 
 function isYieldAllowedByStreak(world: World): boolean {
@@ -363,36 +388,50 @@ function playSuits(play: AttackPlay): ReadonlySet<Suit> {
 function resolveImmediateSuitPower(
   world: World,
   play: AttackPlay,
-  diamondDrawRecipientIds: string[],
-): World {
+): Readonly<{ world: World; outcomes: readonly DomainOutcome[] }> {
   let result = world;
+  const outcomes: DomainOutcome[] = [];
   const suits = playSuits(play);
   const value = playAttackValue(play);
   if (suits.has('hearts') && suitPowerActive(result.battle, 'hearts')) {
-    result = resolveHeartHeal(result, value);
+    const heal = resolveHeartHeal(result, value);
+    result = heal.world;
+    if (heal.recoveredCount > 0) {
+      outcomes.push({ kind: 'hearts-recovered', count: heal.recoveredCount });
+    }
   }
   if (suits.has('diamonds') && suitPowerActive(result.battle, 'diamonds')) {
-    result = resolveDiamondDraw(result, value, diamondDrawRecipientIds);
+    const draw = resolveDiamondDraw(result, value);
+    result = draw.world;
+    if (draw.recipientIds.length > 0) {
+      outcomes.push({ kind: 'diamonds-drawn', recipientIds: draw.recipientIds });
+    }
   }
-  return result;
+  return { world: result, outcomes };
 }
 
-function resolveHeartHeal(world: World, healCount: number): World {
+function resolveHeartHeal(
+  world: World,
+  healCount: number,
+): Readonly<{ world: World; recoveredCount: number }> {
   const { cards, rngState } = shuffle(world.discard, world.rngState);
   const healed = Math.min(healCount, cards.length);
   return {
-    ...world,
-    discard: cards.slice(healed),
-    tavern: [...world.tavern, ...cards.slice(0, healed)],
-    rngState,
+    world: {
+      ...world,
+      discard: cards.slice(healed),
+      tavern: [...world.tavern, ...cards.slice(0, healed)],
+      rngState,
+    },
+    recoveredCount: healed,
   };
 }
 
 function resolveDiamondDraw(
   world: World,
   drawCount: number,
-  diamondDrawRecipientIds: string[],
-): World {
+): Readonly<{ world: World; recipientIds: readonly string[] }> {
+  const recipientIds: string[] = [];
   const handLimit = maxHandSize(world.players.length);
   const players: Player[] = world.players.map((player) => ({ ...player, hand: [...player.hand] }));
   let playerIndex = players.findIndex((player) => player.id === world.currentPlayer);
@@ -410,16 +449,16 @@ function resolveDiamondDraw(
       const card = world.tavern[drawn];
       if (!card) throw new Error('The Tavern has no card to draw');
       players[playerIndex] = { ...player, hand: [...player.hand, card] };
-      diamondDrawRecipientIds.push(player.id);
+      recipientIds.push(player.id);
       drawn++;
     }
     playerIndex = (playerIndex + 1) % players.length;
   }
 
-  return { ...world, players, tavern: world.tavern.slice(drawn) };
+  return { world: { ...world, players, tavern: world.tavern.slice(drawn) }, recipientIds };
 }
 
-function resolveAfterPlay(world: World, play: AttackPlay): GameState {
+function resolveAfterPlay(world: World, play: AttackPlay): TransitionResult {
   const { battle } = world;
   const damageDealt = battle.damageDealt + attackDamage(battle, play);
   if (damageDealt > enemyHealth(battle.enemy)) {
@@ -429,7 +468,10 @@ function resolveAfterPlay(world: World, play: AttackPlay): GameState {
     return resolveEnemyDefeat(world, 'exact');
   }
 
-  return resolveRetaliation({ ...world, battle: { ...battle, damageDealt } });
+  return {
+    state: resolveRetaliation({ ...world, battle: { ...battle, damageDealt } }),
+    outcomes: [],
+  };
 }
 
 function canAbsorbDamage(player: Player, requiredDamage: number): boolean {
@@ -470,34 +512,38 @@ function resolveRetaliation(world: World): GameState {
 
 type DefeatKind = 'overkill' | 'exact';
 
-function resolveEnemyDefeat(world: World, defeatKind: DefeatKind): GameState {
+function resolveEnemyDefeat(world: World, defeatKind: DefeatKind): TransitionResult {
   const { battle, ...rest } = world;
+  const discardedCards = battle.plays.flatMap(cardsInPlay);
+  const destination = defeatKind === 'exact' ? 'tavern' : 'discard';
   const resolvedWorld = {
     ...rest,
-    tavern: defeatKind === 'exact' ? [battle.enemy, ...world.tavern] : world.tavern,
+    tavern: destination === 'tavern' ? [battle.enemy, ...world.tavern] : world.tavern,
     discard: [
       ...world.discard,
-      ...(defeatKind === 'overkill' ? [battle.enemy] : []),
-      ...battle.plays.flatMap(cardsInPlay),
+      ...(destination === 'discard' ? [battle.enemy] : []),
+      ...discardedCards,
     ],
     castle: world.castle.slice(1),
   };
   const nextEnemy = world.castle[0];
-  if (!nextEnemy) {
-    if (battle.enemy.rank !== 'king') {
-      throw new Error('Unsupported game outcome: final enemy defeat');
-    }
-    return { kind: 'game-over', world: resolvedWorld, result: 'win' };
+  if (!nextEnemy && battle.enemy.rank !== 'king') {
+    throw new Error('Unsupported game outcome: final enemy defeat');
   }
-
-  return enterTurn({
-    ...resolvedWorld,
-    battle: {
-      enemy: nextEnemy,
-      damageDealt: 0,
-      plays: [],
-    },
-  });
+  const state: GameState = nextEnemy
+    ? enterTurn({
+        ...resolvedWorld,
+        battle: {
+          enemy: nextEnemy,
+          damageDealt: 0,
+          plays: [],
+        },
+      })
+    : { kind: 'game-over', world: resolvedWorld, result: 'win' };
+  return {
+    state,
+    outcomes: [{ kind: 'enemy-defeated', enemy: battle.enemy, destination, discardedCards }],
+  };
 }
 
 function selectedCardsFromHand(hand: readonly Card[], cardIds: readonly string[]): Card[] {

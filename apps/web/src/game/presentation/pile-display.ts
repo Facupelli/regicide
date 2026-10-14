@@ -11,7 +11,6 @@ export type PileQueueEntry = Readonly<{
   gameId: string;
   revision: number;
   baseline: DisplayCounts;
-  final: DisplayCounts;
   milestones: readonly PileMilestone[];
 }>;
 
@@ -35,7 +34,7 @@ function validatedHandCounts(
     return null;
   }
   for (const event of events) {
-    if (event.type === 'enemyDefeated') {
+    if (event.type === 'enemyDefeated' || event.type === 'heartsRecovered') {
       continue;
     }
     if (event.type === 'diamondCardsDrawn') {
@@ -127,6 +126,7 @@ export function preparePileEntries(
         consumed.add(presentation.eventId);
         break;
       case 'heartsRecovery':
+        consumed.add(presentation.eventId);
         add('hearts', -presentation.recoveredCount, presentation.recoveredCount);
         break;
       case 'diamondCardsDrawn':
@@ -143,6 +143,7 @@ export function preparePileEntries(
         consumed.add(presentation.eventId);
         consumed.add(presentation.defeatEventId);
         if (presentation.heartsRecovery) {
+          consumed.add(presentation.heartsRecovery.eventId);
           add(
             'hearts',
             -presentation.heartsRecovery.recoveredCount,
@@ -166,7 +167,7 @@ export function preparePileEntries(
     if (counts.discardCount < 0 || counts.tavernCount < 0) {
       return null;
     }
-    entries.push({ presentation, gameId, revision, baseline, final: counts, milestones });
+    entries.push({ presentation, gameId, revision, baseline, milestones });
   }
   const authoritative = pileCounts(incoming);
   if (

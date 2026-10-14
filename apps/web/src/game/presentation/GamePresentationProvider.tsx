@@ -58,23 +58,6 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
       consecutiveViews: { previous: GameView; incoming: GameView } | null,
     ): PreparedGamePresentation[] => {
       const prepared: PreparedGamePresentation[] = [];
-      // Attribute discard removals only to the single accepted play in this revision.
-      const plays = events.filter(
-        (event): event is CardsPlayedEvent => event.type === 'cardsPlayed',
-      );
-      const recoveredCount =
-        consecutiveViews &&
-        plays.length === 1 &&
-        plays[0]?.cards.some((card) => card.kind !== 'jester' && card.suit === 'hearts')
-          ? (() => {
-              const incomingIds = new Set(
-                consecutiveViews.incoming.discard.cards.map((card) => card.id),
-              );
-              return consecutiveViews.previous.discard.cards.filter(
-                (card) => !incomingIds.has(card.id),
-              ).length;
-            })()
-          : 0;
       const visible = (key: GamePresentationAnchorKey) => {
         const rect = getAnchorRect(key);
         return isVisibleRect(rect) ? rect : null;
@@ -141,19 +124,29 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
           }
           case 'cardsPlayed': {
             const play = played(event);
-            const heartsRecovery: PreparedHeartsRecovery | null =
-              recoveredCount > 0
-                ? {
-                    type: 'heartsRecovery',
-                    eventId: event.id,
-                    recoveredCount,
-                    fallbackDiscard: visible(gamePresentationAnchor.discard),
-                    fallbackTavern: visible(gamePresentationAnchor.tavern),
-                  }
-                : null;
-            const drawEvent = events[index + 1];
+            let nextIndex = index + 1;
+            const possibleHeart = events[nextIndex];
+            const heartEvent = possibleHeart?.type === 'heartsRecovered' ? possibleHeart : null;
+            if (heartEvent) {
+              nextIndex++;
+            }
+            const heartsRecovery: PreparedHeartsRecovery | null = heartEvent
+              ? {
+                  type: 'heartsRecovery',
+                  eventId: heartEvent.id,
+                  recoveredCount: heartEvent.recoveredCount,
+                  fallbackDiscard: visible(gamePresentationAnchor.discard),
+                  fallbackTavern: visible(gamePresentationAnchor.tavern),
+                }
+              : null;
+            const possibleDraw = events[nextIndex];
+            const drawEvent = possibleDraw?.type === 'diamondCardsDrawn' ? possibleDraw : null;
+            // A draw event belongs to this play even when a revision gap prevents animating it.
+            if (drawEvent) {
+              nextIndex++;
+            }
             const diamondCardsDrawn: PreparedDiamondCardsDrawn | null =
-              consecutiveViews && drawEvent?.type === 'diamondCardsDrawn'
+              consecutiveViews && drawEvent
                 ? {
                     type: 'diamondCardsDrawn',
                     eventId: drawEvent.id,
@@ -172,9 +165,7 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
                     ),
                   }
                 : null;
-            // A draw event belongs to this play even when a revision gap prevents animating it.
-            const hasDrawEvent = drawEvent?.type === 'diamondCardsDrawn';
-            const next = events[index + (hasDrawEvent ? 2 : 1)];
+            const next = events[nextIndex];
             if (next?.type !== 'enemyDefeated' || next.playerId !== event.playerId) {
               prepared.push(play);
               if (heartsRecovery) {
@@ -183,12 +174,10 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
               if (diamondCardsDrawn) {
                 prepared.push(diamondCardsDrawn);
               }
-              if (hasDrawEvent) {
-                index++;
-              }
+              index = nextIndex - 1;
               break;
             }
-            index += hasDrawEvent ? 2 : 1;
+            index = nextIndex;
             const playedIds = new Set(event.cards.map((card) => card.id));
             prepared.push({
               type: 'enemyDefeatSequence',
@@ -216,6 +205,7 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
             });
             break;
           }
+          case 'heartsRecovered':
           case 'diamondCardsDrawn':
           case 'enemyDefeated':
             // These are consumed with their matching cardsPlayed event.

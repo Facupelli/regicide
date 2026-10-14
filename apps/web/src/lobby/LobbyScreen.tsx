@@ -123,7 +123,7 @@ export function LobbyScreen({
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10 font-sans text-foreground">
+    <main className="flex min-h-dvh items-center justify-center bg-background p-4 font-sans text-foreground">
       <section className="w-full max-w-md rounded-xl border border-border bg-panel p-5 shadow-xl sm:p-8">
         <p className="text-sm font-medium uppercase tracking-widest text-card-selected">
           Co-op game

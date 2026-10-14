@@ -22,6 +22,7 @@ export type {
 export {
   CardsDiscardedForDamageEventSchema,
   CardsPlayedEventSchema,
+  HeartsRecoveredEventSchema,
   DiamondCardsDrawnEventSchema,
   EnemyDefeatedEventSchema,
   GameEventSchema,
@@ -29,6 +30,7 @@ export {
 export type {
   CardsDiscardedForDamageEvent,
   CardsPlayedEvent,
+  HeartsRecoveredEvent,
   DiamondCardsDrawnEvent,
   EnemyDefeatedEvent,
   GameEvent,

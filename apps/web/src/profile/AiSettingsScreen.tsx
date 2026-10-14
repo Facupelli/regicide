@@ -22,7 +22,7 @@ export function AiSettingsScreen({
   onRevoke: () => Promise<void>;
 }) {
   return (
-    <main className="relative z-110 flex min-h-dvh items-center justify-center bg-background px-4 py-10 font-sans text-foreground">
+    <main className="relative z-110 flex min-h-dvh items-center justify-center bg-background p-4 font-sans text-foreground">
       <section className="w-full max-w-md rounded-xl border border-border bg-panel p-5 shadow-xl sm:p-8">
         <button
           type="button"

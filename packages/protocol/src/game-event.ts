@@ -18,6 +18,13 @@ export const CardsPlayedEventSchema = v.strictObject({
 });
 export type CardsPlayedEvent = v.InferOutput<typeof CardsPlayedEventSchema>;
 
+export const HeartsRecoveredEventSchema = v.strictObject({
+  id: v.pipe(v.number(), v.integer(), v.minValue(1)),
+  type: v.literal('heartsRecovered'),
+  recoveredCount: v.pipe(v.number(), v.integer(), v.minValue(1)),
+});
+export type HeartsRecoveredEvent = v.InferOutput<typeof HeartsRecoveredEventSchema>;
+
 export const DiamondCardsDrawnEventSchema = v.strictObject({
   id: v.pipe(v.number(), v.integer(), v.minValue(1)),
   type: v.literal('diamondCardsDrawn'),
@@ -38,6 +45,7 @@ export type EnemyDefeatedEvent = v.InferOutput<typeof EnemyDefeatedEventSchema>;
 export const GameEventSchema = v.variant('type', [
   CardsDiscardedForDamageEventSchema,
   CardsPlayedEventSchema,
+  HeartsRecoveredEventSchema,
   DiamondCardsDrawnEventSchema,
   EnemyDefeatedEventSchema,
 ]);
