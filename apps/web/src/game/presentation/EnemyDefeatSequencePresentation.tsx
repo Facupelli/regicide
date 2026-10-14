@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useAnimate, useReducedMotion, type AnimationSequence } from 'motion/react';
 import { PlayingCard } from '../cards/PlayingCard.tsx';
 import { HeartsRecoveryVisual } from './HeartsRecoveryPresentation.tsx';
+import { DiamondCardsDrawnVisual } from './DiamondCardsDrawnPresentation.tsx';
+import { appendDiamondSequence, diamondFlights } from './diamonds-draw-sequence.ts';
 import { appendHeartsSequence, heartsGeometry } from './hearts-recovery-sequence.ts';
 import {
   gamePresentationAnchor,
@@ -42,6 +44,10 @@ export function EnemyDefeatSequencePresentation({
   const enemyElement = useRef<HTMLDivElement | null>(null);
   const enemyGhost = useRef<HTMLDivElement | null>(null);
   const heartsElement = useRef<HTMLDivElement | null>(null);
+  const diamondElements = useRef(new Map<number, HTMLElement>());
+  const diamondFlightsForPlay = presentation.diamondCardsDrawn
+    ? diamondFlights(presentation.diamondCardsDrawn, getAnchorRect, reduced ?? false)
+    : null;
   const heartsGeometryForPlay = presentation.heartsRecovery
     ? heartsGeometry(presentation.heartsRecovery, getAnchorRect, reduced ?? false)
     : null;
@@ -151,7 +157,16 @@ export function EnemyDefeatSequencePresentation({
             lastPlay,
           )
         : lastPlay;
-    const enemyStart = heartsEnd + DEFEAT_RECOGNITION_HOLD_SECONDS;
+    const diamondsEnd = diamondFlightsForPlay
+      ? appendDiamondSequence(
+          sequence,
+          diamondElements.current,
+          diamondFlightsForPlay,
+          reduced ?? false,
+          heartsEnd,
+        )
+      : heartsEnd;
+    const enemyStart = diamondsEnd + DEFEAT_RECOGNITION_HOLD_SECONDS;
     const enemyArrival =
       enemyStart + (reduced || !oldEnemy || !pile ? PLAY_FADE_SECONDS : ENEMY_MOVE_SECONDS);
     if (enemyElement.current) {
@@ -263,6 +278,18 @@ export function EnemyDefeatSequencePresentation({
           position={heartsGeometryForPlay.position}
           elementRef={(element) => {
             heartsElement.current = element;
+          }}
+        />
+      )}
+      {diamondFlightsForPlay && (
+        <DiamondCardsDrawnVisual
+          flights={diamondFlightsForPlay}
+          setCard={(index, element) => {
+            if (element) {
+              diamondElements.current.set(index, element);
+            } else {
+              diamondElements.current.delete(index);
+            }
           }}
         />
       )}

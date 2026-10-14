@@ -1,4 +1,4 @@
-import { IllegalActionError, transition, type GameState } from '@regicide/game-engine';
+import { IllegalActionError, transitionWithOutcome, type GameState } from '@regicide/game-engine';
 import type { GameEvent, GameView, PlayerCommand } from '@regicide/protocol';
 import type { GameSession } from '../game-session.ts';
 import { gameStore } from '../game-store.ts';
@@ -55,9 +55,9 @@ export function submitCommand({
 
   const action = toEngineAction(command, playerId);
   const previousState = session.state;
-  let nextState;
+  let outcome;
   try {
-    nextState = transition(previousState, action);
+    outcome = transitionWithOutcome(previousState, action);
   } catch (error) {
     if (error instanceof IllegalActionError) {
       return { ok: false, reason: 'invalid-action', message: error.message };
@@ -67,13 +67,13 @@ export function submitCommand({
 
   // Reserve IDs in event order; commit the counter after all invariants pass.
   const events: GameEvent[] = [];
-  for (const event of deriveAcceptedActionEvents(previousState, action, nextState)) {
+  for (const event of deriveAcceptedActionEvents(previousState, action, outcome)) {
     events.push({ ...event, id: session.nextEventId + events.length });
   }
 
   session.nextEventId += events.length;
-  session.state = nextState;
+  session.state = outcome.state;
   session.revision += 1;
   publishCommittedGame(gameId, session, events);
-  return { ok: true, view: toGameView(nextState, playerId, session.players) };
+  return { ok: true, view: toGameView(outcome.state, playerId, session.players) };
 }

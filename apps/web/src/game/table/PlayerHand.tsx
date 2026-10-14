@@ -41,6 +41,7 @@ export function PlayerHand({
   const local = view.players.find((player) => player.id === view.viewer.id);
   return (
     <section
+      ref={(element) => registerAnchor(gamePresentationAnchor.localHand, element)}
       className={`relative col-span-3 min-w-0 [--hand-card-width:clamp(4.5rem,19vw,6.5rem)] lg:col-span-1 lg:col-start-2 lg:row-start-5 ${hasOpponents ? 'row-start-6' : 'row-start-5'}`}
       aria-label="Your hand"
     >

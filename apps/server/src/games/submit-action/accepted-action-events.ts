@@ -1,4 +1,9 @@
-import type { Action, Card as EngineCard, GameState } from '@regicide/game-engine';
+import type {
+  Action,
+  Card as EngineCard,
+  GameState,
+  TransitionOutcome,
+} from '@regicide/game-engine';
 import type { GameEvent } from '@regicide/protocol';
 import { toProtocolCard } from '../protocol/card.ts';
 
@@ -11,8 +16,9 @@ type EventWithoutId = GameEvent extends infer Event
 export function deriveAcceptedActionEvents(
   previousState: GameState,
   action: Action,
-  nextState: GameState,
+  outcome: TransitionOutcome,
 ): EventWithoutId[] {
+  const { state: nextState, diamondDrawRecipientIds } = outcome;
   const events: EventWithoutId[] = [];
   if (action.kind === 'play-cards') {
     const player = previousState.world.players.find(
@@ -36,6 +42,9 @@ export function deriveAcceptedActionEvents(
       playerId: action.playerId,
       cards: played.map(toProtocolCard),
     });
+    if (diamondDrawRecipientIds.length > 0) {
+      events.push({ type: 'diamondCardsDrawn', recipientIds: [...diamondDrawRecipientIds] });
+    }
 
     if (!('battle' in previousState.world)) {
       throw new Error('Accepted play has no previous battle');

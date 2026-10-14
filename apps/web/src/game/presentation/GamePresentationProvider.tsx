@@ -3,6 +3,7 @@ import { memo, useCallback, useMemo, useRef, useState, type ReactNode } from 're
 import { createPortal, flushSync } from 'react-dom';
 import { CardsDiscardedForDamagePresentation } from './CardsDiscardedForDamagePresentation.tsx';
 import { CardsPlayedPresentation } from './CardsPlayedPresentation.tsx';
+import { DiamondCardsDrawnPresentation } from './DiamondCardsDrawnPresentation.tsx';
 import { EnemyDefeatSequencePresentation } from './EnemyDefeatSequencePresentation.tsx';
 import { HeartsRecoveryPresentation } from './HeartsRecoveryPresentation.tsx';
 import { GamePresentationContext } from './GamePresentationContext.ts';
@@ -12,6 +13,7 @@ import {
   snapshotRect,
   type GamePresentationAnchorKey,
   type PreparedCardsPlayed,
+  type PreparedDiamondCardsDrawn,
   type PreparedGamePresentation,
   type PreparedHeartsRecovery,
   type RectSnapshot,
@@ -143,15 +145,44 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
                     fallbackTavern: visible(gamePresentationAnchor.tavern),
                   }
                 : null;
-            const next = events[index + 1];
+            const drawEvent = events[index + 1];
+            const diamondCardsDrawn: PreparedDiamondCardsDrawn | null =
+              consecutiveViews && drawEvent?.type === 'diamondCardsDrawn'
+                ? {
+                    type: 'diamondCardsDrawn',
+                    eventId: drawEvent.id,
+                    recipients: drawEvent.recipientIds,
+                    localPlayerId,
+                    fallbackTavern: visible(gamePresentationAnchor.tavern),
+                    fallbackDestinations: Object.fromEntries(
+                      drawEvent.recipientIds.map((playerId) => [
+                        playerId,
+                        visible(
+                          playerId === localPlayerId
+                            ? gamePresentationAnchor.localHand
+                            : gamePresentationAnchor.player(playerId),
+                        ),
+                      ]),
+                    ),
+                  }
+                : null;
+            // A draw event belongs to this play even when a revision gap prevents animating it.
+            const hasDrawEvent = drawEvent?.type === 'diamondCardsDrawn';
+            const next = events[index + (hasDrawEvent ? 2 : 1)];
             if (next?.type !== 'enemyDefeated' || next.playerId !== event.playerId) {
               prepared.push(play);
               if (heartsRecovery) {
                 prepared.push(heartsRecovery);
               }
+              if (diamondCardsDrawn) {
+                prepared.push(diamondCardsDrawn);
+              }
+              if (hasDrawEvent) {
+                index++;
+              }
               break;
             }
-            index++;
+            index += hasDrawEvent ? 2 : 1;
             const playedIds = new Set(event.cards.map((card) => card.id));
             prepared.push({
               type: 'enemyDefeatSequence',
@@ -175,11 +206,13 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
               fallbackDiscard: visible(gamePresentationAnchor.discard),
               fallbackTavern: visible(gamePresentationAnchor.tavern),
               heartsRecovery,
+              diamondCardsDrawn,
             });
             break;
           }
+          case 'diamondCardsDrawn':
           case 'enemyDefeated':
-            // The server emits this immediately after its matching cardsPlayed event.
+            // These are consumed with their matching cardsPlayed event.
             break;
         }
       }
@@ -287,6 +320,14 @@ const GamePresentationOverlay = memo(function GamePresentationOverlay({
                     getAnchorRect(gamePresentationAnchor.discard) ??
                     presentation.fallbackDestination
                   }
+                  onComplete={complete}
+                />
+              );
+            case 'diamondCardsDrawn':
+              return (
+                <DiamondCardsDrawnPresentation
+                  presentation={presentation}
+                  getAnchorRect={getAnchorRect}
                   onComplete={complete}
                 />
               );

@@ -3,6 +3,7 @@ import type { Card, RoyalCard } from '@regicide/protocol';
 export type GamePresentationAnchorKey =
   | `card:${string}`
   | `player:${string}`
+  | 'local-hand'
   | `battle-card:${string}`
   | 'battle-target'
   | 'enemy'
@@ -12,6 +13,7 @@ export type GamePresentationAnchorKey =
 export const gamePresentationAnchor = {
   card: (cardId: string): GamePresentationAnchorKey => `card:${cardId}`,
   player: (playerId: string): GamePresentationAnchorKey => `player:${playerId}`,
+  localHand: 'local-hand' as const,
   battleCard: (cardId: string): GamePresentationAnchorKey => `battle-card:${cardId}`,
   battleTarget: 'battle-target' as const,
   enemy: 'enemy' as const,
@@ -42,6 +44,15 @@ export type PreparedHeartsRecovery = {
   fallbackTavern: RectSnapshot | null;
 };
 
+export type PreparedDiamondCardsDrawn = {
+  type: 'diamondCardsDrawn';
+  eventId: number;
+  recipients: readonly string[];
+  localPlayerId: string;
+  fallbackTavern: RectSnapshot | null;
+  fallbackDestinations: Readonly<Record<string, RectSnapshot | null>>;
+};
+
 export type PreparedCardsPlayed = {
   type: 'cardsPlayed';
   eventId: number;
@@ -66,12 +77,14 @@ export type PreparedEnemyDefeatSequence = {
   fallbackDiscard: RectSnapshot | null;
   fallbackTavern: RectSnapshot | null;
   heartsRecovery: PreparedHeartsRecovery | null;
+  diamondCardsDrawn: PreparedDiamondCardsDrawn | null;
 };
 
 export type PreparedGamePresentation =
   | PreparedCardsDiscardedForDamage
   | PreparedCardsPlayed
   | PreparedHeartsRecovery
+  | PreparedDiamondCardsDrawn
   | PreparedEnemyDefeatSequence;
 
 export function snapshotRect(element: HTMLElement | undefined): RectSnapshot | null {

@@ -31,7 +31,26 @@ export class IllegalActionError extends Error {
   }
 }
 
+export type TransitionOutcome = Readonly<{
+  state: GameState;
+  diamondDrawRecipientIds: readonly string[];
+}>;
+
 export function transition(state: GameState, action: Action): GameState {
+  return transitionWithOutcome(state, action).state;
+}
+
+export function transitionWithOutcome(state: GameState, action: Action): TransitionOutcome {
+  const diamondDrawRecipientIds: string[] = [];
+  const nextState = transitionCore(state, action, diamondDrawRecipientIds);
+  return { state: nextState, diamondDrawRecipientIds };
+}
+
+function transitionCore(
+  state: GameState,
+  action: Action,
+  diamondDrawRecipientIds: string[],
+): GameState {
   if (state.kind === 'game-over') {
     throw new IllegalActionError('The game is over');
   }
@@ -55,7 +74,7 @@ export function transition(state: GameState, action: Action): GameState {
         throw new IllegalActionError(
           `Action ${action.kind} is not valid while awaiting a turn action`,
         );
-      return handleTurnAction(world, player, action);
+      return handleTurnAction(world, player, action, diamondDrawRecipientIds);
     case 'await-retaliation-action':
       if (
         action.kind !== 'discard-for-damage' &&
@@ -79,6 +98,7 @@ function handleTurnAction(
   world: World,
   player: Player,
   action: PlayCards | YieldTurn | UseSoloJester,
+  diamondDrawRecipientIds: string[],
 ): GameState {
   if (action.kind === 'use-solo-jester') {
     return enterTurn(replaceSoloHand(world, player));
@@ -101,7 +121,10 @@ function handleTurnAction(
         decision: { kind: 'await-next-player-choice' },
       };
     case 'attack':
-      return resolveAfterPlay(resolveImmediateSuitPower(worldAfterPlay, play), play);
+      return resolveAfterPlay(
+        resolveImmediateSuitPower(worldAfterPlay, play, diamondDrawRecipientIds),
+        play,
+      );
   }
   return assertNever(play);
 }
@@ -337,7 +360,11 @@ function playSuits(play: AttackPlay): ReadonlySet<Suit> {
   return new Set(play.cards.map((card) => card.suit));
 }
 
-function resolveImmediateSuitPower(world: World, play: AttackPlay): World {
+function resolveImmediateSuitPower(
+  world: World,
+  play: AttackPlay,
+  diamondDrawRecipientIds: string[],
+): World {
   let result = world;
   const suits = playSuits(play);
   const value = playAttackValue(play);
@@ -345,7 +372,7 @@ function resolveImmediateSuitPower(world: World, play: AttackPlay): World {
     result = resolveHeartHeal(result, value);
   }
   if (suits.has('diamonds') && suitPowerActive(result.battle, 'diamonds')) {
-    result = resolveDiamondDraw(result, value);
+    result = resolveDiamondDraw(result, value, diamondDrawRecipientIds);
   }
   return result;
 }
@@ -361,7 +388,11 @@ function resolveHeartHeal(world: World, healCount: number): World {
   };
 }
 
-function resolveDiamondDraw(world: World, drawCount: number): World {
+function resolveDiamondDraw(
+  world: World,
+  drawCount: number,
+  diamondDrawRecipientIds: string[],
+): World {
   const handLimit = maxHandSize(world.players.length);
   const players: Player[] = world.players.map((player) => ({ ...player, hand: [...player.hand] }));
   let playerIndex = players.findIndex((player) => player.id === world.currentPlayer);
@@ -379,6 +410,7 @@ function resolveDiamondDraw(world: World, drawCount: number): World {
       const card = world.tavern[drawn];
       if (!card) throw new Error('The Tavern has no card to draw');
       players[playerIndex] = { ...player, hand: [...player.hand, card] };
+      diamondDrawRecipientIds.push(player.id);
       drawn++;
     }
     playerIndex = (playerIndex + 1) % players.length;

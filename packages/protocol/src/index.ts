@@ -22,12 +22,14 @@ export type {
 export {
   CardsDiscardedForDamageEventSchema,
   CardsPlayedEventSchema,
+  DiamondCardsDrawnEventSchema,
   EnemyDefeatedEventSchema,
   GameEventSchema,
 } from './game-event.ts';
 export type {
   CardsDiscardedForDamageEvent,
   CardsPlayedEvent,
+  DiamondCardsDrawnEvent,
   EnemyDefeatedEvent,
   GameEvent,
 } from './game-event.ts';
