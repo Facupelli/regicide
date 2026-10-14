@@ -2,6 +2,7 @@ import {
   AddAgentResponseSchema,
   AgentStatusResponseSchema,
   CreateGameResponseSchema,
+  GetGameResponseSchema,
   JoinGameResponseSchema,
   RemoveAgentResponseSchema,
   StartGameResponseSchema,
@@ -20,6 +21,14 @@ export function createGame(profileToken?: string) {
     '/games',
     { method: 'POST', ...(profileToken ? { bearerToken: profileToken } : {}) },
     CreateGameResponseSchema,
+  );
+}
+
+export function getGame(gameId: string, playerToken: string) {
+  return request(
+    gamePath(gameId),
+    { method: 'GET', bearerToken: playerToken },
+    GetGameResponseSchema,
   );
 }
 
@@ -81,12 +90,6 @@ export function updateAgentSettings(
     bearerToken: playerToken,
     body: JSON.stringify(settings),
   });
-}
-
-export async function createSoloGame() {
-  const lobby = await createGame();
-  const started = await startGame(lobby.gameId, lobby.playerToken);
-  return { ...started, playerId: lobby.playerId, playerToken: lobby.playerToken };
 }
 
 export function submitAction(gameId: string, playerToken: string, command: PlayerCommand) {

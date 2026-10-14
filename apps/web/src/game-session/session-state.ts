@@ -27,6 +27,8 @@ type PlayingState = {
 
 export type SessionState =
   | { status: 'idle' }
+  | { status: 'restoring'; identity: Pick<Identity, 'gameId' | 'playerToken'> }
+  | { status: 'restore-error'; identity: Pick<Identity, 'gameId' | 'playerToken'>; message: string }
   | { status: 'loading' }
   | LobbyState
   | PlayingState
@@ -36,6 +38,15 @@ type SessionIdentity = Pick<Identity, 'gameId' | 'playerToken'>;
 
 type GlobalSessionEvent =
   | { type: 'return-home' }
+  | { type: 'restore-requested' }
+  | { type: 'restore-failed'; identity: SessionIdentity; message: string }
+  | { type: 'restore-invalid'; identity: SessionIdentity; message: string }
+  | {
+      type: 'restored';
+      identity: Identity;
+      view: LobbyView | GameView;
+      isHost: boolean;
+    }
   | { type: 'session-load-started' }
   | { type: 'session-load-failed'; message: string }
   | { type: 'lobby-entered'; identity: Identity; view: LobbyView; profileBacked: boolean }
@@ -82,6 +93,31 @@ export function sessionReducer(state: SessionState, event: SessionEvent): Sessio
     // Session lifecycle
     case 'return-home':
       return { status: 'idle' };
+    case 'restore-requested':
+      return state.status === 'restore-error'
+        ? { status: 'restoring', identity: state.identity }
+        : state;
+    case 'restore-failed':
+      return state.status === 'restoring' && matchesCurrentSession(state.identity, event.identity)
+        ? { status: 'restore-error', identity: state.identity, message: event.message }
+        : state;
+    case 'restore-invalid':
+      return state.status === 'restoring' && matchesCurrentSession(state.identity, event.identity)
+        ? { status: 'error', message: event.message }
+        : state;
+    case 'restored':
+      if (state.status !== 'restoring' || !matchesCurrentSession(state.identity, event.identity)) {
+        return state;
+      }
+      return event.view.status === 'lobby'
+        ? {
+            status: 'lobby',
+            ...event.identity,
+            view: event.view,
+            profileBacked: false,
+            start: { status: 'ready' },
+          }
+        : playing(event.identity, event.view, event.isHost);
     case 'session-load-started':
       return { status: 'loading' };
     case 'session-load-failed':
@@ -203,6 +239,10 @@ function playing(identity: Identity, view: GameView, isHost: boolean): PlayingSt
 function isSessionScopedEvent(event: SessionEvent): event is SessionScopedEvent {
   switch (event.type) {
     case 'return-home':
+    case 'restore-requested':
+    case 'restore-failed':
+    case 'restore-invalid':
+    case 'restored':
     case 'session-load-started':
     case 'session-load-failed':
     case 'lobby-entered':
@@ -226,6 +266,6 @@ function isSessionScopedEvent(event: SessionEvent): event is SessionScopedEvent 
   }
 }
 
-function matchesCurrentSession(state: Identity, event: SessionIdentity): boolean {
+function matchesCurrentSession(state: SessionIdentity, event: SessionIdentity): boolean {
   return state.gameId === event.gameId && state.playerToken === event.playerToken;
 }

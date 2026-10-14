@@ -17,7 +17,7 @@ import {
   addAgent,
   agentStatus,
   createGame,
-  createSoloGame,
+  getGame,
   joinGame,
   removeAgent,
   retryAgent,
@@ -27,8 +27,8 @@ import {
 } from './games-api.ts';
 import { useGamePresentation } from '../game/presentation/GamePresentationContext.ts';
 import { viewVersion, visibleSync, type VisibleSync } from './live-sync.ts';
+import { clearSavedSession, readSavedSession, saveSession } from './saved-session.ts';
 import {
-  initialSessionState,
   sessionReducer,
   type LobbyStart,
   type PlayingOperation,
@@ -38,6 +38,8 @@ import {
 export type SessionScreen =
   | { status: 'idle' }
   | { status: 'loading' }
+  | { status: 'restoring' }
+  | { status: 'restore-error'; message: string }
   | { status: 'error'; message: string }
   | {
       status: 'lobby';
@@ -49,6 +51,7 @@ export type SessionScreen =
     }
   | {
       status: 'playing';
+      gameId: string;
       view: GameView;
       viewVersion: string;
       sync: VisibleSync;
@@ -59,7 +62,11 @@ export type SessionScreen =
     };
 
 export function useGameSession() {
-  const [state, dispatch] = useReducer(sessionReducer, initialSessionState);
+  const [state, dispatch] = useReducer(sessionReducer, undefined, () => {
+    const identity = readSavedSession();
+    return identity ? { status: 'restoring' as const, identity } : { status: 'idle' as const };
+  });
+  const restoreInFlight = useRef(false);
   const entryInFlight = useRef(false);
   const playingInFlight = useRef(false);
   const agentStatusRequest = useRef(0);
@@ -69,6 +76,49 @@ export function useGameSession() {
     gameId: string;
     message: string;
   } | null>(null);
+
+  const restoring = state.status === 'restoring';
+  const restoreIdentity = restoring ? state.identity : null;
+  useEffect(() => {
+    if (!restoreIdentity || restoreInFlight.current) {
+      return;
+    }
+    restoreInFlight.current = true;
+    const identity = restoreIdentity;
+    void getGame(identity.gameId, identity.playerToken)
+      .then((response) => {
+        dispatch({
+          type: 'restored',
+          identity: { ...identity, playerId: response.playerId },
+          view: response.view,
+          isHost: response.isHost,
+        });
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof ApiClientError &&
+          ((error.status === 401 && error.code === 'invalid-credential') ||
+            (error.status === 404 && error.code === 'game-not-found'))
+        ) {
+          clearSavedSession(identity);
+          dispatch({
+            type: 'restore-invalid',
+            identity,
+            message:
+              'Your previous game is no longer available. You can start or join another game.',
+          });
+          return;
+        }
+        dispatch({
+          type: 'restore-failed',
+          identity,
+          message: errorMessage(error, 'Could not restore your game'),
+        });
+      })
+      .finally(() => {
+        restoreInFlight.current = false;
+      });
+  }, [restoreIdentity]);
 
   const gameId = state.status === 'lobby' || state.status === 'playing' ? state.gameId : undefined;
   const playerToken =
@@ -273,6 +323,7 @@ export function useGameSession() {
     dispatch({ type: 'session-load-started' });
     try {
       const response = await createGame(profileToken);
+      saveSession(response);
       dispatch({
         type: 'lobby-entered',
         identity: response,
@@ -297,9 +348,13 @@ export function useGameSession() {
       return false;
     }
     entryInFlight.current = true;
-    dispatch({ type: 'session-load-started' });
+    const replacingSession = state.status === 'lobby' || state.status === 'playing';
+    if (!replacingSession) {
+      dispatch({ type: 'session-load-started' });
+    }
     try {
       const response = await joinGame(id);
+      saveSession(response);
       dispatch({
         type: 'lobby-entered',
         identity: response,
@@ -308,10 +363,12 @@ export function useGameSession() {
       });
       return true;
     } catch (error) {
-      dispatch({
-        type: 'session-load-failed',
-        message: errorMessage(error, 'Could not join the game'),
-      });
+      if (!replacingSession) {
+        dispatch({
+          type: 'session-load-failed',
+          message: errorMessage(error, 'Could not join the game'),
+        });
+      }
       return false;
     } finally {
       entryInFlight.current = false;
@@ -326,11 +383,19 @@ export function useGameSession() {
     presentation.switchSession(null);
     dispatch({ type: 'session-load-started' });
     try {
-      const response = await createSoloGame();
-      presentation.switchSession(response.gameId);
+      const lobby = await createGame();
+      saveSession(lobby);
+      dispatch({
+        type: 'lobby-entered',
+        identity: lobby,
+        view: lobby.view,
+        profileBacked: false,
+      });
+      const response = await startGame(lobby.gameId, lobby.playerToken);
+      presentation.switchSession(lobby.gameId);
       dispatch({
         type: 'solo-game-started',
-        identity: response,
+        identity: lobby,
         view: response.view,
       });
     } catch (error) {
@@ -347,6 +412,7 @@ export function useGameSession() {
     if (state.status !== 'playing' || state.view.status !== 'game-over') {
       return;
     }
+    clearSavedSession(state);
     presentation.switchSession(null);
     dispatch({ type: 'return-home' });
   }
@@ -500,6 +566,13 @@ export function useGameSession() {
     startSolo,
     returnHome,
     clearEntryError,
+    retryRestore: () => dispatch({ type: 'restore-requested' }),
+    abandonRestore: () => {
+      if (state.status === 'restore-error') {
+        clearSavedSession(state.identity);
+        dispatch({ type: 'return-home' });
+      }
+    },
     startCoop,
     addAiTeammate,
     removeAiTeammate,
@@ -543,6 +616,7 @@ function toScreen(state: SessionState): SessionScreen {
   if (state.status === 'playing') {
     return {
       status: 'playing',
+      gameId: state.gameId,
       view: state.view,
       viewVersion: viewVersion(state.gameId, state.live),
       sync: visibleSync(state.live),
@@ -551,6 +625,12 @@ function toScreen(state: SessionState): SessionScreen {
       isHost: state.isHost,
       agentPause: state.agentPause,
     };
+  }
+  if (state.status === 'restoring') {
+    return { status: 'restoring' };
+  }
+  if (state.status === 'restore-error') {
+    return { status: 'restore-error', message: state.message };
   }
   return state;
 }

@@ -36,7 +36,7 @@ export function AgentControls({
   onRefresh: () => void;
   onUpdate: (settings: UpdateGameAgentSettingsRequest) => Promise<void>;
   onRetry: () => Promise<void>;
-  onOpenAiSettings: () => void;
+  onOpenAiSettings?: (() => void) | undefined;
 }) {
   const [budgetDraft, setBudgetDraft] = useState<number | null>(null);
   const [pending, setPending] = useState(false);
@@ -117,10 +117,17 @@ export function AgentControls({
         <Button disabled={pending} onClick={onRefresh}>
           Refresh status
         </Button>
-        <Button disabled={pending} onClick={onOpenAiSettings}>
-          AI Settings
-        </Button>
+        {onOpenAiSettings && (
+          <Button disabled={pending} onClick={onOpenAiSettings}>
+            AI Settings
+          </Button>
+        )}
       </div>
+      {!onOpenAiSettings && (
+        <p className="mt-2 text-muted-foreground">
+          The original host profile is unavailable in this tab. Game-level AI controls still work.
+        </p>
+      )}
       {canRetry && (
         <Button
           className="mt-3"

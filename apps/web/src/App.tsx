@@ -31,7 +31,11 @@ function App() {
   const settingsRequest = useRef(0);
   const [invitation, setInvitation] = useState<Invitation | null>(readInvitation);
   const invitedGame = useRef<string | null>(null);
+  const [invitationJoining, setInvitationJoining] = useState(false);
+  const [invitationError, setInvitationError] = useState<string | null>(null);
   const { screen } = session;
+  const currentGameId =
+    screen.status === 'lobby' || screen.status === 'playing' ? screen.gameId : null;
 
   const joinInvitation = useEffectEvent(async (gameId: string) => {
     if (await session.joinCoop(gameId)) {
@@ -40,12 +44,34 @@ function App() {
   });
 
   useEffect(() => {
-    if (invitation?.status !== 'valid' || invitedGame.current === invitation.gameId) {
+    if (invitation?.status !== 'valid') {
+      return;
+    }
+    if (currentGameId === invitation.gameId) {
+      leaveInvitation();
+      return;
+    }
+    if (screen.status !== 'idle' || invitedGame.current === invitation.gameId) {
       return;
     }
     invitedGame.current = invitation.gameId;
     void joinInvitation(invitation.gameId);
-  }, [invitation]);
+  }, [invitation, currentGameId, screen.status]);
+
+  async function joinDifferentGame(gameId: string) {
+    if (invitationJoining) {
+      return;
+    }
+    setInvitationJoining(true);
+    setInvitationError(null);
+    const joined = await session.joinCoop(gameId);
+    setInvitationJoining(false);
+    if (joined) {
+      leaveInvitation();
+    } else {
+      setInvitationError('Could not join the invited game. Your current game is still available.');
+    }
+  }
 
   function leaveInvitation() {
     const url = new URL(window.location.href);
@@ -88,6 +114,38 @@ function App() {
     );
   }
 
+  if (screen.status === 'restoring' || screen.status === 'restore-error') {
+    return (
+      <InvitationScreen
+        message="Restoring game..."
+        error={screen.status === 'restore-error' ? screen.message : null}
+        onRetry={screen.status === 'restore-error' ? session.retryRestore : undefined}
+        onBack={() => {
+          session.abandonRestore();
+          if (invitation) {
+            leaveInvitation();
+          }
+        }}
+      />
+    );
+  }
+
+  if (invitation?.status === 'invalid' && currentGameId) {
+    return <InvitationScreen error="Invalid invitation link." onBack={leaveInvitation} />;
+  }
+
+  if (invitation?.status === 'valid' && currentGameId && currentGameId !== invitation.gameId) {
+    return (
+      <InvitationScreen
+        error={invitationError}
+        message={invitationJoining ? 'Joining game...' : undefined}
+        onJoin={invitationJoining ? undefined : () => void joinDifferentGame(invitation.gameId)}
+        onResume={leaveInvitation}
+        onBack={leaveInvitation}
+      />
+    );
+  }
+
   if (screen.status === 'playing') {
     return (
       <PlayingScreen
@@ -105,7 +163,7 @@ function App() {
         onRefreshAgentStatus={session.refreshAiStatus}
         onUpdateAgentSettings={session.saveAiSettings}
         onRetryAgent={session.retryAi}
-        onOpenAiSettings={openSettings}
+        onOpenAiSettings={profile.profile ? openSettings : undefined}
       />
     );
   }
@@ -133,15 +191,15 @@ function App() {
   }
 
   if (invitation) {
-    let invitationError: string | null = null;
+    let error: string | null = null;
     if (invitation.status === 'invalid') {
-      invitationError = 'Invalid invitation link.';
+      error = 'Invalid invitation link.';
     } else if (screen.status === 'error') {
-      invitationError = screen.message;
+      error = screen.message;
     }
     return (
       <InvitationScreen
-        error={invitationError}
+        error={error}
         onBack={() => {
           session.clearEntryError();
           leaveInvitation();

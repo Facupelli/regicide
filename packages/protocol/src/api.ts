@@ -26,6 +26,8 @@ export type JoinGameResponse = v.InferOutput<typeof JoinGameResponseSchema>;
 
 export const GetGameResponseSchema = v.strictObject({
   gameId: IdentifierSchema,
+  playerId: IdentifierSchema,
+  isHost: v.boolean(),
   view: v.union([LobbyViewSchema, GameViewSchema]),
 });
 export type GetGameResponse = v.InferOutput<typeof GetGameResponseSchema>;

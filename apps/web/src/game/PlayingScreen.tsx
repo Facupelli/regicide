@@ -43,7 +43,7 @@ export function PlayingScreen({
   onRefreshAgentStatus: () => void;
   onUpdateAgentSettings: (settings: UpdateGameAgentSettingsRequest) => Promise<void>;
   onRetryAgent: () => Promise<void>;
-  onOpenAiSettings: () => void;
+  onOpenAiSettings?: (() => void) | undefined;
 }) {
   const { cancelPresentations } = useGamePresentation();
   useLayoutEffect(() => () => cancelPresentations(), [cancelPresentations]);

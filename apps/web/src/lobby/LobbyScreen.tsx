@@ -236,8 +236,8 @@ export function LobbyScreen({
               <h2 className="text-lg font-semibold">Add AI teammate</h2>
               {agentSetup === 'unavailable' && (
                 <p className="mt-2 text-sm text-muted-foreground">
-                  AI teammates aren’t available in this game. To play with AI teammates, set them up
-                  in AI Settings before creating a new co-op game.
+                  AI teammate setup is unavailable for this game in this tab. Existing AI teammates
+                  can still be managed with your player session.
                 </p>
               )}
               {agentSetup === 'configure' && (

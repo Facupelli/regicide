@@ -16,5 +16,11 @@ export function getGame(c: Context<{}, '/:gameId'>) {
         return c.json(apiError('invalid-credential', 'Valid player credential required'), 401);
     }
   }
-  return c.json({ gameId, view: result.view } satisfies GetGameResponse);
+  c.header('Cache-Control', 'no-store');
+  return c.json({
+    gameId,
+    playerId: result.playerId,
+    isHost: result.isHost,
+    view: result.view,
+  } satisfies GetGameResponse);
 }

@@ -16,9 +16,17 @@ jsonpath "$.view.players[0].id" == "{{hostPlayerId}}"
 jsonpath "$.view.players[0].playerToken" not exists
 
 GET {{base_url}}/games/{{gameId}}
+HTTP 401
+[Asserts]
+jsonpath "$.error.code" == "invalid-credential"
+
+GET {{base_url}}/games/{{gameId}}
+Authorization: Bearer {{hostPlayerToken}}
 HTTP 200
 [Asserts]
 jsonpath "$.gameId" == "{{gameId}}"
+jsonpath "$.playerId" == "{{hostPlayerId}}"
+jsonpath "$.isHost" == true
 jsonpath "$.view.status" == "lobby"
 jsonpath "$.view.players" count == 1
 jsonpath "$.playerToken" not exists
@@ -44,6 +52,15 @@ jsonpath "$.view.status" == "lobby"
 jsonpath "$.view.players" count == 2
 jsonpath "$.view.players[1].id" == "{{secondPlayerId}}"
 jsonpath "$.view.players[1].playerToken" not exists
+
+GET {{base_url}}/games/{{gameId}}
+Authorization: Bearer {{secondPlayerToken}}
+HTTP 200
+[Asserts]
+jsonpath "$.playerId" == "{{secondPlayerId}}"
+jsonpath "$.isHost" == false
+jsonpath "$.view.status" == "lobby"
+jsonpath "$.view.players" count == 2
 
 POST {{base_url}}/games/{{gameId}}/join
 HTTP 201
@@ -98,6 +115,8 @@ GET {{base_url}}/games/{{gameId}}
 Authorization: Bearer {{secondPlayerToken}}
 HTTP 200
 [Asserts]
+jsonpath "$.playerId" == "{{secondPlayerId}}"
+jsonpath "$.isHost" == false
 jsonpath "$.view.status" == "active"
 jsonpath "$.view.viewer.id" == "{{secondPlayerId}}"
 jsonpath "$.view.viewer.hand" count == 5
