@@ -1,4 +1,4 @@
-import type { GameEvent } from '@regicide/protocol';
+import type { GameEvent, GameView } from '@regicide/protocol';
 import { createContext, useContext } from 'react';
 import type { GamePresentationAnchorKey } from './game-presentation.types.ts';
 
@@ -8,6 +8,7 @@ export type GamePresentationContextValue = {
     events: readonly GameEvent[],
     localPlayerId: string,
     commitView: () => void,
+    consecutiveViews: { previous: GameView; incoming: GameView } | null,
   ) => void;
   switchSession: (sessionKey: string | null) => void;
 };

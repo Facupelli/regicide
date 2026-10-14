@@ -49,6 +49,12 @@ export function EnemyArea({
                   <span className="sr-only">Attack </span>
                   <SwordIcon className="size-4" />
                   <strong data-verify="enemy-attack">{battle.enemyAttack}</strong>
+                  {battle.shield > 0 && (
+                    <span className="whitespace-nowrap text-muted-foreground">
+                      <span className="sr-only">Effective attack </span>(
+                      {Math.max(0, battle.enemyAttack - battle.shield)})
+                    </span>
+                  )}
                 </span>
               </div>
               <div className={`${hasOpponents ? 'flex' : 'contents'} lg:flex lg:justify-start`}>

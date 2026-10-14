@@ -144,30 +144,42 @@ export function useGameSession() {
       }
       if (current.status === 'lobby') {
         presentation.switchSession(gameId);
-        presentation.presentUpdate([], current.playerId, () => {
-          dispatch({
-            type: 'lobby-game-started',
-            gameId,
-            playerToken,
-            view: message.view,
-            revision: message.revision,
-          });
-        });
+        presentation.presentUpdate(
+          [],
+          current.playerId,
+          () => {
+            dispatch({
+              type: 'lobby-game-started',
+              gameId,
+              playerToken,
+              view: message.view,
+              revision: message.revision,
+            });
+          },
+          null,
+        );
         return;
       }
       if (message.revision <= current.live.revision) {
         dispatch({ type: 'snapshot-observed', gameId, playerToken, revision: message.revision });
         return;
       }
-      presentation.presentUpdate(message.events, current.playerId, () => {
-        dispatch({
-          type: 'snapshot-received',
-          gameId,
-          playerToken,
-          revision: message.revision,
-          view: message.view,
-        });
-      });
+      presentation.presentUpdate(
+        message.events,
+        current.playerId,
+        () => {
+          dispatch({
+            type: 'snapshot-received',
+            gameId,
+            playerToken,
+            revision: message.revision,
+            view: message.view,
+          });
+        },
+        current.live.revision >= 0 && message.revision === current.live.revision + 1
+          ? { previous: current.view, incoming: message.view }
+          : null,
+      );
     },
   );
 

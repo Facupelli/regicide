@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useAnimate, useReducedMotion, type AnimationSequence } from 'motion/react';
 import { PlayingCard } from '../cards/PlayingCard.tsx';
+import { HeartsRecoveryVisual } from './HeartsRecoveryPresentation.tsx';
+import { appendHeartsSequence, heartsGeometry } from './hearts-recovery-sequence.ts';
 import {
   gamePresentationAnchor,
   isVisibleRect,
@@ -39,6 +41,10 @@ export function EnemyDefeatSequencePresentation({
   const ghostElements = useRef(new Map<string, HTMLElement>());
   const enemyElement = useRef<HTMLDivElement | null>(null);
   const enemyGhost = useRef<HTMLDivElement | null>(null);
+  const heartsElement = useRef<HTMLDivElement | null>(null);
+  const heartsGeometryForPlay = presentation.heartsRecovery
+    ? heartsGeometry(presentation.heartsRecovery, getAnchorRect, reduced ?? false)
+    : null;
   const visible = (key: GamePresentationAnchorKey, fallback: RectSnapshot | null) => {
     const current = getAnchorRect(key);
     if (isVisibleRect(current)) {
@@ -135,7 +141,17 @@ export function EnemyDefeatSequencePresentation({
       }
     });
 
-    const enemyStart = lastPlay + DEFEAT_RECOGNITION_HOLD_SECONDS;
+    const heartsEnd =
+      presentation.heartsRecovery && heartsGeometryForPlay
+        ? appendHeartsSequence(
+            sequence,
+            heartsElement.current,
+            heartsGeometryForPlay,
+            reduced ?? false,
+            lastPlay,
+          )
+        : lastPlay;
+    const enemyStart = heartsEnd + DEFEAT_RECOGNITION_HOLD_SECONDS;
     const enemyArrival =
       enemyStart + (reduced || !oldEnemy || !pile ? PLAY_FADE_SECONDS : ENEMY_MOVE_SECONDS);
     if (enemyElement.current) {
@@ -241,6 +257,15 @@ export function EnemyDefeatSequencePresentation({
 
   return (
     <div ref={scope} aria-hidden="true">
+      {presentation.heartsRecovery && heartsGeometryForPlay && (
+        <HeartsRecoveryVisual
+          presentation={presentation.heartsRecovery}
+          position={heartsGeometryForPlay.position}
+          elementRef={(element) => {
+            heartsElement.current = element;
+          }}
+        />
+      )}
       {enemyPosition && (
         <div
           ref={enemyElement}

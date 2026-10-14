@@ -47,6 +47,7 @@ export function DecisionArea({
         <InteractionControls
           interaction={view.interaction}
           viewerId={view.viewer.id}
+          currentPlayerId={view.currentPlayerId}
           selectedCardIds={selectedCardIds}
           playSelection={playSelection}
           selectedDamage={selectedDamage}
@@ -101,6 +102,7 @@ function damagePrompt(interaction: Extract<Interaction, { kind: 'damage-discard'
 function InteractionControls({
   interaction,
   viewerId,
+  currentPlayerId,
   selectedCardIds,
   playSelection,
   selectedDamage,
@@ -109,6 +111,7 @@ function InteractionControls({
 }: {
   interaction: Interaction;
   viewerId: string;
+  currentPlayerId: string;
   selectedCardIds: string[];
   playSelection: PlaySelectionState;
   selectedDamage: number;
@@ -189,7 +192,12 @@ function InteractionControls({
         </div>
       );
     case 'waiting':
-      return <p data-verify="decision">Waiting for another player.</p>;
+      return (
+        <p data-verify="decision">
+          Waiting for Player{' '}
+          {currentPlayerId.length > 8 ? `${currentPlayerId.slice(0, 8)}...` : currentPlayerId}.
+        </p>
+      );
     case 'choose-next-player':
       return (
         <div className="flex flex-wrap items-center justify-between gap-3">

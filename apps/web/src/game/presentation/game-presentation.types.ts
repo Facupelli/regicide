@@ -34,6 +34,14 @@ export type PreparedCardsDiscardedForDamage = {
   fallbackDestination: RectSnapshot | null;
 };
 
+export type PreparedHeartsRecovery = {
+  type: 'heartsRecovery';
+  eventId: number;
+  recoveredCount: number;
+  fallbackDiscard: RectSnapshot | null;
+  fallbackTavern: RectSnapshot | null;
+};
+
 export type PreparedCardsPlayed = {
   type: 'cardsPlayed';
   eventId: number;
@@ -57,11 +65,13 @@ export type PreparedEnemyDefeatSequence = {
   fallbackBattleTarget: RectSnapshot | null;
   fallbackDiscard: RectSnapshot | null;
   fallbackTavern: RectSnapshot | null;
+  heartsRecovery: PreparedHeartsRecovery | null;
 };
 
 export type PreparedGamePresentation =
   | PreparedCardsDiscardedForDamage
   | PreparedCardsPlayed
+  | PreparedHeartsRecovery
   | PreparedEnemyDefeatSequence;
 
 export function snapshotRect(element: HTMLElement | undefined): RectSnapshot | null {

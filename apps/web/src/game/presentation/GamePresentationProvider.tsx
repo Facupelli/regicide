@@ -1,9 +1,10 @@
-import type { CardsPlayedEvent, GameEvent } from '@regicide/protocol';
+import type { CardsPlayedEvent, GameEvent, GameView } from '@regicide/protocol';
 import { memo, useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { CardsDiscardedForDamagePresentation } from './CardsDiscardedForDamagePresentation.tsx';
 import { CardsPlayedPresentation } from './CardsPlayedPresentation.tsx';
 import { EnemyDefeatSequencePresentation } from './EnemyDefeatSequencePresentation.tsx';
+import { HeartsRecoveryPresentation } from './HeartsRecoveryPresentation.tsx';
 import { GamePresentationContext } from './GamePresentationContext.ts';
 import {
   gamePresentationAnchor,
@@ -12,6 +13,7 @@ import {
   type GamePresentationAnchorKey,
   type PreparedCardsPlayed,
   type PreparedGamePresentation,
+  type PreparedHeartsRecovery,
   type RectSnapshot,
 } from './game-presentation.types.ts';
 
@@ -42,8 +44,29 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
   );
 
   const prepare = useCallback(
-    (events: readonly GameEvent[], localPlayerId: string): PreparedGamePresentation[] => {
+    (
+      events: readonly GameEvent[],
+      localPlayerId: string,
+      consecutiveViews: { previous: GameView; incoming: GameView } | null,
+    ): PreparedGamePresentation[] => {
       const prepared: PreparedGamePresentation[] = [];
+      // Attribute discard removals only to the single accepted play in this revision.
+      const plays = events.filter(
+        (event): event is CardsPlayedEvent => event.type === 'cardsPlayed',
+      );
+      const recoveredCount =
+        consecutiveViews &&
+        plays.length === 1 &&
+        plays[0]?.cards.some((card) => card.kind !== 'jester' && card.suit === 'hearts')
+          ? (() => {
+              const incomingIds = new Set(
+                consecutiveViews.incoming.discard.cards.map((card) => card.id),
+              );
+              return consecutiveViews.previous.discard.cards.filter(
+                (card) => !incomingIds.has(card.id),
+              ).length;
+            })()
+          : 0;
       const visible = (key: GamePresentationAnchorKey) => {
         const rect = getAnchorRect(key);
         return isVisibleRect(rect) ? rect : null;
@@ -110,9 +133,22 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
           }
           case 'cardsPlayed': {
             const play = played(event);
+            const heartsRecovery: PreparedHeartsRecovery | null =
+              recoveredCount > 0
+                ? {
+                    type: 'heartsRecovery',
+                    eventId: event.id,
+                    recoveredCount,
+                    fallbackDiscard: visible(gamePresentationAnchor.discard),
+                    fallbackTavern: visible(gamePresentationAnchor.tavern),
+                  }
+                : null;
             const next = events[index + 1];
             if (next?.type !== 'enemyDefeated' || next.playerId !== event.playerId) {
               prepared.push(play);
+              if (heartsRecovery) {
+                prepared.push(heartsRecovery);
+              }
               break;
             }
             index++;
@@ -138,6 +174,7 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
               fallbackBattleTarget: play.fallbackBattleTarget,
               fallbackDiscard: visible(gamePresentationAnchor.discard),
               fallbackTavern: visible(gamePresentationAnchor.tavern),
+              heartsRecovery,
             });
             break;
           }
@@ -173,8 +210,13 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
   }, []);
 
   const presentUpdate = useCallback(
-    (events: readonly GameEvent[], localPlayerId: string, commitView: () => void) => {
-      const prepared = prepare(events, localPlayerId);
+    (
+      events: readonly GameEvent[],
+      localPlayerId: string,
+      commitView: () => void,
+      consecutiveViews: { previous: GameView; incoming: GameView } | null,
+    ) => {
+      const prepared = prepare(events, localPlayerId, consecutiveViews);
       flushSync(commitView);
       enqueue(prepared);
     },
@@ -245,6 +287,14 @@ const GamePresentationOverlay = memo(function GamePresentationOverlay({
                     getAnchorRect(gamePresentationAnchor.discard) ??
                     presentation.fallbackDestination
                   }
+                  onComplete={complete}
+                />
+              );
+            case 'heartsRecovery':
+              return (
+                <HeartsRecoveryPresentation
+                  presentation={presentation}
+                  getAnchorRect={getAnchorRect}
                   onComplete={complete}
                 />
               );
