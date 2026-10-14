@@ -1,3 +1,5 @@
+import { serveStatic } from '@hono/node-server/serve-static';
+import { fileURLToPath } from 'node:url';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { requestId, type RequestIdVariables } from 'hono/request-id';
@@ -47,3 +49,38 @@ app.notFound((c) => c.json(apiError('route-not-found', 'Route not found'), 404))
 
 app.route('/games', gamesRoutes);
 app.route('/profiles', profilesRoutes);
+
+const webDist = fileURLToPath(new URL('../../web/dist/', import.meta.url));
+const staticFiles = serveStatic({ root: webDist });
+const index = serveStatic({ root: webDist, path: 'index.html' });
+
+function isApiPath(path: string): boolean {
+  return (
+    path === '/games' ||
+    path.startsWith('/games/') ||
+    path === '/profiles' ||
+    path.startsWith('/profiles/')
+  );
+}
+
+app.get('/*', (c, next) => {
+  if (isApiPath(c.req.path)) {
+    return next();
+  }
+  return staticFiles(c, next);
+});
+
+app.get('/*', (c, next) => {
+  const path = c.req.path;
+  if (
+    isApiPath(path) ||
+    path === '/assets' ||
+    path.startsWith('/assets/') ||
+    path.includes('.') ||
+    path.includes('%') ||
+    !c.req.header('Accept')?.includes('text/html')
+  ) {
+    return next();
+  }
+  return index(c, next);
+});

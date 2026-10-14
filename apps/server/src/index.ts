@@ -6,6 +6,17 @@ function isUpgradeServer(server: WebSocketServer): server is WebSocketServer & W
   return server.options.noServer === true;
 }
 
+const configuredPort = process.env.PORT;
+const port = configuredPort === undefined ? 3000 : Number(configuredPort);
+if (
+  (configuredPort !== undefined && !/^[0-9]+$/.test(configuredPort)) ||
+  !Number.isInteger(port) ||
+  port < 1 ||
+  port > 65535
+) {
+  throw new Error('PORT must be an integer between 1 and 65535');
+}
+
 const websocketServer = new WebSocketServer({ noServer: true });
 if (!isUpgradeServer(websocketServer)) {
   throw new Error('WebSocket upgrades must be handled by Hono');
@@ -14,7 +25,8 @@ if (!isUpgradeServer(websocketServer)) {
 serve(
   {
     fetch: app.fetch,
-    port: 3000,
+    port,
+    hostname: '0.0.0.0',
     websocket: { server: websocketServer },
   },
   (info) => {
