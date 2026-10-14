@@ -15,13 +15,12 @@ export function EntryScreen({
   error: string | null;
   onCreateCoop: () => void;
   onJoinCoop: (gameId: string) => void;
-  onStartSolo: (scenario?: string) => void;
+  onStartSolo: () => void;
   onOpenAiSettings: () => void;
   aiSummary: string | null;
   aiConfigured: boolean;
 }) {
   const [joinId, setJoinId] = useState('');
-  const [soloScenario, setSoloScenario] = useState('');
   const [joinError, setJoinError] = useState<string | null>(null);
 
   function join(event: FormEvent<HTMLFormElement>) {
@@ -40,29 +39,10 @@ export function EntryScreen({
       <div className="w-full max-w-md rounded-xl border border-border bg-panel p-4 shadow-xl sm:p-8">
         <h1 className="text-3xl font-bold">Regicide</h1>
         <div className="mt-8 flex flex-col gap-4">
-          {import.meta.env.DEV && (
-            <div className="flex flex-col gap-2">
-              <label htmlFor="solo-scenario" className="font-medium">
-                Scenario
-              </label>
-              <select
-                id="solo-scenario"
-                value={soloScenario}
-                onChange={(event) => setSoloScenario(event.target.value)}
-                disabled={loading}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-card-selected"
-              >
-                <option value="">Normal game</option>
-                <option value="enemy-defeat-exact-vs-overkill">
-                  Enemy defeat - exact vs overkill
-                </option>
-              </select>
-            </div>
-          )}
           <Button
             onClick={() => {
               setJoinError(null);
-              onStartSolo(import.meta.env.DEV && soloScenario ? soloScenario : undefined);
+              onStartSolo();
             }}
             disabled={loading}
             className="min-h-11 w-full"

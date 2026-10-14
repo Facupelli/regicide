@@ -46,7 +46,7 @@ export function LobbyScreen({
   profile: ProfileView | null;
   pending: boolean;
   error: string | null;
-  onStart: (scenario?: string) => void;
+  onStart: () => void;
   agentStatus: AgentStatus | null;
   agentStatusError: string | null;
   onRefreshAgentStatus: () => void;
@@ -55,7 +55,6 @@ export function LobbyScreen({
   onUpdateAgentSettings: (settings: UpdateGameAgentSettingsRequest) => Promise<void>;
   onOpenAiSettings: () => void;
 }) {
-  const [scenario, setScenario] = useState('');
   const [selectedModel, setSelectedModel] = useState<AgentModelId | null>(null);
   const [slotPending, setSlotPending] = useState(false);
   const [slotError, setSlotError] = useState<string | null>(null);
@@ -294,23 +293,6 @@ export function LobbyScreen({
         <div className="mt-6">
           {isHost ? (
             <div className="flex flex-col gap-3">
-              {import.meta.env.DEV && (
-                <label htmlFor="coop-scenario" className="flex flex-col gap-2 font-medium">
-                  Scenario
-                  <select
-                    id="coop-scenario"
-                    value={scenario}
-                    onChange={(event) => setScenario(event.target.value)}
-                    disabled={pending || slotPending}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-card-selected"
-                  >
-                    <option value="">Normal game</option>
-                    <option value="enemy-defeat-exact-vs-overkill">
-                      Enemy defeat - exact vs overkill
-                    </option>
-                  </select>
-                </label>
-              )}
               {aiPlayers.length > 0 && (
                 <p className="text-sm text-muted-foreground">
                   Starting can initiate billable requests using the host's OpenRouter key.
@@ -319,7 +301,7 @@ export function LobbyScreen({
               <Button
                 className="w-full"
                 disabled={pending || slotPending || budgetPending}
-                onClick={() => onStart(import.meta.env.DEV && scenario ? scenario : undefined)}
+                onClick={onStart}
               >
                 {pending ? 'Please wait...' : 'Start game'}
               </Button>

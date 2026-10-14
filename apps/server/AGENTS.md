@@ -36,7 +36,6 @@ Do not duplicate game-engine rules in the server.
 - The game engine must remain independent from Hono, sessions, persistence, sockets, and protocol presentation.
 - Protocol mapping belongs at the boundary between authoritative server/game state and external representations.
 - WebSocket connection lifecycle belongs to the transport/hub boundary, not to game rules.
-- Development scenarios must remain peripheral to normal game behavior.
 
 ## Source Structure
 

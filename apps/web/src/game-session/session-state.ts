@@ -7,8 +7,7 @@ export type LobbyStart =
   | { status: 'pending' }
   | { status: 'accepted' }
   | { status: 'error'; message: string };
-export type PlayingOperation = 'idle' | 'submitting' | 'resetting';
-export type DevScenario = { name: string; origin: 'solo' | 'co-op' };
+export type PlayingOperation = 'idle' | 'submitting';
 
 type LobbyState = {
   status: 'lobby';
@@ -24,7 +23,6 @@ type PlayingState = {
   actionError: string | null;
   isHost: boolean;
   agentPause: AgentPausedMessage | null;
-  devScenario?: DevScenario | undefined;
 } & Identity;
 
 export type SessionState =
@@ -41,19 +39,14 @@ type GlobalSessionEvent =
   | { type: 'session-load-started' }
   | { type: 'session-load-failed'; message: string }
   | { type: 'lobby-entered'; identity: Identity; view: LobbyView; profileBacked: boolean }
-  | { type: 'solo-game-started'; identity: Identity; view: GameView; devScenario?: DevScenario };
+  | { type: 'solo-game-started'; identity: Identity; view: GameView };
 
 type SessionScopedEvent =
   | ({ type: 'lobby-updated'; view: LobbyView } & SessionIdentity)
   | ({ type: 'start-requested' } & SessionIdentity)
-  | ({ type: 'start-accepted'; devScenario?: DevScenario } & SessionIdentity)
+  | ({ type: 'start-accepted' } & SessionIdentity)
   | ({ type: 'start-failed'; message: string } & SessionIdentity)
-  | ({
-      type: 'lobby-game-started';
-      view: GameView;
-      revision: number;
-      devScenario?: DevScenario;
-    } & SessionIdentity)
+  | ({ type: 'lobby-game-started'; view: GameView; revision: number } & SessionIdentity)
   | ({ type: 'snapshot-observed'; revision: number } & SessionIdentity)
   | ({ type: 'snapshot-received'; revision: number; view: GameView } & SessionIdentity)
   | ({ type: 'agent-paused'; message: AgentPausedMessage } & SessionIdentity)
@@ -102,7 +95,7 @@ export function sessionReducer(state: SessionState, event: SessionEvent): Sessio
         start: { status: 'ready' },
       };
     case 'solo-game-started':
-      return playing(event.identity, event.view, true, event.devScenario);
+      return playing(event.identity, event.view, true);
 
     // Lobby
     case 'lobby-updated':
@@ -110,12 +103,7 @@ export function sessionReducer(state: SessionState, event: SessionEvent): Sessio
     case 'start-requested':
       return state.status === 'lobby' ? { ...state, start: { status: 'pending' } } : state;
     case 'start-accepted':
-      if (state.status === 'lobby') {
-        return { ...state, start: { status: 'accepted' } };
-      }
-      return state.status === 'playing' && event.devScenario
-        ? { ...state, devScenario: event.devScenario }
-        : state;
+      return state.status === 'lobby' ? { ...state, start: { status: 'accepted' } } : state;
     case 'start-failed':
       return state.status === 'lobby'
         ? { ...state, start: { status: 'error', message: event.message } }
@@ -123,12 +111,7 @@ export function sessionReducer(state: SessionState, event: SessionEvent): Sessio
     case 'lobby-game-started':
       return state.status === 'lobby'
         ? {
-            ...playing(
-              state,
-              event.view,
-              state.view.hostPlayerId === state.playerId,
-              event.devScenario,
-            ),
+            ...playing(state, event.view, state.view.hostPlayerId === state.playerId),
             live: { revision: event.revision, sync: 'ready' },
           }
         : state;
@@ -201,12 +184,7 @@ export function sessionReducer(state: SessionState, event: SessionEvent): Sessio
   }
 }
 
-function playing(
-  identity: Identity,
-  view: GameView,
-  isHost: boolean,
-  devScenario?: DevScenario,
-): PlayingState {
+function playing(identity: Identity, view: GameView, isHost: boolean): PlayingState {
   // The server starts at revision 0. The first socket snapshot establishes the client revision.
   return {
     status: 'playing',
@@ -219,7 +197,6 @@ function playing(
     actionError: null,
     isHost,
     agentPause: null,
-    ...(devScenario !== undefined ? { devScenario } : {}),
   };
 }
 

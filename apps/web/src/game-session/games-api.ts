@@ -27,9 +27,9 @@ export function joinGame(gameId: string) {
   return request(`${gamePath(gameId)}/join`, { method: 'POST' }, JoinGameResponseSchema);
 }
 
-export function startGame(gameId: string, playerToken: string, scenario?: string) {
+export function startGame(gameId: string, playerToken: string) {
   return request(
-    `${gamePath(gameId)}/start${scenario === undefined ? '' : `?scenario=${encodeURIComponent(scenario)}`}`,
+    `${gamePath(gameId)}/start`,
     { method: 'POST', bearerToken: playerToken },
     StartGameResponseSchema,
   );
@@ -83,18 +83,10 @@ export function updateAgentSettings(
   });
 }
 
-export async function createSoloGame(scenario?: string) {
+export async function createSoloGame() {
   const lobby = await createGame();
-  const started = await startGame(lobby.gameId, lobby.playerToken, scenario);
+  const started = await startGame(lobby.gameId, lobby.playerToken);
   return { ...started, playerId: lobby.playerId, playerToken: lobby.playerToken };
-}
-
-export function resetScenario(gameId: string, playerToken: string) {
-  return request(
-    `${gamePath(gameId)}/reset-scenario`,
-    { method: 'POST', bearerToken: playerToken },
-    StartGameResponseSchema,
-  );
 }
 
 export function submitAction(gameId: string, playerToken: string, command: PlayerCommand) {

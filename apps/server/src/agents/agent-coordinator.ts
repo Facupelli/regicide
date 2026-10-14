@@ -35,14 +35,11 @@ function wake(gameId: string, outcome: string, details: Record<string, unknown> 
   });
 }
 
-// A stopped agent or a replaced scenario must not apply the old inference result.
+// A stopped agent must not apply the old inference result.
 // Keep the flight slot until that request settles; the next notification is coalesced.
-export function cancelAgentExecution(gameId: string, reason: 'stopped' | 'scenario-reset'): void {
+export function cancelAgentExecution(gameId: string): void {
   const runtime = getAgentRuntime(gameId);
   if (!runtime) {
-    return;
-  }
-  if (reason === 'scenario-reset' && !runtime.inFlight) {
     return;
   }
   if (runtime.inFlight) {
@@ -51,13 +48,8 @@ export function cancelAgentExecution(gameId: string, reason: 'stopped' | 'scenar
     logAgentDiagnostic({
       event: 'agent.decision.cancelled',
       gameId,
-      ...(revision !== undefined
-        ? { revision: reason === 'scenario-reset' ? revision - 1 : revision }
-        : {}),
-      ...(revision !== undefined && reason === 'scenario-reset'
-        ? { currentRevision: revision }
-        : {}),
-      reason,
+      ...(revision !== undefined ? { revision } : {}),
+      reason: 'stopped',
     });
   }
   invalidateAgentExecution(runtime);

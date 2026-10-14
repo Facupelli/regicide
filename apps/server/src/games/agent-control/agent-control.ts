@@ -116,7 +116,7 @@ export function updateAgentSettings(
   }
   if (settings.enabled !== undefined) {
     if (runtime.enabled && !settings.enabled) {
-      cancelAgentExecution(gameId, 'stopped');
+      cancelAgentExecution(gameId);
     }
     runtime.enabled = settings.enabled;
   }

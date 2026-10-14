@@ -12,8 +12,6 @@ type DecisionProps = Pick<
   | 'actionError'
   | 'onAction'
   | 'onNewGame'
-  | 'onResetScenario'
-  | 'resetPending'
 > & { playSelection: PlaySelectionState; selectedDamage: number; hasOpponents: boolean };
 
 export function DecisionArea({
@@ -27,8 +25,6 @@ export function DecisionArea({
   actionError,
   onAction,
   onNewGame,
-  onResetScenario,
-  resetPending,
 }: DecisionProps) {
   return (
     <section
@@ -57,16 +53,6 @@ export function DecisionArea({
           actionPending={actionPending || actionsDisabled}
           onAction={onAction}
         />
-      )}
-      {onResetScenario && (
-        <div className="mt-2 flex justify-end border-t border-border pt-2">
-          <Button
-            disabled={resetPending || actionPending || actionsDisabled}
-            onClick={onResetScenario}
-          >
-            Reset Scenario
-          </Button>
-        </div>
       )}
       {actionError && (
         <p role="alert" className="text-danger">

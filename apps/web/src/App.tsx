@@ -58,7 +58,7 @@ function App() {
         operation={screen.operation}
         actionError={screen.actionError}
         onAction={session.submit}
-        onNewGame={screen.view.players.length === 1 ? session.startNewSoloGame : session.returnHome}
+        onNewGame={screen.view.players.length === 1 ? session.startSolo : session.returnHome}
         isHost={screen.isHost}
         agentStatus={session.agentStatus}
         agentPause={screen.agentPause}
@@ -67,7 +67,6 @@ function App() {
         onUpdateAgentSettings={session.saveAiSettings}
         onRetryAgent={session.retryAi}
         onOpenAiSettings={openSettings}
-        onResetScenario={screen.canResetScenario ? session.resetCurrentScenario : undefined}
       />
     );
   }

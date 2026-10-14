@@ -19,7 +19,6 @@ export function PlayingScreen({
   actionError,
   onAction,
   onNewGame,
-  onResetScenario,
   isHost,
   agentStatus,
   agentPause,
@@ -32,11 +31,10 @@ export function PlayingScreen({
   view: GameView;
   viewVersion: string;
   sync: 'connecting' | 'ready' | 'awaiting-update';
-  operation: 'idle' | 'submitting' | 'resetting';
+  operation: 'idle' | 'submitting';
   actionError: string | null;
   onAction: (command: PlayerCommand) => Promise<'accepted' | 'not-accepted'>;
   onNewGame: () => void;
-  onResetScenario?: (() => void) | undefined;
   isHost: boolean;
   agentStatus: AgentStatus | null;
   agentPause: AgentPausedMessage | null;
@@ -48,8 +46,7 @@ export function PlayingScreen({
 }) {
   const [selection, setSelection] = useState<Selection>({ viewVersion: '', ids: [] });
   const actionPending = operation === 'submitting';
-  const resetPending = operation === 'resetting';
-  const actionsDisabled = sync !== 'ready' || resetPending;
+  const actionsDisabled = sync !== 'ready';
   const selectedCardIds = selection.viewVersion === viewVersion ? selection.ids : [];
 
   function toggleCard(cardId: string) {
@@ -124,8 +121,6 @@ export function PlayingScreen({
         onToggleCard={toggleCard}
         onAction={submit}
         onNewGame={onNewGame}
-        onResetScenario={onResetScenario}
-        resetPending={resetPending}
         actionPending={actionPending}
         actionsDisabled={actionsDisabled}
         actionError={actionError}

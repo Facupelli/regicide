@@ -27,8 +27,6 @@ export function GameTable(props: TableProps) {
         actionError={props.actionError}
         onAction={props.onAction}
         onNewGame={props.onNewGame}
-        onResetScenario={props.onResetScenario}
-        resetPending={props.resetPending}
         hasOpponents={hasOpponents}
         playSelection={evaluatePlaySelection(view.viewer.hand, selectedCardIds)}
         selectedDamage={selectedDamageValue(view.viewer.hand, selectedCardIds)}
