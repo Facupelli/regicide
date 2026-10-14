@@ -289,9 +289,12 @@ export function useGameSession() {
     }
   }
 
-  async function joinCoop(id: string) {
+  async function joinCoop(id: string): Promise<boolean> {
+    if ((state.status === 'lobby' || state.status === 'playing') && state.gameId === id) {
+      return true;
+    }
     if (entryInFlight.current || playingInFlight.current) {
-      return;
+      return false;
     }
     entryInFlight.current = true;
     dispatch({ type: 'session-load-started' });
@@ -303,11 +306,13 @@ export function useGameSession() {
         view: response.view,
         profileBacked: false,
       });
+      return true;
     } catch (error) {
       dispatch({
         type: 'session-load-failed',
         message: errorMessage(error, 'Could not join the game'),
       });
+      return false;
     } finally {
       entryInFlight.current = false;
     }
@@ -344,6 +349,12 @@ export function useGameSession() {
     }
     presentation.switchSession(null);
     dispatch({ type: 'return-home' });
+  }
+
+  function clearEntryError() {
+    if (state.status === 'error') {
+      dispatch({ type: 'return-home' });
+    }
   }
 
   async function addAiTeammate(model: AgentModelId) {
@@ -488,6 +499,7 @@ export function useGameSession() {
     joinCoop,
     startSolo,
     returnHome,
+    clearEntryError,
     startCoop,
     addAiTeammate,
     removeAiTeammate,

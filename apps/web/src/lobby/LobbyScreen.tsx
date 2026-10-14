@@ -62,6 +62,13 @@ export function LobbyScreen({
   const [budgetPending, setBudgetPending] = useState(false);
   const [budgetMessage, setBudgetMessage] = useState<string | null>(null);
   const [budgetError, setBudgetError] = useState<string | null>(null);
+  const [linkFeedback, setLinkFeedback] = useState<{
+    message: string;
+    error: boolean;
+    showUrl?: boolean;
+  } | null>(null);
+  const invitationLink = new URL(`/?join=${encodeURIComponent(gameId)}`, window.location.origin)
+    .href;
   const isHost = view.hostPlayerId === playerId;
   const aiPlayers = view.players.filter((player) => player.controller === 'agent');
   const enabled = agentModels.filter(({ id }) => profile?.enabledModels.includes(id));
@@ -75,6 +82,35 @@ export function LobbyScreen({
     agentSetup = 'configure';
   } else if (view.players.length >= 4) {
     agentSetup = 'full';
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(invitationLink);
+      setLinkFeedback({ message: 'Link copied.', error: false });
+    } catch {
+      setLinkFeedback({
+        message: 'Could not copy link. Select the link below to copy it manually.',
+        error: true,
+        showUrl: true,
+      });
+    }
+  }
+
+  async function shareLink() {
+    if (!navigator.share) {
+      await copyLink();
+      return;
+    }
+    try {
+      await navigator.share({ title: 'Join my Regicide game', url: invitationLink });
+      setLinkFeedback({ message: 'Link shared.', error: false });
+    } catch (cause) {
+      if (cause instanceof DOMException && cause.name === 'AbortError') {
+        return;
+      }
+      setLinkFeedback({ message: 'Could not share link. Try copying it instead.', error: true });
+    }
   }
 
   async function updateSlot(action: () => Promise<void>) {
@@ -129,15 +165,37 @@ export function LobbyScreen({
           Co-op game
         </p>
         <h1 className="mt-2 text-3xl font-bold">Game lobby</h1>
-        <p className="mt-6 text-sm text-muted-foreground">
-          Share this game ID with the other players:
-        </p>
-        <p
-          className="mt-2 break-all rounded-lg border border-border bg-background p-3 font-mono text-sm"
-          aria-label="Game ID"
-        >
-          {gameId}
-        </p>
+        {isHost && (
+          <section className="mt-6" aria-label="Invitation link">
+            <p className="text-sm text-muted-foreground">Invite other players to this game:</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button onClick={() => void copyLink()}>Copy invite link</Button>
+              {typeof navigator.share === 'function' && (
+                <Button onClick={() => void shareLink()}>Share</Button>
+              )}
+            </div>
+            {linkFeedback && (
+              <>
+                <p
+                  role={linkFeedback.error ? 'alert' : 'status'}
+                  className={`mt-2 text-sm ${linkFeedback.error ? 'text-danger' : 'text-muted-foreground'}`}
+                >
+                  {linkFeedback.message}
+                </p>
+                {linkFeedback.showUrl && (
+                  <input
+                    aria-label="Invitation URL"
+                    type="text"
+                    readOnly
+                    value={invitationLink}
+                    onFocus={(event) => event.currentTarget.select()}
+                    className="mt-2 w-full min-w-0 rounded-lg border border-border bg-background p-3 font-mono text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-card-selected"
+                  />
+                )}
+              </>
+            )}
+          </section>
+        )}
         <h2 className="mt-6 text-lg font-semibold">Players ({view.players.length}/4)</h2>
         <ul className="mt-3 space-y-2">
           {view.players.map((player) => (
