@@ -1,11 +1,12 @@
 import type { AnimationSequence } from 'motion/react';
+import { appendArrival } from './animation-milestone.ts';
 import {
   gamePresentationAnchor,
   isVisibleRect,
   type GamePresentationAnchorKey,
   type PreparedDiamondCardsDrawn,
   type RectSnapshot,
-} from './game-presentation.types.ts';
+} from '../game-presentation.types.ts';
 
 type GetAnchorRect = (key: GamePresentationAnchorKey) => RectSnapshot | null;
 
@@ -71,6 +72,7 @@ export function appendDiamondSequence(
   flights: readonly Flight[],
   reduced: boolean,
   start: number,
+  onArrival?: (index: number) => void,
 ): number {
   const travelSeconds =
     flights.length >= LARGE_DRAW_THRESHOLD ? LARGE_DRAW_TRAVEL_SECONDS : TRAVEL_SECONDS;
@@ -81,6 +83,9 @@ export function appendDiamondSequence(
   flights.forEach(({ source, destination, position }, index) => {
     const element = elements.get(index);
     if (!element || !position) {
+      if (onArrival) {
+        appendArrival(sequence, cursor, () => onArrival(index));
+      }
       return;
     }
     if (reduced || !source || !destination) {
@@ -113,6 +118,9 @@ export function appendDiamondSequence(
         { at: arrival, duration: ARRIVAL_SECONDS },
       ]);
       cursor = arrival + ARRIVAL_SECONDS;
+    }
+    if (onArrival) {
+      appendArrival(sequence, cursor, () => onArrival(index));
     }
     if (!reduced && index < lastVisibleIndex) {
       cursor += BETWEEN_CARDS_SECONDS;

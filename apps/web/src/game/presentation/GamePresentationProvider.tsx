@@ -1,12 +1,13 @@
 import type { CardsPlayedEvent, GameEvent, GameView } from '@regicide/protocol';
-import { memo, useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal, flushSync } from 'react-dom';
-import { CardsDiscardedForDamagePresentation } from './CardsDiscardedForDamagePresentation.tsx';
-import { CardsPlayedPresentation } from './CardsPlayedPresentation.tsx';
-import { DiamondCardsDrawnPresentation } from './DiamondCardsDrawnPresentation.tsx';
-import { EnemyDefeatSequencePresentation } from './EnemyDefeatSequencePresentation.tsx';
-import { HeartsRecoveryPresentation } from './HeartsRecoveryPresentation.tsx';
+import { CardsDiscardedForDamagePresentation } from './animations/CardsDiscardedForDamagePresentation.tsx';
+import { CardsPlayedPresentation } from './animations/CardsPlayedPresentation.tsx';
+import { DiamondCardsDrawnPresentation } from './animations/DiamondCardsDrawnPresentation.tsx';
+import { EnemyDefeatSequencePresentation } from './animations/EnemyDefeatSequencePresentation.tsx';
+import { HeartsRecoveryPresentation } from './animations/HeartsRecoveryPresentation.tsx';
 import { GamePresentationContext } from './GamePresentationContext.ts';
+import { preparePileEntries, type PileCounts, type PileQueueEntry } from './pile-display.ts';
 import {
   gamePresentationAnchor,
   isVisibleRect,
@@ -20,15 +21,20 @@ import {
 } from './game-presentation.types.ts';
 
 type QueueState = {
-  active: PreparedGamePresentation | null;
-  pending: PreparedGamePresentation[];
+  active: PileQueueEntry | null;
+  pending: PileQueueEntry[];
+  displayed: PileCounts | null;
+  nextMilestone: number;
 };
+
+const emptyQueue: QueueState = { active: null, pending: [], displayed: null, nextMilestone: 0 };
+const MAX_PENDING_PRESENTATIONS = 3;
 
 export function GamePresentationProvider({ children }: { children: ReactNode }) {
   const anchors = useRef(new Map<GamePresentationAnchorKey, HTMLElement>());
   // Scope only the animation queue, not game or connection state.
   const sessionKey = useRef<string | null>(null);
-  const [queue, setQueue] = useState<QueueState>({ active: null, pending: [] });
+  const [queue, setQueue] = useState<QueueState>(emptyQueue);
 
   const registerAnchor = useCallback(
     (key: GamePresentationAnchorKey, element: HTMLElement | null) => {
@@ -221,54 +227,121 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
     [getAnchorRect],
   );
 
-  const enqueue = useCallback((presentations: readonly PreparedGamePresentation[]) => {
-    if (!presentations.length) {
-      return;
-    }
-    setQueue((current) => {
-      if (current.active) {
-        return { active: current.active, pending: [...current.pending, ...presentations] };
+  const cancelPresentations = useCallback(() => setQueue(emptyQueue), []);
+  useEffect(() => {
+    const clearWhenHidden = () => {
+      if (document.visibilityState === 'hidden') {
+        cancelPresentations();
       }
-      const [active, ...pending] = [...current.pending, ...presentations];
-      return { active: active ?? null, pending };
-    });
-  }, []);
+    };
+    document.addEventListener('visibilitychange', clearWhenHidden);
+    return () => document.removeEventListener('visibilitychange', clearWhenHidden);
+  }, [cancelPresentations]);
 
   const switchSession = useCallback((key: string | null) => {
     if (sessionKey.current === key) {
       return;
     }
     sessionKey.current = key;
-    setQueue({ active: null, pending: [] });
+    setQueue(emptyQueue);
   }, []);
 
   const presentUpdate = useCallback(
     (
+      gameId: string,
+      revision: number,
       events: readonly GameEvent[],
       localPlayerId: string,
       commitView: () => void,
       consecutiveViews: { previous: GameView; incoming: GameView } | null,
     ) => {
       const prepared = prepare(events, localPlayerId, consecutiveViews);
-      flushSync(commitView);
-      enqueue(prepared);
+      const entries =
+        consecutiveViews && sessionKey.current === gameId && document.visibilityState === 'visible'
+          ? preparePileEntries(
+              gameId,
+              revision,
+              consecutiveViews.previous,
+              consecutiveViews.incoming,
+              events,
+              prepared,
+            )
+          : null;
+      flushSync(() => {
+        setQueue((current) => {
+          if (!entries?.length) {
+            return emptyQueue;
+          }
+          const pending = [...current.pending, ...entries];
+          if (pending.length > MAX_PENDING_PRESENTATIONS) {
+            return emptyQueue;
+          }
+          if (current.active) {
+            return { ...current, pending };
+          }
+          const [active, ...rest] = pending;
+          return {
+            active: active ?? null,
+            pending: rest,
+            displayed: active?.baseline ?? null,
+            nextMilestone: 0,
+          };
+        });
+        commitView();
+      });
     },
-    [prepare, enqueue],
+    [prepare],
   );
 
-  const onComplete = useCallback((completed: PreparedGamePresentation) => {
+  const onMilestone = useCallback((entry: PileQueueEntry, key: string) => {
+    if (sessionKey.current !== entry.gameId) {
+      return;
+    }
+    setQueue((current) => {
+      if (current.active !== entry) {
+        return current;
+      }
+      const milestone = entry.milestones[current.nextMilestone];
+      if (milestone?.key !== key) {
+        return entry.milestones.slice(current.nextMilestone + 1).some((later) => later.key === key)
+          ? emptyQueue
+          : current;
+      }
+      return { ...current, displayed: milestone.counts, nextMilestone: current.nextMilestone + 1 };
+    });
+  }, []);
+
+  const onComplete = useCallback((completed: PileQueueEntry) => {
+    if (sessionKey.current !== completed.gameId) {
+      return;
+    }
     setQueue((current) => {
       if (current.active !== completed) {
         return current;
       }
       const [active, ...pending] = current.pending;
-      return { active: active ?? null, pending };
+      return active
+        ? { active, pending, displayed: active.baseline, nextMilestone: 0 }
+        : emptyQueue;
     });
   }, []);
 
+  const onCancelled = useCallback((entry: PileQueueEntry) => {
+    if (sessionKey.current !== entry.gameId) {
+      return;
+    }
+    setQueue((current) => (current.active === entry ? emptyQueue : current));
+  }, []);
+
   const value = useMemo(
-    () => ({ registerAnchor, presentUpdate, switchSession }),
-    [registerAnchor, presentUpdate, switchSession],
+    () => ({
+      registerAnchor,
+      displayedPiles: queue.displayed,
+      presentUpdate,
+      switchSession,
+      cancelPresentations,
+    }),
+    [registerAnchor, queue.displayed, presentUpdate, switchSession, cancelPresentations],
   );
 
   return (
@@ -277,10 +350,12 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
       {queue.active &&
         createPortal(
           <GamePresentationOverlay
-            key={queue.active.eventId}
-            presentation={queue.active}
+            key={`${queue.active.gameId}:${queue.active.revision}:${queue.active.presentation.eventId}:${queue.active.presentation.type}`}
+            entry={queue.active}
             getAnchorRect={getAnchorRect}
+            onMilestone={onMilestone}
             onComplete={onComplete}
+            onCancelled={onCancelled}
           />,
           document.body,
         )}
@@ -291,21 +366,28 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
 type GetAnchorRect = (key: GamePresentationAnchorKey) => RectSnapshot | null;
 
 const GamePresentationOverlay = memo(function GamePresentationOverlay({
-  presentation,
+  entry,
   getAnchorRect,
+  onMilestone,
   onComplete,
+  onCancelled,
 }: {
-  presentation: PreparedGamePresentation;
+  entry: PileQueueEntry;
   getAnchorRect: GetAnchorRect;
-  onComplete: (presentation: PreparedGamePresentation) => void;
+  onMilestone: (entry: PileQueueEntry, key: string) => void;
+  onComplete: (entry: PileQueueEntry) => void;
+  onCancelled: (entry: PileQueueEntry) => void;
 }) {
+  const presentation = entry.presentation;
   const [mounted, setMounted] = useState(false);
   const measure = useCallback((element: HTMLDivElement | null) => {
     if (element) {
       setMounted(true);
     }
   }, []);
-  const complete = () => onComplete(presentation);
+  const complete = () => onComplete(entry);
+  const cancel = () => onCancelled(entry);
+  const arrived = (key: string) => onMilestone(entry, key);
 
   return (
     <div ref={measure} className="pointer-events-none fixed inset-0 z-100 overflow-visible">
@@ -320,7 +402,9 @@ const GamePresentationOverlay = memo(function GamePresentationOverlay({
                     getAnchorRect(gamePresentationAnchor.discard) ??
                     presentation.fallbackDestination
                   }
+                  onArrival={arrived}
                   onComplete={complete}
+                  onCancelled={cancel}
                 />
               );
             case 'diamondCardsDrawn':
@@ -328,7 +412,9 @@ const GamePresentationOverlay = memo(function GamePresentationOverlay({
                 <DiamondCardsDrawnPresentation
                   presentation={presentation}
                   getAnchorRect={getAnchorRect}
+                  onArrival={arrived}
                   onComplete={complete}
+                  onCancelled={cancel}
                 />
               );
             case 'heartsRecovery':
@@ -336,7 +422,9 @@ const GamePresentationOverlay = memo(function GamePresentationOverlay({
                 <HeartsRecoveryPresentation
                   presentation={presentation}
                   getAnchorRect={getAnchorRect}
+                  onArrival={arrived}
                   onComplete={complete}
+                  onCancelled={cancel}
                 />
               );
             case 'cardsPlayed':
@@ -345,6 +433,7 @@ const GamePresentationOverlay = memo(function GamePresentationOverlay({
                   presentation={presentation}
                   getAnchorRect={getAnchorRect}
                   onComplete={complete}
+                  onCancelled={cancel}
                 />
               );
             case 'enemyDefeatSequence':
@@ -352,7 +441,9 @@ const GamePresentationOverlay = memo(function GamePresentationOverlay({
                 <EnemyDefeatSequencePresentation
                   presentation={presentation}
                   getAnchorRect={getAnchorRect}
+                  onArrival={arrived}
                   onComplete={complete}
+                  onCancelled={cancel}
                 />
               );
           }

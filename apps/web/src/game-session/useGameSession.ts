@@ -145,6 +145,8 @@ export function useGameSession() {
       if (current.status === 'lobby') {
         presentation.switchSession(gameId);
         presentation.presentUpdate(
+          gameId,
+          message.revision,
           [],
           current.playerId,
           () => {
@@ -164,7 +166,10 @@ export function useGameSession() {
         dispatch({ type: 'snapshot-observed', gameId, playerToken, revision: message.revision });
         return;
       }
+
       presentation.presentUpdate(
+        gameId,
+        message.revision,
         message.events,
         current.playerId,
         () => {
@@ -176,6 +181,7 @@ export function useGameSession() {
             view: message.view,
           });
         },
+
         current.live.revision >= 0 && message.revision === current.live.revision + 1
           ? { previous: current.view, incoming: message.view }
           : null,
@@ -226,7 +232,15 @@ export function useGameSession() {
   );
 
   const onDisconnected = useEffectEvent((gameId: string, playerToken: string) => {
+    if (
+      (state.status !== 'playing' && state.status !== 'lobby') ||
+      state.gameId !== gameId ||
+      state.playerToken !== playerToken
+    ) {
+      return;
+    }
     agentStatusRequest.current += 1;
+    presentation.cancelPresentations();
     dispatch({ type: 'disconnected', gameId, playerToken });
   });
 

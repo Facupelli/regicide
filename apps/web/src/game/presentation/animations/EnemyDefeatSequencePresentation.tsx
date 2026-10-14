@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useAnimate, useReducedMotion, type AnimationSequence } from 'motion/react';
-import { PlayingCard } from '../cards/PlayingCard.tsx';
+import { PlayingCard } from '../../cards/PlayingCard.tsx';
 import { HeartsRecoveryVisual } from './HeartsRecoveryPresentation.tsx';
 import { DiamondCardsDrawnVisual } from './DiamondCardsDrawnPresentation.tsx';
-import { appendDiamondSequence, diamondFlights } from './diamonds-draw-sequence.ts';
-import { appendHeartsSequence, heartsGeometry } from './hearts-recovery-sequence.ts';
+import { appendDiamondSequence, diamondFlights } from '../timelines/diamonds-draw-sequence.ts';
+import { appendArrival } from '../timelines/animation-milestone.ts';
+import { appendHeartsSequence, heartsGeometry } from '../timelines/hearts-recovery-sequence.ts';
 import {
   gamePresentationAnchor,
   isVisibleRect,
   type GamePresentationAnchorKey,
   type PreparedEnemyDefeatSequence,
   type RectSnapshot,
-} from './game-presentation.types.ts';
+} from '../game-presentation.types.ts';
 
 const PLAY_STAGGER_SECONDS = 0.12;
 const PLAY_MOVE_SECONDS = 0.4;
@@ -32,10 +33,14 @@ export function EnemyDefeatSequencePresentation({
   presentation,
   getAnchorRect,
   onComplete,
+  onCancelled,
+  onArrival,
 }: {
   presentation: PreparedEnemyDefeatSequence;
   getAnchorRect: (key: GamePresentationAnchorKey) => RectSnapshot | null;
   onComplete: () => void;
+  onCancelled: () => void;
+  onArrival: (key: string) => void;
 }) {
   const [scope, animate] = useAnimate<HTMLDivElement>();
   const reduced = useReducedMotion();
@@ -155,6 +160,7 @@ export function EnemyDefeatSequencePresentation({
             heartsGeometryForPlay,
             reduced ?? false,
             lastPlay,
+            () => onArrival('hearts'),
           )
         : lastPlay;
     const diamondsEnd = diamondFlightsForPlay
@@ -164,6 +170,7 @@ export function EnemyDefeatSequencePresentation({
           diamondFlightsForPlay,
           reduced ?? false,
           heartsEnd,
+          (index) => onArrival(`deal:${index}`),
         )
       : heartsEnd;
     const enemyStart = diamondsEnd + DEFEAT_RECOGNITION_HOLD_SECONDS;
@@ -192,6 +199,11 @@ export function EnemyDefeatSequencePresentation({
       at(enemyGhost.current, [1, 0], reveal + PLAY_FADE_SECONDS, PLAY_FADE_SECONDS);
     }
 
+    appendArrival(
+      sequence,
+      pile && (reduced || !oldEnemy) ? enemyArrival + PLAY_FADE_SECONDS : enemyArrival,
+      () => onArrival('enemy'),
+    );
     const cleanupStart =
       enemyArrival + (pile && (reduced || !oldEnemy) ? 2 : 1) * PLAY_FADE_SECONDS;
     let lastCleanup = cleanupStart;
@@ -213,11 +225,17 @@ export function EnemyDefeatSequencePresentation({
             arrival + CLEANUP_HOLD_SECONDS,
             CLEANUP_FADE_SECONDS,
           );
+          appendArrival(sequence, arrival + CLEANUP_FADE_SECONDS, () =>
+            onArrival(`cleanup:${index}`),
+          );
           lastCleanup = Math.max(
             lastCleanup,
             arrival + CLEANUP_HOLD_SECONDS + CLEANUP_FADE_SECONDS,
           );
         } else {
+          appendArrival(sequence, start + CLEANUP_FADE_SECONDS, () =>
+            onArrival(`cleanup:${index}`),
+          );
           lastCleanup = Math.max(lastCleanup, start + CLEANUP_FADE_SECONDS);
         }
       } else if (element && source && discard) {
@@ -232,10 +250,14 @@ export function EnemyDefeatSequencePresentation({
           },
           { at: start, duration: CLEANUP_MOVE_SECONDS, ease: 'easeInOut' },
         ]);
+        appendArrival(sequence, start + CLEANUP_MOVE_SECONDS, () => onArrival(`cleanup:${index}`));
         lastCleanup = Math.max(lastCleanup, start + CLEANUP_MOVE_SECONDS);
       } else if (element && source) {
         at(element, [0, 1], start, CLEANUP_FADE_SECONDS);
+        appendArrival(sequence, start + CLEANUP_FADE_SECONDS, () => onArrival(`cleanup:${index}`));
         lastCleanup = Math.max(lastCleanup, start + CLEANUP_FADE_SECONDS);
+      } else {
+        appendArrival(sequence, start, () => onArrival(`cleanup:${index}`));
       }
     });
     if (!reduced) {
@@ -260,7 +282,11 @@ export function EnemyDefeatSequencePresentation({
           onComplete();
         }
       },
-      () => {},
+      () => {
+        if (mounted) {
+          onCancelled();
+        }
+      },
     );
     return () => {
       mounted = false;

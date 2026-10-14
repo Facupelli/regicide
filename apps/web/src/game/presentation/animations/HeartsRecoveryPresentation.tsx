@@ -1,12 +1,12 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { useAnimate, useReducedMotion, type AnimationSequence } from 'motion/react';
-import { PlayingCard } from '../cards/PlayingCard.tsx';
-import type { PreparedHeartsRecovery, RectSnapshot } from './game-presentation.types.ts';
+import { PlayingCard } from '../../cards/PlayingCard.tsx';
+import type { PreparedHeartsRecovery, RectSnapshot } from '../game-presentation.types.ts';
 import {
   appendHeartsSequence,
   heartsGeometry,
   type GetAnchorRect,
-} from './hearts-recovery-sequence.ts';
+} from '../timelines/hearts-recovery-sequence.ts';
 
 export function HeartsRecoveryVisual({
   presentation,
@@ -56,10 +56,14 @@ export function HeartsRecoveryPresentation({
   presentation,
   getAnchorRect,
   onComplete,
+  onCancelled,
+  onArrival,
 }: {
   presentation: PreparedHeartsRecovery;
   getAnchorRect: GetAnchorRect;
   onComplete: () => void;
+  onCancelled: () => void;
+  onArrival: (key: string) => void;
 }) {
   const [scope, animate] = useAnimate<HTMLDivElement>();
   const reduced = useReducedMotion() ?? false;
@@ -68,7 +72,9 @@ export function HeartsRecoveryPresentation({
 
   useEffect(() => {
     const sequence: AnimationSequence = [];
-    appendHeartsSequence(sequence, element.current, geometry, reduced, 0);
+    appendHeartsSequence(sequence, element.current, geometry, reduced, 0, () =>
+      onArrival('hearts'),
+    );
     if (!sequence.length) {
       onComplete();
       return;
@@ -81,7 +87,11 @@ export function HeartsRecoveryPresentation({
           onComplete();
         }
       },
-      () => {},
+      () => {
+        if (mounted) {
+          onCancelled();
+        }
+      },
     );
     return () => {
       mounted = false;

@@ -1,21 +1,29 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { useAnimate, useReducedMotion, type AnimationSequence } from 'motion/react';
-import { PlayingCard } from '../cards/PlayingCard.tsx';
-import { appendDiamondSequence, diamondFlights, type Flight } from './diamonds-draw-sequence.ts';
+import { PlayingCard } from '../../cards/PlayingCard.tsx';
+import {
+  appendDiamondSequence,
+  diamondFlights,
+  type Flight,
+} from '../timelines/diamonds-draw-sequence.ts';
 import type {
   GamePresentationAnchorKey,
   PreparedDiamondCardsDrawn,
   RectSnapshot,
-} from './game-presentation.types.ts';
+} from '../game-presentation.types.ts';
 
 export function DiamondCardsDrawnPresentation({
   presentation,
   getAnchorRect,
   onComplete,
+  onCancelled,
+  onArrival,
 }: {
   presentation: PreparedDiamondCardsDrawn;
   getAnchorRect: (key: GamePresentationAnchorKey) => RectSnapshot | null;
   onComplete: () => void;
+  onCancelled: () => void;
+  onArrival: (key: string) => void;
 }) {
   const [scope, animate] = useAnimate<HTMLDivElement>();
   const reduced = useReducedMotion() ?? false;
@@ -24,7 +32,9 @@ export function DiamondCardsDrawnPresentation({
 
   useEffect(() => {
     const sequence: AnimationSequence = [];
-    appendDiamondSequence(sequence, elements.current, flights, reduced, 0);
+    appendDiamondSequence(sequence, elements.current, flights, reduced, 0, (index) =>
+      onArrival(`deal:${index}`),
+    );
     if (!sequence.length) {
       onComplete();
       return;
@@ -37,7 +47,11 @@ export function DiamondCardsDrawnPresentation({
           onComplete();
         }
       },
-      () => {},
+      () => {
+        if (mounted) {
+          onCancelled();
+        }
+      },
     );
     return () => {
       mounted = false;

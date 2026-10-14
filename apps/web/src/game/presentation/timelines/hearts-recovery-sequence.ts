@@ -1,11 +1,12 @@
 import type { AnimationSequence } from 'motion/react';
+import { appendArrival } from './animation-milestone.ts';
 import {
   gamePresentationAnchor,
   isVisibleRect,
   type GamePresentationAnchorKey,
   type PreparedHeartsRecovery,
   type RectSnapshot,
-} from './game-presentation.types.ts';
+} from '../game-presentation.types.ts';
 
 export type GetAnchorRect = (key: GamePresentationAnchorKey) => RectSnapshot | null;
 
@@ -43,13 +44,20 @@ export function appendHeartsSequence(
   geometry: Geometry,
   reduced: boolean,
   start: number,
+  onArrival?: () => void,
 ): number {
   if (!element || !geometry.position) {
+    if (onArrival) {
+      appendArrival(sequence, start, onArrival);
+    }
     return start;
   }
   const { source, destination } = geometry;
   if (reduced || !source || !destination) {
     sequence.push([element, { opacity: [0, 1, 1, 0] }, { at: start, duration: 0.36 }]);
+    if (onArrival) {
+      appendArrival(sequence, start + 0.36, onArrival);
+    }
     return start + 0.36;
   }
   sequence.push([element, { opacity: [0, 1] }, { at: start, duration: 0.1 }]);
@@ -77,5 +85,8 @@ export function appendHeartsSequence(
     { scale: [1, 0.8], opacity: [1, 0] },
     { at: start + 0.81, duration: 0.2, ease: 'easeIn' },
   ]);
+  if (onArrival) {
+    appendArrival(sequence, start + 0.81, onArrival);
+  }
   return start + 1.01;
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import type {
   AgentPausedMessage,
   AgentStatus,
@@ -8,6 +8,7 @@ import type {
 } from '@regicide/protocol';
 import { AgentControls } from '../agents/AgentControls.tsx';
 import { GameTable } from './table/GameTable.tsx';
+import { useGamePresentation } from './presentation/GamePresentationContext.ts';
 
 type Selection = { viewVersion: string; ids: string[] };
 
@@ -44,6 +45,8 @@ export function PlayingScreen({
   onRetryAgent: () => Promise<void>;
   onOpenAiSettings: () => void;
 }) {
+  const { cancelPresentations } = useGamePresentation();
+  useLayoutEffect(() => () => cancelPresentations(), [cancelPresentations]);
   const [selection, setSelection] = useState<Selection>({ viewVersion: '', ids: [] });
   const actionPending = operation === 'submitting';
   const actionsDisabled = sync !== 'ready';

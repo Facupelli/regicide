@@ -1,13 +1,13 @@
 import { useEffect, useMemo } from 'react';
 import { useAnimate, useReducedMotion, type AnimationSequence } from 'motion/react';
-import { PlayingCard } from '../cards/PlayingCard.tsx';
+import { PlayingCard } from '../../cards/PlayingCard.tsx';
 import {
   gamePresentationAnchor,
   isVisibleRect,
   type GamePresentationAnchorKey,
   type PreparedCardsPlayed,
   type RectSnapshot,
-} from './game-presentation.types.ts';
+} from '../game-presentation.types.ts';
 
 const PLAY_STAGGER_SECONDS = 0.12;
 const PLAY_MOVE_SECONDS = 0.4;
@@ -18,10 +18,12 @@ export function CardsPlayedPresentation({
   presentation,
   getAnchorRect,
   onComplete,
+  onCancelled,
 }: {
   presentation: PreparedCardsPlayed;
   getAnchorRect: (key: GamePresentationAnchorKey) => RectSnapshot | null;
   onComplete: () => void;
+  onCancelled: () => void;
 }) {
   const [scope, animate] = useAnimate<HTMLDivElement>();
   const reduced = useReducedMotion();
@@ -93,13 +95,17 @@ export function CardsPlayedPresentation({
           onComplete();
         }
       },
-      () => {},
+      () => {
+        if (mounted) {
+          onCancelled();
+        }
+      },
     );
     return () => {
       mounted = false;
       controls.stop();
     };
-  }, [animate, flights, onComplete, reduced, scope]);
+  }, [animate, flights, onComplete, onCancelled, reduced, scope]);
 
   return (
     <div ref={scope} aria-hidden="true">

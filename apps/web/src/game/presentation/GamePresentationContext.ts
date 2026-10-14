@@ -1,10 +1,15 @@
 import type { GameEvent, GameView } from '@regicide/protocol';
 import { createContext, useContext } from 'react';
 import type { GamePresentationAnchorKey } from './game-presentation.types.ts';
+import type { PileCounts } from './pile-display.ts';
 
 export type GamePresentationContextValue = {
   registerAnchor: (key: GamePresentationAnchorKey, element: HTMLElement | null) => void;
+  displayedPiles: PileCounts | null;
+  cancelPresentations: () => void;
   presentUpdate: (
+    gameId: string,
+    revision: number,
     events: readonly GameEvent[],
     localPlayerId: string,
     commitView: () => void,

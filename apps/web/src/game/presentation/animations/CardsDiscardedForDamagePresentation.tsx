@@ -1,11 +1,12 @@
 import { useEffect, useMemo, type CSSProperties } from 'react';
 import { useAnimate, useReducedMotion, type AnimationSequence } from 'motion/react';
-import { PlayingCard } from '../cards/PlayingCard.tsx';
+import { PlayingCard } from '../../cards/PlayingCard.tsx';
+import { appendArrival } from '../timelines/animation-milestone.ts';
 import {
   isVisibleRect,
   type PreparedCardsDiscardedForDamage,
   type RectSnapshot,
-} from './game-presentation.types.ts';
+} from '../game-presentation.types.ts';
 
 const CARD_STAGGER_SECONDS = 0.12;
 const CARD_MOVE_SECONDS = 0.4;
@@ -16,12 +17,16 @@ type Props = {
   presentation: PreparedCardsDiscardedForDamage;
   destination: RectSnapshot | null;
   onComplete: () => void;
+  onCancelled: () => void;
+  onArrival: (key: string) => void;
 };
 
 export function CardsDiscardedForDamagePresentation({
   presentation,
   destination,
   onComplete,
+  onCancelled,
+  onArrival,
 }: Props) {
   const [scope, animate] = useAnimate<HTMLDivElement>();
   const shouldReduceMotion = useReducedMotion();
@@ -45,14 +50,16 @@ export function CardsDiscardedForDamagePresentation({
     const sequence: AnimationSequence = [];
     let lastArrival = 0;
     for (const { source, position, index, moves } of flights) {
+      const start = index * CARD_STAGGER_SECONDS;
       if (!position) {
+        appendArrival(sequence, start, () => onArrival(`damage:${index}`));
         continue;
       }
       const element = scope.current.children[index] as HTMLElement | undefined;
       if (!element) {
+        appendArrival(sequence, start, () => onArrival(`damage:${index}`));
         continue;
       }
-      const start = index * CARD_STAGGER_SECONDS;
       sequence.push([element, { opacity: [0, 1] }, { at: start, duration: CARD_FADE_SECONDS }]);
       if (moves && source && landing) {
         sequence.push([
@@ -65,7 +72,9 @@ export function CardsDiscardedForDamagePresentation({
           { at: start, duration: CARD_MOVE_SECONDS, ease: 'easeInOut' },
         ]);
       }
-      lastArrival = Math.max(lastArrival, start + (moves ? CARD_MOVE_SECONDS : CARD_FADE_SECONDS));
+      const arrival = start + (moves ? CARD_MOVE_SECONDS : CARD_FADE_SECONDS);
+      appendArrival(sequence, arrival, () => onArrival(`damage:${index}`));
+      lastArrival = Math.max(lastArrival, arrival);
     }
     if (!sequence.length) {
       onComplete();
@@ -91,14 +100,16 @@ export function CardsDiscardedForDamagePresentation({
         }
       },
       () => {
-        // A reset may stop the animation before it finishes.
+        if (mounted) {
+          onCancelled();
+        }
       },
     );
     return () => {
       mounted = false;
       controls.stop();
     };
-  }, [animate, flights, landing, onComplete, scope]);
+  }, [animate, flights, landing, onArrival, onComplete, onCancelled, scope]);
 
   return (
     <div ref={scope} aria-hidden="true">

@@ -76,7 +76,7 @@ export function ResourceArea({
 }: Pick<TableProps, 'view' | 'actionPending' | 'actionsDisabled' | 'onAction'> & {
   hasOpponents: boolean;
 }) {
-  const { registerAnchor } = useGamePresentation();
+  const { registerAnchor, displayedPiles } = useGamePresentation();
   const usable =
     view.status === 'active' &&
     (view.interaction.kind === 'turn' || view.interaction.kind === 'damage-discard') &&
@@ -96,13 +96,13 @@ export function ResourceArea({
           <ResourcePile
             label="Tavern"
             cardElementRef={(element) => registerAnchor(gamePresentationAnchor.tavern, element)}
-            count={view.tavern.remainingCards}
+            count={displayedPiles?.tavernCount ?? view.tavern.remainingCards}
             className="lg:col-start-3 lg:row-start-2"
           />
           <ResourcePile
             label="Discard"
             cardElementRef={(element) => registerAnchor(gamePresentationAnchor.discard, element)}
-            count={view.discard.cards.length}
+            count={displayedPiles?.discardCount ?? view.discard.cards.length}
             className="lg:col-start-1 lg:row-start-3"
           />
         </div>
