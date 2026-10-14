@@ -6,6 +6,7 @@ import type { PileCounts } from './pile-display.ts';
 export type GamePresentationContextValue = {
   registerAnchor: (key: GamePresentationAnchorKey, element: HTMLElement | null) => void;
   displayedPiles: PileCounts | null;
+  displayedHandCounts: Readonly<Record<string, number>> | null;
   cancelPresentations: () => void;
   presentUpdate: (
     gameId: string,

@@ -7,7 +7,7 @@ import { DiamondCardsDrawnPresentation } from './animations/DiamondCardsDrawnPre
 import { EnemyDefeatSequencePresentation } from './animations/EnemyDefeatSequencePresentation.tsx';
 import { HeartsRecoveryPresentation } from './animations/HeartsRecoveryPresentation.tsx';
 import { GamePresentationContext } from './GamePresentationContext.ts';
-import { preparePileEntries, type PileCounts, type PileQueueEntry } from './pile-display.ts';
+import { preparePileEntries, type DisplayCounts, type PileQueueEntry } from './pile-display.ts';
 import {
   gamePresentationAnchor,
   isVisibleRect,
@@ -23,7 +23,7 @@ import {
 type QueueState = {
   active: PileQueueEntry | null;
   pending: PileQueueEntry[];
-  displayed: PileCounts | null;
+  displayed: DisplayCounts | null;
   nextMilestone: number;
 };
 
@@ -337,6 +337,7 @@ export function GamePresentationProvider({ children }: { children: ReactNode }) 
     () => ({
       registerAnchor,
       displayedPiles: queue.displayed,
+      displayedHandCounts: queue.displayed?.handCounts ?? null,
       presentUpdate,
       switchSession,
       cancelPresentations,
