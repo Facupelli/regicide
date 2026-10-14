@@ -155,7 +155,8 @@ function App() {
         operation={screen.operation}
         actionError={screen.actionError}
         onAction={session.submit}
-        onNewGame={screen.view.players.length === 1 ? session.startSolo : session.returnHome}
+        onNewGame={session.startSolo}
+        onReturnHome={session.returnHome}
         isHost={screen.isHost}
         agentStatus={session.agentStatus}
         agentPause={screen.agentPause}

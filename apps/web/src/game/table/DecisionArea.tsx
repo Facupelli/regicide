@@ -12,6 +12,7 @@ type DecisionProps = Pick<
   | 'actionError'
   | 'onAction'
   | 'onNewGame'
+  | 'onReturnHome'
 > & { playSelection: PlaySelectionState; selectedDamage: number; hasOpponents: boolean };
 
 export function DecisionArea({
@@ -25,6 +26,7 @@ export function DecisionArea({
   actionError,
   onAction,
   onNewGame,
+  onReturnHome,
 }: DecisionProps) {
   return (
     <section
@@ -39,9 +41,10 @@ export function DecisionArea({
               ? `Victory${view.soloVictoryRank ? ` - ${view.soloVictoryRank}` : ''}`
               : 'Defeat'}
           </p>
-          <Button onClick={onNewGame}>
-            {view.players.length === 1 ? 'Start New Solo Game' : 'Return home'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {view.players.length === 1 && <Button onClick={onNewGame}>New solo game</Button>}
+            <Button onClick={onReturnHome}>Return home</Button>
+          </div>
         </div>
       ) : (
         <InteractionControls

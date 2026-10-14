@@ -6,6 +6,7 @@ export type TableProps = {
   onToggleCard: (cardId: string) => void;
   onAction: (command: PlayerCommand) => void;
   onNewGame: () => void;
+  onReturnHome: () => void;
   actionPending: boolean;
   actionsDisabled: boolean;
   actionError: string | null;

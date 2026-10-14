@@ -20,6 +20,7 @@ export function PlayingScreen({
   actionError,
   onAction,
   onNewGame,
+  onReturnHome,
   isHost,
   agentStatus,
   agentPause,
@@ -36,6 +37,7 @@ export function PlayingScreen({
   actionError: string | null;
   onAction: (command: PlayerCommand) => Promise<'accepted' | 'not-accepted'>;
   onNewGame: () => void;
+  onReturnHome: () => void;
   isHost: boolean;
   agentStatus: AgentStatus | null;
   agentPause: AgentPausedMessage | null;
@@ -124,6 +126,7 @@ export function PlayingScreen({
         onToggleCard={toggleCard}
         onAction={submit}
         onNewGame={onNewGame}
+        onReturnHome={onReturnHome}
         actionPending={actionPending}
         actionsDisabled={actionsDisabled}
         actionError={actionError}
