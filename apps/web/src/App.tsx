@@ -26,7 +26,7 @@ function App() {
       },
       () => {
         if (requestId === settingsRequest.current) {
-          setSettings({ error: 'Could not create your profile. Please try again.' });
+          setSettings({ error: 'Could not open AI Settings. Please try again.' });
         }
       },
     );

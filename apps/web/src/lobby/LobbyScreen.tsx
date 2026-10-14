@@ -178,8 +178,8 @@ export function LobbyScreen({
               <h2 className="text-lg font-semibold">Add AI teammate</h2>
               {agentSetup === 'unavailable' && (
                 <p className="mt-2 text-sm text-muted-foreground">
-                  AI must be configured before creating a new profile-backed game. This human-only
-                  lobby cannot be upgraded.
+                  AI teammates aren’t available in this game. To play with AI teammates, set them up
+                  in AI Settings before creating a new co-op game.
                 </p>
               )}
               {agentSetup === 'configure' && (
@@ -234,60 +234,65 @@ export function LobbyScreen({
                 </p>
               )}
             </section>
-            <section
-              className="mt-5 border-t border-border pt-5"
-              aria-label="Shared request budget"
-            >
-              <h2 className="text-lg font-semibold">Shared request budget</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Combined limit for all AI teammates, not an exact monetary spending limit.
-              </p>
-              <form
-                onSubmit={(event) => void saveBudget(event)}
-                className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end"
+            {aiPlayers.length > 0 && (
+              <section
+                className="mt-5 border-t border-border pt-5"
+                aria-label="Shared request budget"
               >
-                <label htmlFor="lobby-agent-budget" className="min-w-0 flex-1 text-sm font-medium">
-                  Maximum requests ({REQUEST_BUDGET_BOUNDS.min}–{REQUEST_BUDGET_BOUNDS.max})
-                  <input
-                    id="lobby-agent-budget"
-                    type="number"
-                    min={REQUEST_BUDGET_BOUNDS.min}
-                    max={REQUEST_BUDGET_BOUNDS.max}
-                    step={1}
-                    required
-                    value={budgetDraft ?? agentStatus?.maxRequests ?? 50}
-                    onChange={(event) => setBudgetDraft(event.target.value)}
-                    disabled={pending || budgetPending}
-                    className="mt-2 w-full min-w-0 rounded-lg border border-border bg-background px-3 py-2 text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-card-selected"
-                  />
-                </label>
-                <Button
-                  type="submit"
-                  className="w-full sm:w-auto"
-                  disabled={pending || budgetPending || agentStatus === null}
+                <h2 className="text-lg font-semibold">Shared request budget</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Combined limit for all AI teammates, not an exact monetary spending limit.
+                </p>
+                <form
+                  onSubmit={(event) => void saveBudget(event)}
+                  className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end"
                 >
-                  Save budget
-                </Button>
-              </form>
-              {agentStatusError && (
-                <p role="alert" className="mt-2 text-sm text-danger">
-                  {agentStatusError}{' '}
-                  <button type="button" onClick={onRefreshAgentStatus} className="underline">
-                    Retry status
-                  </button>
-                </p>
-              )}
-              {budgetError && (
-                <p role="alert" className="mt-2 text-sm text-danger">
-                  {budgetError}
-                </p>
-              )}
-              {budgetMessage && (
-                <p role="status" className="mt-2 text-sm text-muted-foreground">
-                  {budgetMessage}
-                </p>
-              )}
-            </section>
+                  <label
+                    htmlFor="lobby-agent-budget"
+                    className="min-w-0 flex-1 text-sm font-medium"
+                  >
+                    Maximum requests ({REQUEST_BUDGET_BOUNDS.min}–{REQUEST_BUDGET_BOUNDS.max})
+                    <input
+                      id="lobby-agent-budget"
+                      type="number"
+                      min={REQUEST_BUDGET_BOUNDS.min}
+                      max={REQUEST_BUDGET_BOUNDS.max}
+                      step={1}
+                      required
+                      value={budgetDraft ?? agentStatus?.maxRequests ?? 50}
+                      onChange={(event) => setBudgetDraft(event.target.value)}
+                      disabled={pending || budgetPending}
+                      className="mt-2 w-full min-w-0 rounded-lg border border-border bg-background px-3 py-2 text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-card-selected"
+                    />
+                  </label>
+                  <Button
+                    type="submit"
+                    className="w-full sm:w-auto"
+                    disabled={pending || budgetPending || agentStatus === null}
+                  >
+                    Save budget
+                  </Button>
+                </form>
+                {agentStatusError && (
+                  <p role="alert" className="mt-2 text-sm text-danger">
+                    {agentStatusError}{' '}
+                    <button type="button" onClick={onRefreshAgentStatus} className="underline">
+                      Try again
+                    </button>
+                  </p>
+                )}
+                {budgetError && (
+                  <p role="alert" className="mt-2 text-sm text-danger">
+                    {budgetError}
+                  </p>
+                )}
+                {budgetMessage && (
+                  <p role="status" className="mt-2 text-sm text-muted-foreground">
+                    {budgetMessage}
+                  </p>
+                )}
+              </section>
+            )}
           </>
         )}
         <div className="mt-6">

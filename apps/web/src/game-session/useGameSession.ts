@@ -94,7 +94,10 @@ export function useGameSession() {
       if (requestId !== agentStatusRequest.current) {
         return;
       }
-      setAgentStatusError({ gameId: id, message: errorMessage(error, 'Could not load AI status') });
+      setAgentStatusError({
+        gameId: id,
+        message: errorMessage(error, 'Could not load AI teammate information'),
+      });
     }
   }, []);
 
@@ -116,7 +119,10 @@ export function useGameSession() {
         if (requestId !== agentStatusRequest.current) {
           return;
         }
-        setAgentStatusError({ gameId, message: errorMessage(error, 'Could not load AI status') });
+        setAgentStatusError({
+          gameId,
+          message: errorMessage(error, 'Could not load AI teammate information'),
+        });
       },
     );
     return () => {

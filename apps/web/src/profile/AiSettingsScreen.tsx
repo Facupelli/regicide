@@ -37,7 +37,7 @@ export function AiSettingsScreen({
         </p>
         {loading && (
           <p role="status" className="mt-6 text-sm">
-            Loading profile...
+            Loading AI settings...
           </p>
         )}
         {loadError && (
