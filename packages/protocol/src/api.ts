@@ -64,7 +64,13 @@ export const OpenRouterApiKeySchema = v.pipe(
   v.regex(/^\S+$/),
 );
 
-const RequestBudgetSchema = v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(500));
+export const REQUEST_BUDGET_BOUNDS = { min: 1, max: 500 } as const;
+const RequestBudgetSchema = v.pipe(
+  v.number(),
+  v.integer(),
+  v.minValue(REQUEST_BUDGET_BOUNDS.min),
+  v.maxValue(REQUEST_BUDGET_BOUNDS.max),
+);
 export const UpdateGameAgentSettingsRequestSchema = v.pipe(
   v.strictObject({
     maxRequests: v.optional(RequestBudgetSchema),

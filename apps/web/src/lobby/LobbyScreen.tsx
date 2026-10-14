@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { REQUEST_BUDGET_BOUNDS } from '@regicide/protocol';
 import type {
   AgentModelId,
   AgentStatus,
@@ -98,8 +99,14 @@ export function LobbyScreen({
       return;
     }
     const maxRequests = Number(budgetDraft ?? agentStatus?.maxRequests ?? 50);
-    if (!Number.isInteger(maxRequests) || maxRequests < 1 || maxRequests > 500) {
-      setBudgetError('Enter a request budget from 1 to 500.');
+    if (
+      !Number.isInteger(maxRequests) ||
+      maxRequests < REQUEST_BUDGET_BOUNDS.min ||
+      maxRequests > REQUEST_BUDGET_BOUNDS.max
+    ) {
+      setBudgetError(
+        `Enter a request budget from ${REQUEST_BUDGET_BOUNDS.min} to ${REQUEST_BUDGET_BOUNDS.max}.`,
+      );
       return;
     }
     setBudgetPending(true);
@@ -241,12 +248,12 @@ export function LobbyScreen({
                 className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end"
               >
                 <label htmlFor="lobby-agent-budget" className="min-w-0 flex-1 text-sm font-medium">
-                  Maximum requests (1–500)
+                  Maximum requests ({REQUEST_BUDGET_BOUNDS.min}–{REQUEST_BUDGET_BOUNDS.max})
                   <input
                     id="lobby-agent-budget"
                     type="number"
-                    min={1}
-                    max={500}
+                    min={REQUEST_BUDGET_BOUNDS.min}
+                    max={REQUEST_BUDGET_BOUNDS.max}
                     step={1}
                     required
                     value={budgetDraft ?? agentStatus?.maxRequests ?? 50}

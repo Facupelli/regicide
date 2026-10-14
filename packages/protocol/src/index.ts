@@ -89,6 +89,7 @@ export {
   PlayerIdentitySchema,
   ProfileViewSchema,
   RemoveAgentResponseSchema,
+  REQUEST_BUDGET_BOUNDS,
   SUPPORTED_AGENT_MODELS,
   StartGameResponseSchema,
   SubmitActionRequestSchema,

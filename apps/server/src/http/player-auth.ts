@@ -1,10 +1,7 @@
 import { createMiddleware } from 'hono/factory';
 import { authenticatePlayer, type AuthenticatePlayerResult } from '../games/player-auth.ts';
 import { apiError } from './api-error.ts';
-
-export function parseBearerPlayerToken(authorization: string | undefined): string | undefined {
-  return /^Bearer ([A-Za-z0-9_-]+)$/i.exec(authorization ?? '')?.[1];
-}
+import { parseBearerToken } from './bearer-token.ts';
 
 export function authenticateBearerPlayer({
   gameId,
@@ -13,7 +10,7 @@ export function authenticateBearerPlayer({
   gameId: string;
   authorization: string | undefined;
 }): AuthenticatePlayerResult {
-  const playerToken = parseBearerPlayerToken(authorization);
+  const playerToken = parseBearerToken(authorization);
   if (!playerToken) {
     return { ok: false, reason: 'invalid-credential' };
   }

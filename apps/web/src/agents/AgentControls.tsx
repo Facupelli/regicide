@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { REQUEST_BUDGET_BOUNDS } from '@regicide/protocol';
 import type {
   AgentPausedMessage,
   AgentStatus,
@@ -75,8 +76,14 @@ export function AgentControls({
 
   function saveBudget(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!Number.isInteger(maxRequests) || maxRequests < 1 || maxRequests > 500) {
-      setError('Enter a request budget from 1 to 500.');
+    if (
+      !Number.isInteger(maxRequests) ||
+      maxRequests < REQUEST_BUDGET_BOUNDS.min ||
+      maxRequests > REQUEST_BUDGET_BOUNDS.max
+    ) {
+      setError(
+        `Enter a request budget from ${REQUEST_BUDGET_BOUNDS.min} to ${REQUEST_BUDGET_BOUNDS.max}.`,
+      );
       return;
     }
     void run(async () => {
@@ -129,8 +136,8 @@ export function AgentControls({
           <input
             id="agent-budget"
             type="number"
-            min={1}
-            max={500}
+            min={REQUEST_BUDGET_BOUNDS.min}
+            max={REQUEST_BUDGET_BOUNDS.max}
             step={1}
             required
             value={maxRequests}

@@ -141,7 +141,7 @@ function handleRetaliationAction(
 ): GameState {
   if (action.kind === 'use-solo-jester') return resolveRetaliation(replaceSoloHand(world, player));
   if (action.kind === 'accept-defeat') {
-    if (!hasSoloJester(world) || canAbsorbDamage(player, decision.requiredDamage)) {
+    if (!canAcceptDefeatForPlayer(world, player, decision.requiredDamage)) {
       throw new IllegalActionError(
         'Defeat can only be accepted when a Jester is the only survival action',
       );
@@ -404,13 +404,17 @@ function canAbsorbDamage(player: Player, requiredDamage: number): boolean {
   return player.hand.reduce((total, held) => total + damageDiscardValue(held), 0) >= requiredDamage;
 }
 
+function canAcceptDefeatForPlayer(world: World, player: Player, requiredDamage: number): boolean {
+  return hasSoloJester(world) && !canAbsorbDamage(player, requiredDamage);
+}
+
 export function canAcceptDefeat(state: Extract<GameState, { kind: 'active' }>): boolean {
   if (state.decision.kind !== 'await-retaliation-action') return false;
   const player = state.world.players.find(
     (candidate) => candidate.id === state.world.currentPlayer,
   );
   if (!player) throw new Error('The current player is not in the game');
-  return hasSoloJester(state.world) && !canAbsorbDamage(player, state.decision.requiredDamage);
+  return canAcceptDefeatForPlayer(state.world, player, state.decision.requiredDamage);
 }
 
 function resolveRetaliation(world: World): GameState {
