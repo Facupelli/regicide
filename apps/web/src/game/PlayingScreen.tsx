@@ -85,7 +85,10 @@ export function PlayingScreen({
       data-turn={turn}
     >
       {syncMessage && (
-        <p role="status" className="bg-panel px-4 py-2 text-center text-sm text-foreground">
+        <p
+          role="status"
+          className="pointer-events-none fixed top-4 left-1/2 z-50 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-lg border border-border bg-panel px-4 py-2 text-center text-sm text-foreground shadow-lg"
+        >
           {syncMessage}
         </p>
       )}

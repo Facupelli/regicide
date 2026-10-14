@@ -385,12 +385,6 @@ export function useGameSession() {
     try {
       const lobby = await createGame();
       saveSession(lobby);
-      dispatch({
-        type: 'lobby-entered',
-        identity: lobby,
-        view: lobby.view,
-        profileBacked: false,
-      });
       const response = await startGame(lobby.gameId, lobby.playerToken);
       presentation.switchSession(lobby.gameId);
       dispatch({
