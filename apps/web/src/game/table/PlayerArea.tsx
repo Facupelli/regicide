@@ -1,19 +1,26 @@
-import type { GameView, PublicPlayer } from '@regicide/protocol';
+import type { ActiveGameView, GameView, PublicPlayer } from '@regicide/protocol';
 import { agentModels } from '../../agents/models.ts';
 import { useGamePresentation } from '../presentation/GamePresentationContext.ts';
 import { gamePresentationAnchor } from '../presentation/game-presentation.types.ts';
 
+const decisionLabels = {
+  turn: 'Choosing a play',
+  'damage-discard': 'Defending against the enemy',
+  'choose-next-player': 'Choosing the next player',
+} satisfies Record<ActiveGameView['currentDecision'], string>;
+
 export function PlayerSeat({
   player,
-  active,
+  decision,
   local = false,
   elementRef,
 }: {
   player: PublicPlayer;
-  active: boolean;
+  decision: ActiveGameView['currentDecision'] | null;
   local?: boolean;
   elementRef?: (element: HTMLElement | null) => void;
 }) {
+  const active = decision !== null;
   const { displayedHandCounts } = useGamePresentation();
   const handSize = local ? player.handSize : (displayedHandCounts?.[player.id] ?? player.handSize);
   const modelLabel =
@@ -23,24 +30,30 @@ export function PlayerSeat({
   return (
     <div
       ref={elementRef}
-      className={`flex min-w-0 flex-wrap items-center justify-center gap-x-2 rounded-lg border px-2 py-1 text-xs transition-colors motion-reduce:transition-none ${active ? 'border-card-selected bg-card-selected/10' : 'border-border bg-panel/60'}`}
-      aria-label={`${local ? 'Your seat' : `Player ${player.id}`}${modelLabel ? `, AI, ${modelLabel}` : ''}, ${handSize} cards${active ? ', current player' : ''}`}
+      className={`flex min-w-0 flex-col items-center justify-center rounded-lg border px-2 py-1 text-xs transition-colors motion-reduce:transition-none ${active ? 'border-card-selected bg-card-selected/10' : 'border-border bg-panel/60'}`}
+      aria-label={`${local ? 'Your seat' : `Player ${player.id}`}${modelLabel ? `, AI, ${modelLabel}` : ''}, ${handSize} cards${decision ? `, current player, ${decisionLabels[decision]}` : ''}`}
     >
-      <span className="max-w-24 truncate font-semibold" title={local ? 'You' : player.id}>
-        {local ? 'You' : `Player ${player.id}`}
-      </span>
-      {modelLabel && (
-        <span className="max-w-full min-w-0 truncate text-card-selected" title={modelLabel}>
-          AI · {modelLabel}
+      <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-2">
+        <span className="max-w-24 truncate font-semibold" title={local ? 'You' : player.id}>
+          {local ? 'You' : `Player ${player.id}`}
+        </span>
+        {modelLabel && (
+          <span className="max-w-full min-w-0 truncate text-card-selected" title={modelLabel}>
+            AI · {modelLabel}
+          </span>
+        )}
+        <span
+          className="whitespace-nowrap text-muted-foreground"
+          data-verify={local ? undefined : 'other-player-hand-count'}
+        >
+          {handSize} cards
+        </span>
+      </div>
+      {decision && (
+        <span className="mt-1 w-full text-center text-[11px] leading-tight text-card-selected">
+          {decisionLabels[decision]}
         </span>
       )}
-      <span
-        className="whitespace-nowrap text-muted-foreground"
-        data-verify={local ? undefined : 'other-player-hand-count'}
-      >
-        {handSize} cards
-      </span>
-      {active && <span className="whitespace-nowrap text-card-selected">Current turn</span>}
     </div>
   );
 }
@@ -69,7 +82,11 @@ export function PlayerArea({ view }: { view: GameView }) {
         >
           <PlayerSeat
             player={player}
-            active={view.status === 'active' && view.currentPlayerId === player.id}
+            decision={
+              view.status === 'active' && view.currentPlayerId === player.id
+                ? view.currentDecision
+                : null
+            }
             elementRef={(element) =>
               registerAnchor(gamePresentationAnchor.player(player.id), element)
             }

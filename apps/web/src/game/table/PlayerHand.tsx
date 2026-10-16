@@ -54,7 +54,11 @@ export function PlayerHand({
             <PlayerSeat
               player={local}
               local
-              active={view.status === 'active' && view.currentPlayerId === local.id}
+              decision={
+                view.status === 'active' && view.currentPlayerId === local.id
+                  ? view.currentDecision
+                  : null
+              }
             />
           </div>
         )}

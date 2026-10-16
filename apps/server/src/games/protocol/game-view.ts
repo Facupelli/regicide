@@ -6,7 +6,13 @@ import {
   soloVictoryRank,
   type GameState,
 } from '@regicide/game-engine';
-import type { BattleView, GameView, HistoricalPlayView, Interaction } from '@regicide/protocol';
+import type {
+  ActiveGameView,
+  BattleView,
+  GameView,
+  HistoricalPlayView,
+  Interaction,
+} from '@regicide/protocol';
 import type { SessionPlayer } from '../game-session.ts';
 import { toProtocolCard } from './card.ts';
 
@@ -53,6 +59,7 @@ export function toGameView(
       status: 'active',
       ...publicFields,
       currentPlayerId: world.currentPlayer,
+      currentDecision: toPublicDecision(state.decision),
       battle: toBattleView(state),
       interaction: toInteraction(state, viewerId),
     };
@@ -86,6 +93,18 @@ function toHistoricalPlayView(play: EnginePlay): HistoricalPlayView {
       return { kind: 'jester', card: toProtocolCard(play.card) };
   }
   return assertNever(play);
+}
+
+function toPublicDecision(decision: ActiveState['decision']): ActiveGameView['currentDecision'] {
+  switch (decision.kind) {
+    case 'await-turn-action':
+      return 'turn';
+    case 'await-retaliation-action':
+      return 'damage-discard';
+    case 'await-next-player-choice':
+      return 'choose-next-player';
+  }
+  return assertNever(decision);
 }
 
 function toInteraction(state: ActiveState, viewerId: string): Interaction {

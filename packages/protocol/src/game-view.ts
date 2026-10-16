@@ -79,6 +79,7 @@ export const ActiveGameViewSchema = v.strictObject({
   status: v.literal('active'),
   ...PublicGameFields,
   currentPlayerId: IdentifierSchema,
+  currentDecision: v.picklist(['turn', 'damage-discard', 'choose-next-player']),
   battle: BattleViewSchema,
   interaction: InteractionSchema,
 });
