@@ -8,10 +8,18 @@ export const TurnDecisionSchema = v.strictObject({
   ]),
 });
 
+const retaliationSurvivalCommands = [
+  v.strictObject({ kind: v.picklist(['discard-for-damage']), cardIds: v.array(v.string()) }),
+  v.strictObject({ kind: v.picklist(['use-solo-jester']) }),
+] as const;
+
+export const RetaliationWithoutDefeatDecisionSchema = v.strictObject({
+  command: v.union(retaliationSurvivalCommands),
+});
+
 export const RetaliationDecisionSchema = v.strictObject({
   command: v.union([
-    v.strictObject({ kind: v.picklist(['discard-for-damage']), cardIds: v.array(v.string()) }),
-    v.strictObject({ kind: v.picklist(['use-solo-jester']) }),
+    ...retaliationSurvivalCommands,
     v.strictObject({ kind: v.picklist(['accept-defeat']) }),
   ]),
 });

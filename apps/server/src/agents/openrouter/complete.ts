@@ -78,11 +78,8 @@ export async function completeStructured<
       { role: 'user', content: user },
     ],
     stream: false,
-    // DeepSeek V3.2's structured-output providers support max_tokens, not
-    // max_completion_tokens. Keep the latter for GPT-5 Mini providers.
-    ...(model === 'deepseek/deepseek-v3.2'
-      ? { max_tokens: maxCompletionTokens }
-      : { max_completion_tokens: maxCompletionTokens }),
+    // All supported models have structured-output endpoints accepting max_tokens.
+    max_tokens: maxCompletionTokens,
     response_format: {
       type: 'json_schema',
       json_schema: { name: schemaName, strict: true, schema },

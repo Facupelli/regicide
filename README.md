@@ -107,8 +107,11 @@ Committing a game action is also separate from notifying clients and scheduling 
 
 AI teammates currently support:
 
-- **GPT-5 Mini**
-- **DeepSeek V3.2**
+- **GPT-6 Luna**
+- **DeepSeek V4.1 Flash**
+- **Gemini 3.8 Flash**
+- **GPT-6 Sol**
+- **Claude Sonnet 5**
 
 Models are accessed through **OpenRouter**. The host configures an API key and available models in AI Settings before creating a game with AI teammates.
 

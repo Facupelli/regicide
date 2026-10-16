@@ -30,3 +30,5 @@ Player-specific GameView
 ```
 
 Regicide controls the workflow; the LLM provides the strategic reasoning.
+
+Supported OpenRouter models: GPT-6 Luna, DeepSeek V4.1 Flash, Gemini 3.8 Flash, GPT-6 Sol, and Claude Sonnet 5. The host enables models in AI Settings before adding AI teammates.

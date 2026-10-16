@@ -4,6 +4,7 @@ import { REGICIDE_AGENT_PROMPT } from '../regicide-prompt.ts';
 import {
   NextPlayerDecisionSchema,
   RetaliationDecisionSchema,
+  RetaliationWithoutDefeatDecisionSchema,
   TurnDecisionSchema,
 } from './decide-agent-command.schema.ts';
 import type { AgentDecisionInput, AgentDecisionResult } from './decide-agent-command.types.ts';
@@ -41,12 +42,18 @@ export async function decideAgentCommand(input: AgentDecisionInput): Promise<Age
 
 function getResponseSchema(
   observation: ActiveGameView,
-): typeof TurnDecisionSchema | typeof RetaliationDecisionSchema | typeof NextPlayerDecisionSchema {
+):
+  | typeof TurnDecisionSchema
+  | typeof RetaliationDecisionSchema
+  | typeof RetaliationWithoutDefeatDecisionSchema
+  | typeof NextPlayerDecisionSchema {
   switch (observation.interaction.kind) {
     case 'turn':
       return TurnDecisionSchema;
     case 'damage-discard':
-      return RetaliationDecisionSchema;
+      return observation.interaction.canAcceptDefeat
+        ? RetaliationDecisionSchema
+        : RetaliationWithoutDefeatDecisionSchema;
     case 'choose-next-player':
       return NextPlayerDecisionSchema;
     default:
