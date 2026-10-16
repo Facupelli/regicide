@@ -41,11 +41,17 @@ export function toGameView(
       return slot.controller === 'agent'
         ? {
             id: player.id,
+            name: slot.name,
             controller: 'agent' as const,
             model: slot.model,
             handSize: player.hand.length,
           }
-        : { id: player.id, controller: 'human' as const, handSize: player.hand.length };
+        : {
+            id: player.id,
+            name: slot.name,
+            controller: 'human' as const,
+            handSize: player.hand.length,
+          };
     }),
     viewer: { id: viewer.id, hand: viewer.hand.map(toProtocolCard) },
     tavern: { remainingCards: world.tavern.length },

@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { EntryScreen } from './entry/EntryScreen.tsx';
 import { InvitationScreen } from './entry/InvitationScreen.tsx';
 import { LobbyScreen } from './lobby/LobbyScreen.tsx';
@@ -30,46 +30,30 @@ function App() {
   const [settings, setSettings] = useState<SettingsRoute>('closed');
   const settingsRequest = useRef(0);
   const [invitation, setInvitation] = useState<Invitation | null>(readInvitation);
-  const invitedGame = useRef<string | null>(null);
   const [invitationJoining, setInvitationJoining] = useState(false);
   const [invitationError, setInvitationError] = useState<string | null>(null);
   const { screen } = session;
   const currentGameId =
     screen.status === 'lobby' || screen.status === 'playing' ? screen.gameId : null;
 
-  const joinInvitation = useEffectEvent(async (gameId: string) => {
-    if (await session.joinCoop(gameId)) {
-      leaveInvitation();
-    }
-  });
-
   useEffect(() => {
-    if (invitation?.status !== 'valid') {
-      return;
-    }
-    if (currentGameId === invitation.gameId) {
+    if (invitation?.status === 'valid' && currentGameId === invitation.gameId) {
       leaveInvitation();
-      return;
     }
-    if (screen.status !== 'idle' || invitedGame.current === invitation.gameId) {
-      return;
-    }
-    invitedGame.current = invitation.gameId;
-    void joinInvitation(invitation.gameId);
-  }, [invitation, currentGameId, screen.status]);
+  }, [invitation, currentGameId]);
 
-  async function joinDifferentGame(gameId: string) {
+  async function joinInvitedGame(gameId: string, name: string) {
     if (invitationJoining) {
       return;
     }
     setInvitationJoining(true);
     setInvitationError(null);
-    const joined = await session.joinCoop(gameId);
+    const result = await session.joinCoop(gameId, name);
     setInvitationJoining(false);
-    if (joined) {
+    if (result.ok) {
       leaveInvitation();
     } else {
-      setInvitationError('Could not join the invited game. Your current game is still available.');
+      setInvitationError(result.message);
     }
   }
 
@@ -139,9 +123,10 @@ function App() {
       <InvitationScreen
         error={invitationError}
         message={invitationJoining ? 'Joining game...' : undefined}
-        onJoin={invitationJoining ? undefined : () => void joinDifferentGame(invitation.gameId)}
+        onJoin={(name) => void joinInvitedGame(invitation.gameId, name)}
         onResume={leaveInvitation}
         onBack={leaveInvitation}
+        pending={invitationJoining}
       />
     );
   }
@@ -155,7 +140,7 @@ function App() {
         operation={screen.operation}
         actionError={screen.actionError}
         onAction={session.submit}
-        onNewGame={session.startSolo}
+        onNewGame={session.returnHome}
         onReturnHome={session.returnHome}
         isHost={screen.isHost}
         agentStatus={session.agentStatus}
@@ -195,12 +180,20 @@ function App() {
     let error: string | null = null;
     if (invitation.status === 'invalid') {
       error = 'Invalid invitation link.';
+    } else if (invitationError) {
+      error = invitationError;
     } else if (screen.status === 'error') {
       error = screen.message;
     }
     return (
       <InvitationScreen
         error={error}
+        onJoin={
+          invitation.status === 'valid'
+            ? (name) => void joinInvitedGame(invitation.gameId, name)
+            : undefined
+        }
+        pending={invitationJoining}
         onBack={() => {
           session.clearEntryError();
           leaveInvitation();
@@ -219,7 +212,7 @@ function App() {
     <EntryScreen
       loading={screen.status === 'loading'}
       error={screen.status === 'error' ? screen.message : null}
-      onCreateCoop={() => void session.createCoop(profile.profile?.token)}
+      onCreateCoop={(name) => void session.createCoop(name, profile.profile?.token)}
       onStartSolo={session.startSolo}
       onOpenAiSettings={openSettings}
       aiSummary={aiSummary}

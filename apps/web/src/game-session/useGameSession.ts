@@ -315,14 +315,14 @@ export function useGameSession() {
     });
   }, [gameId, playerToken]);
 
-  async function createCoop(profileToken?: string) {
+  async function createCoop(name: string, profileToken?: string) {
     if (entryInFlight.current || playingInFlight.current) {
       return;
     }
     entryInFlight.current = true;
     dispatch({ type: 'session-load-started' });
     try {
-      const response = await createGame(profileToken);
+      const response = await createGame(name, profileToken);
       saveSession(response);
       dispatch({
         type: 'lobby-entered',
@@ -340,12 +340,15 @@ export function useGameSession() {
     }
   }
 
-  async function joinCoop(id: string): Promise<boolean> {
+  async function joinCoop(
+    id: string,
+    name: string,
+  ): Promise<{ ok: true } | { ok: false; message: string }> {
     if ((state.status === 'lobby' || state.status === 'playing') && state.gameId === id) {
-      return true;
+      return { ok: true };
     }
     if (entryInFlight.current || playingInFlight.current) {
-      return false;
+      return { ok: false, message: 'Another game request is in progress.' };
     }
     entryInFlight.current = true;
     const replacingSession = state.status === 'lobby' || state.status === 'playing';
@@ -353,7 +356,7 @@ export function useGameSession() {
       dispatch({ type: 'session-load-started' });
     }
     try {
-      const response = await joinGame(id);
+      const response = await joinGame(id, name);
       saveSession(response);
       dispatch({
         type: 'lobby-entered',
@@ -361,21 +364,19 @@ export function useGameSession() {
         view: response.view,
         profileBacked: false,
       });
-      return true;
+      return { ok: true };
     } catch (error) {
+      const message = errorMessage(error, 'Could not join the game');
       if (!replacingSession) {
-        dispatch({
-          type: 'session-load-failed',
-          message: errorMessage(error, 'Could not join the game'),
-        });
+        dispatch({ type: 'session-load-failed', message });
       }
-      return false;
+      return { ok: false, message };
     } finally {
       entryInFlight.current = false;
     }
   }
 
-  async function startSolo() {
+  async function startSolo(name: string) {
     if (entryInFlight.current || playingInFlight.current) {
       return;
     }
@@ -383,7 +384,7 @@ export function useGameSession() {
     presentation.switchSession(null);
     dispatch({ type: 'session-load-started' });
     try {
-      const lobby = await createGame();
+      const lobby = await createGame(name);
       saveSession(lobby);
       const response = await startGame(lobby.gameId, lobby.playerToken);
       presentation.switchSession(lobby.gameId);

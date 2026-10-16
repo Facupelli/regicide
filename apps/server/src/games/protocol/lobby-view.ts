@@ -7,8 +7,8 @@ export function toLobbyView(session: LobbySession): LobbyView {
     hostPlayerId: session.hostPlayerId,
     players: session.players.map((player) =>
       player.controller === 'agent'
-        ? { id: player.id, controller: 'agent', model: player.model }
-        : { id: player.id, controller: 'human' },
+        ? { id: player.id, name: player.name, controller: 'agent', model: player.model }
+        : { id: player.id, name: player.name, controller: 'human' },
     ),
   };
 }

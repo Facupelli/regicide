@@ -1,5 +1,6 @@
 import type { ActiveGameView, GameView, PublicPlayer } from '@regicide/protocol';
-import { agentModels } from '../../agents/models.ts';
+import { AGENT_MODEL_INFO } from '@regicide/protocol';
+import { playerLabel } from '../../game-session/player-label.ts';
 import { useGamePresentation } from '../presentation/GamePresentationContext.ts';
 import { gamePresentationAnchor } from '../presentation/game-presentation.types.ts';
 
@@ -23,25 +24,22 @@ export function PlayerSeat({
   const active = decision !== null;
   const { displayedHandCounts } = useGamePresentation();
   const handSize = local ? player.handSize : (displayedHandCounts?.[player.id] ?? player.handSize);
-  const modelLabel =
-    player.controller === 'agent'
-      ? (agentModels.find(({ id }) => id === player.model)?.label ?? player.model)
-      : null;
+  const label = playerLabel(player);
+  const modelLabel = player.controller === 'agent' ? AGENT_MODEL_INFO[player.model].label : null;
   return (
     <div
       ref={elementRef}
       className={`flex min-w-0 flex-col items-center justify-center rounded-lg border px-2 py-1 text-xs transition-colors motion-reduce:transition-none ${active ? 'border-card-selected bg-card-selected/10' : 'border-border bg-panel/60'}`}
-      aria-label={`${local ? 'Your seat' : `Player ${player.id}`}${modelLabel ? `, AI, ${modelLabel}` : ''}, ${handSize} cards${decision ? `, current player, ${decisionLabels[decision]}` : ''}`}
+      aria-label={`${label}${local ? ', your seat' : ''}${modelLabel ? `, model ${modelLabel}` : ''}, ${handSize} cards${decision ? `, current player, ${decisionLabels[decision]}` : ''}`}
     >
       <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-2">
-        <span className="max-w-24 truncate font-semibold" title={local ? 'You' : player.id}>
-          {local ? 'You' : `Player ${player.id}`}
+        <span
+          className="max-w-full truncate font-semibold"
+          title={modelLabel ? `${label} - ${modelLabel}` : label}
+        >
+          {label}
+          {local ? ' (You)' : ''}
         </span>
-        {modelLabel && (
-          <span className="max-w-full min-w-0 truncate text-card-selected" title={modelLabel}>
-            AI · {modelLabel}
-          </span>
-        )}
         <span
           className="whitespace-nowrap text-muted-foreground"
           data-verify={local ? undefined : 'other-player-hand-count'}

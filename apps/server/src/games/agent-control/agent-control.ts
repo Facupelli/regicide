@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { AGENT_MODEL_INFO } from '@regicide/protocol';
 import { logAgentDiagnostic } from '../../diagnostics.ts';
 import type {
   AgentModelId,
@@ -13,7 +14,7 @@ import {
 import { cancelAgentExecution, notifyAgentGameChanged } from '../../agents/agent-coordinator.ts';
 import { getProfile } from '../../profiles/profile-store.ts';
 import { gameHub } from '../game-hub.ts';
-import type { GameSession } from '../game-session.ts';
+import { isNameTaken, type GameSession } from '../game-session.ts';
 import { gameStore } from '../game-store.ts';
 import { toLobbyView } from '../protocol/lobby-view.ts';
 import type {
@@ -66,7 +67,12 @@ export function addAgent(
   if (!profile.enabledModels.includes(model)) {
     return { ok: false, reason: 'model-not-enabled' };
   }
-  session.players.push({ id: randomUUID(), controller: 'agent', model });
+  const baseName = `AI Player ${AGENT_MODEL_INFO[model].playerName}`;
+  let name = baseName;
+  for (let suffix = 2; isNameTaken(session.players, name); suffix += 1) {
+    name = `${baseName} (${suffix})`;
+  }
+  session.players.push({ id: randomUUID(), name, controller: 'agent', model });
   const view = toLobbyView(session);
   gameHub.publishLobby(gameId, view);
   return { ok: true, view };

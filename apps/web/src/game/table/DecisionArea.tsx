@@ -1,6 +1,7 @@
 import type { Interaction } from '@regicide/protocol';
 import type { PlaySelectionState } from '../interaction/selection.ts';
 import { Button } from '../../ui/Button.tsx';
+import { playerLabelForId } from '../../game-session/player-label.ts';
 import type { TableProps } from './table.types.ts';
 
 type DecisionProps = Pick<
@@ -51,6 +52,7 @@ export function DecisionArea({
           interaction={view.interaction}
           viewerId={view.viewer.id}
           currentPlayerId={view.currentPlayerId}
+          players={view.players}
           selectedCardIds={selectedCardIds}
           playSelection={playSelection}
           selectedDamage={selectedDamage}
@@ -106,6 +108,7 @@ function InteractionControls({
   interaction,
   viewerId,
   currentPlayerId,
+  players,
   selectedCardIds,
   playSelection,
   selectedDamage,
@@ -115,6 +118,7 @@ function InteractionControls({
   interaction: Interaction;
   viewerId: string;
   currentPlayerId: string;
+  players: TableProps['view']['players'];
   selectedCardIds: string[];
   playSelection: PlaySelectionState;
   selectedDamage: number;
@@ -196,10 +200,7 @@ function InteractionControls({
       );
     case 'waiting':
       return (
-        <p data-verify="decision">
-          Waiting for Player{' '}
-          {currentPlayerId.length > 8 ? `${currentPlayerId.slice(0, 8)}...` : currentPlayerId}.
-        </p>
+        <p data-verify="decision">Waiting for {playerLabelForId(players, currentPlayerId)}.</p>
       );
     case 'choose-next-player':
       return (
@@ -212,7 +213,8 @@ function InteractionControls({
                 disabled={actionPending}
                 onClick={() => onAction({ kind: 'choose-next-player', targetPlayerId: playerId })}
               >
-                {playerId === viewerId ? 'You' : `Player ${playerId.slice(0, 8)}`}
+                {playerLabelForId(players, playerId)}
+                {playerId === viewerId ? ' (You)' : ''}
               </Button>
             ))}
           </div>

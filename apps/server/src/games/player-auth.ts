@@ -6,11 +6,12 @@ function hashCredential(playerToken: string): Buffer {
   return createHash('sha256').update(playerToken).digest();
 }
 
-export function createSessionPlayer(): { player: SessionPlayer; playerToken: string } {
+export function createSessionPlayer(name: string): { player: SessionPlayer; playerToken: string } {
   const playerToken = randomBytes(32).toString('base64url');
   return {
     player: {
       id: randomUUID(),
+      name,
       controller: 'human',
       credentialHash: hashCredential(playerToken).toString('hex'),
     },

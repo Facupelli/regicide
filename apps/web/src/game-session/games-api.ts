@@ -9,6 +9,8 @@ import {
   SubmitActionResponseSchema,
   type AddAgentRequest,
   type AgentModelId,
+  type CreateGameRequest,
+  type JoinGameRequest,
   type UpdateGameAgentSettingsRequest,
   type PlayerCommand,
 } from '@regicide/protocol';
@@ -16,10 +18,14 @@ import { request, requestNoContent } from '../api-client.ts';
 
 const gamePath = (gameId: string) => `/games/${encodeURIComponent(gameId)}`;
 
-export function createGame(profileToken?: string) {
+export function createGame(name: string, profileToken?: string) {
   return request(
     '/games',
-    { method: 'POST', ...(profileToken ? { bearerToken: profileToken } : {}) },
+    {
+      method: 'POST',
+      ...(profileToken ? { bearerToken: profileToken } : {}),
+      body: JSON.stringify({ name } satisfies CreateGameRequest),
+    },
     CreateGameResponseSchema,
   );
 }
@@ -32,8 +38,12 @@ export function getGame(gameId: string, playerToken: string) {
   );
 }
 
-export function joinGame(gameId: string) {
-  return request(`${gamePath(gameId)}/join`, { method: 'POST' }, JoinGameResponseSchema);
+export function joinGame(gameId: string, name: string) {
+  return request(
+    `${gamePath(gameId)}/join`,
+    { method: 'POST', body: JSON.stringify({ name } satisfies JoinGameRequest) },
+    JoinGameResponseSchema,
+  );
 }
 
 export function startGame(gameId: string, playerToken: string) {

@@ -9,17 +9,11 @@ import type {
 } from '@regicide/protocol';
 import { agentModels } from '../agents/models.ts';
 import { ApiClientError } from '../api-client.ts';
+import { playerLabel } from '../game-session/player-label.ts';
 import { Button } from '../ui/Button.tsx';
 
 function modelName(model: AgentModelId) {
   return agentModels.find(({ id }) => id === model)?.label ?? model;
-}
-
-function playerName(player: LobbyView['players'][number], playerId: string) {
-  if (player.controller === 'agent') {
-    return 'AI teammate';
-  }
-  return player.id === playerId ? 'You' : `Player ${player.id.slice(0, 8)}`;
 }
 
 export function LobbyScreen({
@@ -203,15 +197,18 @@ export function LobbyScreen({
               key={player.id}
               className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-sm"
             >
-              <span className="min-w-0 break-words font-medium" title={player.id}>
-                {playerName(player, playerId)}
+              <span
+                className="min-w-0 break-words font-medium"
+                title={
+                  player.controller === 'agent'
+                    ? `${playerLabel(player)} - ${modelName(player.model)}`
+                    : playerLabel(player)
+                }
+              >
+                {playerLabel(player)}
+                {player.id === playerId ? ' (You)' : ''}
               </span>
               <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-                {player.controller === 'agent' && (
-                  <span className="min-w-0 break-words text-muted-foreground">
-                    {modelName(player.model)}
-                  </span>
-                )}
                 {player.id === view.hostPlayerId && (
                   <span className="text-card-selected">HOST</span>
                 )}
@@ -221,7 +218,7 @@ export function LobbyScreen({
                     className="min-h-10 rounded text-danger underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-card-selected disabled:opacity-50"
                     disabled={slotPending || pending}
                     onClick={() => void updateSlot(() => onRemoveAgent(player.id))}
-                    aria-label={`Remove AI teammate ${player.id.slice(0, 8)}`}
+                    aria-label={`Remove ${playerLabel(player)}`}
                   >
                     Remove
                   </button>

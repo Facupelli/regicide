@@ -4,6 +4,7 @@ import { PlayerCommandSchema } from './commands.ts';
 import { GameViewSchema } from './game-view.ts';
 import { IdentifierSchema } from './identifier.ts';
 import { LobbyViewSchema } from './lobby-view.ts';
+import { PlayerNameSchema } from './player-name.ts';
 
 const PlayerIdentityFields = {
   playerId: IdentifierSchema,
@@ -17,6 +18,12 @@ const LobbyResponseSchema = v.strictObject({
   ...PlayerIdentityFields,
   view: LobbyViewSchema,
 });
+
+export const CreateGameRequestSchema = v.strictObject({ name: PlayerNameSchema });
+export type CreateGameRequest = v.InferOutput<typeof CreateGameRequestSchema>;
+
+export const JoinGameRequestSchema = CreateGameRequestSchema;
+export type JoinGameRequest = v.InferOutput<typeof JoinGameRequestSchema>;
 
 export const CreateGameResponseSchema = LobbyResponseSchema;
 export type CreateGameResponse = v.InferOutput<typeof CreateGameResponseSchema>;

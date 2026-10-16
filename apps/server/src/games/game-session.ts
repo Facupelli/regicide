@@ -2,8 +2,12 @@ import type { GameState } from '@regicide/game-engine';
 import type { AgentModelId } from '@regicide/protocol';
 
 export type SessionPlayer =
-  | { id: string; controller: 'human'; credentialHash: string }
-  | { id: string; controller: 'agent'; model: AgentModelId };
+  | { id: string; name: string; controller: 'human'; credentialHash: string }
+  | { id: string; name: string; controller: 'agent'; model: AgentModelId };
+
+export function isNameTaken(players: readonly SessionPlayer[], name: string): boolean {
+  return players.some((player) => player.name.toLowerCase() === name.toLowerCase());
+}
 
 export type LobbySession = {
   phase: 'lobby';

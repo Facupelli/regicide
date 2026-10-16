@@ -50,6 +50,8 @@ export type {
 export { LobbyUpdatedMessageSchema } from './lobby-updated.ts';
 export type { LobbyUpdatedMessage } from './lobby-updated.ts';
 
+export { AGENT_MODEL_INFO } from './agent-model.ts';
+export { PLAYER_NAME_MAX_LENGTH, PlayerNameSchema } from './player-name.ts';
 export { LobbyViewSchema } from './lobby-view.ts';
 export type { LobbyView } from './lobby-view.ts';
 
@@ -82,6 +84,8 @@ export type {
 export {
   AddAgentRequestSchema,
   AddAgentResponseSchema,
+  CreateGameRequestSchema,
+  JoinGameRequestSchema,
   AgentStatusResponseSchema,
   AgentStatusSchema,
   ApiErrorSchema,
@@ -104,6 +108,8 @@ export {
 export type {
   AddAgentRequest,
   AddAgentResponse,
+  CreateGameRequest,
+  JoinGameRequest,
   AgentModelId,
   AgentStatus,
   AgentStatusResponse,

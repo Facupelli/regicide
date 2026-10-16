@@ -2,17 +2,20 @@ import * as v from 'valibot';
 import { AgentModelIdSchema } from './agent-model.ts';
 import { AttackCardSchema, CardSchema, JesterCardSchema, RoyalCardSchema } from './cards.ts';
 import { IdentifierSchema } from './identifier.ts';
+import { PlayerNameSchema } from './player-name.ts';
 
 const NonNegativeIntegerSchema = v.pipe(v.number(), v.integer(), v.minValue(0));
 
 export const PublicPlayerSchema = v.variant('controller', [
   v.strictObject({
     id: IdentifierSchema,
+    name: PlayerNameSchema,
     controller: v.literal('human'),
     handSize: NonNegativeIntegerSchema,
   }),
   v.strictObject({
     id: IdentifierSchema,
+    name: PlayerNameSchema,
     controller: v.literal('agent'),
     model: AgentModelIdSchema,
     handSize: NonNegativeIntegerSchema,
